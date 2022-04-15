@@ -3,6 +3,7 @@
 module T.Exp
   ( Tmpl(..)
   , Exp(..)
+  , Literal(..)
   , Name(..)
   ) where
 
@@ -10,6 +11,7 @@ import           Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
 import           Data.Foldable (toList)
 import           Data.List.NonEmpty (NonEmpty)
+import           Data.Scientific (Scientific)
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import           Prelude hiding (exp)
@@ -44,16 +46,46 @@ instance Aeson.ToJSON Tmpl where
         ]
 
 data Exp 
-    -- ^ Variable name
-  = Var Name
+  = Lit Literal
+  | Var Name
     deriving (Show, Eq)
 
 instance Aeson.ToJSON Exp where
   toJSON =
     Aeson.object . \case
+      Lit value ->
+        [ "variant" .= ("lit" :: Text)
+        , "value" .= value
+        ]
       Var name ->
         [ "variant" .= ("var" :: Text)
         , "name" .= name
+        ]
+
+data Literal
+  = Null
+  | Bool Bool
+  | Number Scientific
+  | String Text
+    deriving (Show, Eq)
+
+instance Aeson.ToJSON Literal where
+  toJSON =
+    Aeson.object . \case
+      Null ->
+        [ "variant" .= ("null" :: Text)
+        ]
+      Bool value ->
+        [ "variant" .= ("bool" :: Text)
+        , "value" .= value
+        ]
+      Number value ->
+        [ "variant" .= ("number" :: Text)
+        , "value" .= value
+        ]
+      String value ->
+        [ "variant" .= ("string" :: Text)
+        , "value" .= value
         ]
   
 newtype Name = Name { unName :: NonEmpty Text }

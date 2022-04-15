@@ -6,12 +6,13 @@ module T.Parse
 
 import           Data.Foldable (asum)
 import           Data.ByteString (ByteString)
+import qualified Data.Scientific as Scientific
 import           Data.String (fromString)
 import           Prelude hiding (exp)
 import           Text.Trifecta
 import           Text.Parser.LookAhead (lookAhead)
 
-import           T.Exp (Tmpl(..), Exp(..), Name(..))
+import           T.Exp (Tmpl(..), Exp(..), Literal(..), Name(..))
 
 
 parse :: ByteString -> Either String Tmpl
@@ -53,10 +54,34 @@ parseExp =
  where
   exp :: Parser Exp
   exp =
-    fmap Var name
-  name :: Parser Name
-  name =
-    fmap Name (sepByNonEmpty (fmap fromString (some letter)) (string "."))
+    asum
+      [ lit
+      , var
+      ]
+  lit :: Parser Exp
+  lit =
+    fmap Lit $ asum
+      [ null
+      , bool
+      , number
+      , string
+      ]
+   where
+    null =
+      Null <$ symbol "null"
+    bool =
+      asum
+        [ Bool False <$ symbol "false"
+        , Bool True <$ symbol "true"
+        ]
+    number =
+      fmap (Number . either fromIntegral Scientific.fromFloatDigits) integerOrDouble
+    string =
+      fmap String stringLiteral
+
+  var :: Parser Exp
+  var =
+    fmap (Var . Name) (sepByNonEmpty (fmap fromString (some letter)) (string "."))
 
 parseRaw :: Parser Tmpl
 parseRaw =
