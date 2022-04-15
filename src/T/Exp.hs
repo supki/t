@@ -1,0 +1,64 @@
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+module T.Exp
+  ( Tmpl(..)
+  , Exp(..)
+  , Name(..)
+  ) where
+
+import           Data.Aeson ((.=))
+import qualified Data.Aeson as Aeson
+import           Data.Foldable (toList)
+import           Data.List.NonEmpty (NonEmpty)
+import           Data.Text (Text)
+import qualified Data.Text as Text
+import           Prelude hiding (exp)
+
+
+infixr 1 :*:
+
+data Tmpl
+    -- ^ Raw template text
+  = Raw Text
+    -- ^ {{ exp }} context
+  | Exp Exp
+    -- ^ Glue two `Tmpl`s together
+  | Tmpl :*: Tmpl
+    deriving (Show, Eq)
+
+instance Aeson.ToJSON Tmpl where
+  toJSON =
+    Aeson.object . \case
+      Raw str ->
+        [ "variant" .= ("raw" :: Text)
+        , "str" .= str
+        ]
+      Exp exp ->
+        [ "variant" .= ("exp" :: Text)
+        , "exp" .= exp
+        ]
+      tmpl0 :*: tmpl1 ->
+        [ "variant" .= (":*:" :: Text)
+        , "tmpl0" .= tmpl0
+        , "tmpl1" .= tmpl1
+        ]
+
+data Exp 
+    -- ^ Variable name
+  = Var Name
+    deriving (Show, Eq)
+
+instance Aeson.ToJSON Exp where
+  toJSON =
+    Aeson.object . \case
+      Var name ->
+        [ "variant" .= ("var" :: Text)
+        , "name" .= name
+        ]
+  
+newtype Name = Name { unName :: NonEmpty Text }
+    deriving (Show, Eq)
+
+instance Aeson.ToJSON Name where
+  toJSON =
+    Aeson.toJSON . Text.intercalate "." . toList . unName

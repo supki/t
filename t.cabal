@@ -1,0 +1,77 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.6.
+--
+-- see: https://github.com/sol/hpack
+
+name:           t
+version:        1.0.0
+synopsis:       A turbo-useless templating library
+description:    See README.markdown
+category:       Text
+homepage:       https://github.com/supki/t#readme
+bug-reports:    https://github.com/supki/t/issues
+maintainer:     matvey.aksenov@gmail.com
+copyright:      Matvey Aksenov 2022
+license:        BSD2
+build-type:     Simple
+extra-source-files:
+    README.markdown
+    CHANGELOG.markdown
+
+source-repository head
+  type: git
+  location: https://github.com/supki/t
+
+library
+  exposed-modules:
+      T
+      T.Exp
+      T.Parse
+      T.Render
+  other-modules:
+      Paths_t
+  hs-source-dirs:
+      src
+  ghc-options: -funbox-strict-fields -Wall
+  build-depends:
+      aeson
+    , base >=4.14 && <5
+    , bytestring
+    , containers
+    , either
+    , parsers
+    , text
+    , trifecta
+    , unordered-containers
+  default-language: Haskell2010
+
+executable t
+  main-is: Main.hs
+  other-modules:
+      Paths_t
+  hs-source-dirs:
+      driver
+  ghc-options: -Wall -threaded -with-rtsopts=-N
+  build-depends:
+      aeson
+    , base >=4.14 && <5
+    , bytestring
+    , t
+    , text
+  default-language: Haskell2010
+
+test-suite spec
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      T.ParseSpec
+      Paths_t
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -with-rtsopts=-N
+  build-depends:
+      base >=4.14 && <5
+    , hspec
+    , t
+  default-language: Haskell2010

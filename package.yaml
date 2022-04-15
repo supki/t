@@ -1,0 +1,64 @@
+name: t
+version: 1.0.0
+synopsis: A turbo-useless templating library
+description: See README.markdown
+category: Text
+maintainer: matvey.aksenov@gmail.com
+copyright: Matvey Aksenov 2022
+license: BSD2
+extra-source-files:
+  - README.markdown
+  - CHANGELOG.markdown
+github: supki/t
+
+dependencies:
+  - base >= 4.14 && < 5
+
+library:
+  dependencies:
+    - aeson
+    - bytestring
+    - containers
+    - either
+    - parsers
+    - text
+    - trifecta
+    - unordered-containers
+  source-dirs:
+    src
+  ghc-options:
+    - -funbox-strict-fields
+    - -Wall
+    # - -Werror
+
+executables:
+  t:
+    dependencies:
+      - t
+      - aeson
+      - bytestring
+      - text
+    source-dirs:
+      driver
+    main:
+      Main.hs
+    ghc-options:
+      - -Wall
+      # - -Werror
+      - -threaded
+      - -with-rtsopts=-N
+
+tests:
+  spec:
+    dependencies:
+      - t
+      - hspec
+    source-dirs:
+      test
+    main:
+      Spec.hs
+    ghc-options:
+      - -Wall
+      # - -Werror
+      - -threaded
+      - -with-rtsopts=-N
