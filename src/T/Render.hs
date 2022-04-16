@@ -40,9 +40,11 @@ render env0 tmpl =
       value <- evalExp exp
       modifyM (insertVar name value)
       pure ""
-    If exp tmplTrue tmplFalse -> do
-      value <- evalExp exp
-      if ifTrue value then go tmplTrue else go tmplFalse
+    If clauses -> do
+      let matchClause (exp, thenTmpl) acc = do
+            value <- evalExp exp
+            if ifTrue value then go thenTmpl else acc
+      foldr matchClause (pure "") clauses
     Exp exp -> do
       str <- renderExp exp
       pure (Builder.fromText str)

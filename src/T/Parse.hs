@@ -4,10 +4,13 @@ module T.Parse
   ( parse
   ) where
 
+import           Data.Bifunctor (second)
 import           Data.Bool (bool)
 import           Data.ByteString (ByteString)
 import           Data.Foldable (asum)
 import qualified Data.HashMap.Strict as HashMap
+import           Data.List.NonEmpty (NonEmpty(..))
+import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Scientific as Scientific
 import           Data.String (fromString)
 import           Prelude hiding (exp)
@@ -31,8 +34,8 @@ cleanup = \case
     cleanup x
   x :*: Raw "" ->
     cleanup x
-  If p x0 x1 ->
-    If p (cleanup x0) (cleanup x1)
+  If clauses ->
+    If (fmap (second cleanup) clauses)
   x :*: y ->
     cleanup x :*: cleanup y
   x ->
@@ -69,19 +72,33 @@ parseSet =
 
 parseIf :: Parser Tmpl
 parseIf = do
-  exp <- ifClause
-  trueTmpl <- parser
-  _ <- elseClause
-  falseTmpl <- parser
-  _ <- endIfClause
-  pure (If exp trueTmpl falseTmpl)
+  exp <- ifBlock
+  ifTmpl <- parser
+  thenClauses <- many $ do
+    exp' <- elifBlock
+    elifTmpl <- parser
+    pure (exp', elifTmpl)
+  elseTmplQ <- optional $ do
+    _ <- elseBlock
+    parser
+  _ <- endIfBlock
+  let ifClause =
+        (exp, ifTmpl)
+      elseClauseQ =
+        fmap (\tmpl -> (Lit (Bool True), tmpl)) elseTmplQ
+  case elseClauseQ of
+    Nothing ->
+      pure (If (ifClause :| thenClauses))
+    Just elseClause ->
+      pure (If ((ifClause :| thenClauses) <> (elseClause :| [])))
  where
-  ifClause =
-    between (string "{% if" *> spaces) (spaces <* string "%}") $ do
-      expP
-  elseClause =
+  ifBlock =
+    between (string "{% if" *> spaces) (spaces <* string "%}") expP
+  elifBlock =
+    between (string "{% elif" *> spaces) (spaces <* string "%}") expP
+  elseBlock =
     between (string "{% else" *> spaces) (spaces <* string "%}") (pure ())
-  endIfClause =
+  endIfBlock =
     between (string "{% endif" *> spaces) (spaces <* string "%}") (pure ())
 
 parseExp :: Parser Tmpl

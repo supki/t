@@ -28,10 +28,13 @@ spec =
       render2 [aesonQQ| {} |] "{% if false %}foo{% else %}bar{% endif %}" `shouldBe` Right "bar"
       render2 [aesonQQ| {x: true} |] "{% if x %}foo{% else %}bar{% endif %}" `shouldBe` Right "foo"
       render2 [aesonQQ| {} |] "{% set x = true %}{% if x %}foo{% else %}bar{% endif %}" `shouldBe` Right "foo"
+      render2 [aesonQQ| {} |] "{% if false %}4{% elif true %}7{% endif %}" `shouldBe` Right "7"
+      render2 [aesonQQ| {} |] "{% if false %}4{% elif false %}7{% else %}foo{% endif %}" `shouldBe` Right "foo"
 
     context "if + set" $
-      it "only evaluates {% set %} in the clause that is true" $
+      it "only evaluates {% set %} in the clause that is true" $ do
         render2 [aesonQQ| {} |] "{% if true %}{% set x = 4 %}{% else %}{% set x = 7 %}{% endif %}{{ x }}" `shouldBe` Right "4"
+        render2 [aesonQQ| {} |] "{% if false %}{% set x = 4 %}{% elif false %}{% set x = \"foo\" %}{% elif true %}{% set x = \"bar\" %}{% else %}{% set x = 7 %}{% endif %}{{ x }}" `shouldBe` Right "bar"
 
 render2 json tmplStr = do
   let Right tmpl = parse (Text.encodeUtf8 tmplStr)

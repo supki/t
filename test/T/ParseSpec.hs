@@ -49,13 +49,22 @@ spec =
               , ("y", string "foo")
               ]))
       parse "{% set x = 4 %}" `shouldBe` Right (Set (Name ["x"]) (number 4))
+      parse "{% if x %}t{% endif %}" `shouldBe`
+        Right (whenIf (var ["x"]) "t")
       parse "{% if x %}t{% else %}f{% endif %}" `shouldBe`
-        Right (If (var ["x"]) "t" "f")
+        Right (simpleIf (var ["x"]) "t" "f")
+      parse "{% if 4 %}4{% elif 7 %}7{% endif %}" `shouldBe`
+        Right (If [(number 4, "4"), (number 7, "7")])
+      parse "{% if 4 %}4{% elif 7 %}7{% else %}foo{% endif %}" `shouldBe`
+        Right (If [(number 4, "4"), (number 7, "7"), (true, "foo")])
 
     context "if" $
       it "can nest arbitrarily" $
         parse "{% if x %}{% if y %}tt{% else %}tf{% endif %}{% else %}{% if z %}ft{% else %}ff{% endif %}{% endif %}" `shouldBe`
-          Right (If (var ["x"]) (If (var ["y"]) "tt" "tf") (If (var ["z"]) "ft" "ff"))
+          Right
+            (simpleIf (var ["x"])
+              (simpleIf (var ["y"]) "tt" "tf")
+              (simpleIf (var ["z"]) "ft" "ff"))
 
 var :: NonEmpty Text -> Exp
 var =
@@ -88,3 +97,11 @@ array =
 object :: [(Text, Exp)] -> Exp
 object =
   Lit . Object . HashMap.fromList
+
+simpleIf :: Exp -> Tmpl -> Tmpl -> Tmpl
+simpleIf p thenTmpl elseTmpl =
+  If [(p, thenTmpl), (true, elseTmpl)]
+
+whenIf :: Exp -> Tmpl -> Tmpl
+whenIf p thenTmpl =
+  If [(p, thenTmpl)]
