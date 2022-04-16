@@ -12,6 +12,7 @@ import           Data.Scientific (Scientific)
 import           Data.Text (Text)
 import qualified Data.Text.Lazy as Text.Lazy
 import qualified Data.Text.Lazy.Encoding as Text.Lazy
+import qualified Data.Vector as Vector
 
 
 data Value
@@ -55,4 +56,20 @@ instance Aeson.ToJSON Value where
 
 display :: Value -> String
 display =
-  Text.Lazy.unpack . Text.Lazy.decodeUtf8 . Aeson.encode
+  Text.Lazy.unpack . Text.Lazy.decodeUtf8 . Aeson.encode . embedAeson
+ where
+  embedAeson = \case
+    Null ->
+      Aeson.Null
+    Bool b ->
+      Aeson.Bool b
+    Number n ->
+      Aeson.Number n
+    String str ->
+      Aeson.String str
+    Array xs ->
+      Aeson.Array (Vector.fromList (map embedAeson xs))
+    Object o ->
+      Aeson.Object (fmap embedAeson o)
+    Lam _f ->
+      Aeson.String "<lambda>"

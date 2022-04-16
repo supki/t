@@ -72,6 +72,10 @@ spec =
         render2 [aesonQQ| {} |] "{% for x in split(\",\", \"foo,bar,baz\") %}{{ x }}{% endfor %}" `shouldBe`
           Right "foobarbaz"
 
+      it "die" $ do
+        render2 [aesonQQ| {} |] "{{ die(\"reason\") }}" `shouldBe` Left "die: \"reason\""
+        render2 [aesonQQ| {} |] "{{ die(4) }}" `shouldBe` Left "die: 4"
+
 render2 json tmplStr = do
   let Right tmpl = parse (Text.encodeUtf8 tmplStr)
   render (envFromJson json) tmpl

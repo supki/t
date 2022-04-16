@@ -26,6 +26,7 @@ library:
     - text
     - trifecta
     - unordered-containers
+    - vector
   source-dirs:
     src
   ghc-options:

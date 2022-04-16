@@ -91,6 +91,8 @@ stdlib =
     , ("bool01", embed (bool @Int 0 1))
     , ("join", embed Text.intercalate)
     , ("split", embed Text.splitOn)
+
+    , ("die", embeddedDie)
     ]
 
 embeddedNull :: Value
@@ -116,3 +118,9 @@ embeddedLength =
       pure (embed (HashMap.size o))
     value ->
       Left ("cannot find length of: " <> display value)
+
+embeddedDie :: Value
+embeddedDie =
+  Lam $ \case
+    value ->
+      Left ("die: " <> display value)
