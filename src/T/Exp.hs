@@ -67,6 +67,7 @@ instance Aeson.ToJSON Tmpl where
 data Exp 
   = Lit Literal
   | Var Name
+  | App Exp Exp
     deriving (Show, Eq)
 
 instance Aeson.ToJSON Exp where
@@ -79,6 +80,11 @@ instance Aeson.ToJSON Exp where
       Var name ->
         [ "variant" .= ("var" :: Text)
         , "name" .= name
+        ]
+      App exp0 exp1 ->
+        [ "variant" .= ("app" :: Text)
+        , "exp0" .= exp0
+        , "exp1" .= exp1
         ]
 
 data Literal

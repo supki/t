@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module T.Value
   ( Value(..)
+  , display
   ) where
 
 import           Data.Aeson ((.=))
@@ -9,6 +10,8 @@ import qualified Data.Aeson as Aeson
 import           Data.HashMap.Strict (HashMap)
 import           Data.Scientific (Scientific)
 import           Data.Text (Text)
+import qualified Data.Text.Lazy as Text.Lazy
+import qualified Data.Text.Lazy.Encoding as Text.Lazy
 
 
 data Value
@@ -18,7 +21,7 @@ data Value
   | String Text
   | Array [Value]
   | Object (HashMap Text Value)
-    deriving (Show, Eq)
+  | Lam (Value -> Either String Value)
 
 instance Aeson.ToJSON Value where
   toJSON =
@@ -46,3 +49,10 @@ instance Aeson.ToJSON Value where
         [ "variant" .= ("object" :: Text)
         , "value" .= value
         ]
+      Lam _f ->
+        [ "variant" .= ("<lambda>" :: Text)
+        ]
+
+display :: Value -> String
+display =
+  Text.Lazy.unpack . Text.Lazy.decodeUtf8 . Aeson.encode

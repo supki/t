@@ -57,6 +57,13 @@ spec =
         Right (If [(number 4, "4"), (number 7, "7")])
       parse "{% if 4 %}4{% elif 7 %}7{% else %}foo{% endif %}" `shouldBe`
         Right (If [(number 4, "4"), (number 7, "7"), (true, "foo")])
+      parse "{{ foo(bar) }}" `shouldBe` Right (Exp (App (var ["foo"]) (var ["bar"])))
+      parse "{{ foo(bar, baz) }}" `shouldBe`
+        Right (Exp (App (App (var ["foo"]) (var ["bar"])) (var ["baz"])))
+      parse "{% if true && false %}foo{% endif %}" `shouldBe`
+        Right (whenIf (App (App (var ["&&"]) true) false) "foo")
+      parse "{% if ! true %}foo{% endif %}" `shouldBe`
+        Right (whenIf (App (var ["!"]) true) "foo")
 
     context "if" $
       it "can nest arbitrarily" $

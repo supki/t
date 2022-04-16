@@ -8,7 +8,8 @@ module T.Render
   , envFromJson
   ) where
 
-import           Control.Monad.Except (MonadError(..), runExcept)
+import           Control.Applicative ((<|>))
+import           Control.Monad.Except (MonadError(..), runExcept, liftEither)
 import           Control.Monad.State (MonadState(..), evalStateT)
 import qualified Data.Aeson as Aeson
 import           Data.Bool (bool)
@@ -24,10 +25,10 @@ import           Prelude hiding (exp)
 import           T.Exp (Tmpl(..), Exp(..), Literal(..), Name(..))
 import           T.Value (Value)
 import qualified T.Value as Value
+import           T.Embed (stdlib)
 
 
 newtype Env = Env { unEnv :: Value }
-    deriving (Show, Eq)
 
 render :: Env -> Tmpl -> Either String Lazy.Text
 render env0 tmpl =
@@ -70,7 +71,7 @@ renderExp exp = do
     Value.String str ->
       pure str
     o ->
-      throwError ("not renderable: " <> show o)
+      throwError ("not renderable: " <> Value.display o)
 
 evalExp :: (MonadState Env m, MonadError String m) => Exp -> m Value
 evalExp = \case
@@ -97,6 +98,14 @@ evalExp = \case
         throwError ("not in scope: " <> show name)
       Just value -> do
         pure value
+  App exp0 exp1 -> do
+    fQ <- evalExp exp0
+    case fQ of
+      Value.Lam f -> do
+        x <- evalExp exp1
+        liftEither (f x)
+      value ->
+        throwError ("not a function: " <> Value.display value)
 
 envFromJson :: Aeson.Value -> Env
 envFromJson =
@@ -118,7 +127,7 @@ envFromJson =
 
 lookupVar :: Env -> Name -> Maybe Value
 lookupVar (Env env) (Name name) =
-  go env (toList name)
+  go env (toList name) <|> go stdlib (toList name)
  where
   go o [] =
     pure o
@@ -143,7 +152,7 @@ insertVar (Name name) value (Env env) =
         v <- go o' xs
         pure (Value.Object (HashMap.insert x v o))
   go o (x : _) =
-    throwError ("cannot set property ." <> show x <> " to " <> show o)
+    throwError ("cannot set property ." <> show x <> " to " <> Value.display o)
 
 ifTrue :: Value -> Bool
 ifTrue = \case

@@ -4,18 +4,21 @@ module T.Parse
   ( parse
   ) where
 
+import           Control.Applicative ((<|>), liftA2)
 import           Data.Bifunctor (second)
 import           Data.Bool (bool)
 import           Data.ByteString (ByteString)
 import           Data.Foldable (asum)
 import qualified Data.HashMap.Strict as HashMap
+import           Data.List (foldl')
 import           Data.List.NonEmpty (NonEmpty(..))
-import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Scientific as Scientific
 import           Data.String (fromString)
 import           Prelude hiding (exp)
 import           Text.Trifecta
+import           Text.Parser.Expression (Assoc(..), Operator(..), buildExpressionParser)
 import           Text.Parser.LookAhead (lookAhead)
+import           Text.Parser.Token.Style (emptyOps)
 
 import           T.Exp (Tmpl(..), Exp(..), Literal(..), Name(..))
 
@@ -107,13 +110,40 @@ parseExp =
 
 expP :: Parser Exp
 expP =
-  asum
-    [ lit
-    , var
+  buildExpressionParser table expP'
+ where
+  table =
+    [ [prefixOp "!"]
+    , [infixrOp "&&"]
+    , [infixrOp "||"]
     ]
+   where
+    infixrOp name =
+      Infix
+        (reserve emptyOps name *> pure (\a b -> App (App (Var (Name (pure (fromString name)))) a) b))
+        AssocRight
+    prefixOp name =
+      Prefix
+        (reserve emptyOps name *> pure (\a -> App (Var (Name (pure (fromString name)))) a))
+  expP' =
+    asum
+      [ litP
+        -- We have to use `try` here because, unfortunately, function
+        -- application `f(x)` shares a prefix with the standalone
+        -- variable lookup `f`.
+      , try appP
+      , varP
+      ]
 
-lit :: Parser Exp
-lit =
+appP :: Parser Exp
+appP = do
+  var <- varP
+  arg :| args <-
+    between (string "(" *> spaces) (spaces *> string ")") (sepByNonEmpty expP (symbol ","))
+  pure (foldl' (\acc arg' -> App acc arg') (App var arg) args)
+
+litP :: Parser Exp
+litP =
   fmap Lit $ asum
     [ nullP
     , boolP
@@ -147,13 +177,16 @@ lit =
       v <- expP
       pure (k, v)
 
-var :: Parser Exp
-var =
+varP :: Parser Exp
+varP =
   fmap Var nameP
 
 nameP :: Parser Name
 nameP =
-  fmap Name (sepByNonEmpty (fmap fromString (some letter)) (string ".")) <* spaces
+  fmap Name (sepByNonEmpty chunk (string ".")) <* spaces
+ where
+  chunk =
+    fmap fromString (liftA2 (:) letter (many (digit <|> letter)))
 
 parseRaw :: Parser Tmpl
 parseRaw =

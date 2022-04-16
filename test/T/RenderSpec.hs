@@ -30,11 +30,18 @@ spec =
       render2 [aesonQQ| {} |] "{% set x = true %}{% if x %}foo{% else %}bar{% endif %}" `shouldBe` Right "foo"
       render2 [aesonQQ| {} |] "{% if false %}4{% elif true %}7{% endif %}" `shouldBe` Right "7"
       render2 [aesonQQ| {} |] "{% if false %}4{% elif false %}7{% else %}foo{% endif %}" `shouldBe` Right "foo"
+      render2 [aesonQQ| {} |] "{{ true && false }}" `shouldBe` Right "false"
+      render2 [aesonQQ| {} |] "{{ true || false }}" `shouldBe` Right "true"
+      render2 [aesonQQ| {} |] "{{ ! true }}" `shouldBe` Right "false"
 
     context "if + set" $
       it "only evaluates {% set %} in the clause that is true" $ do
         render2 [aesonQQ| {} |] "{% if true %}{% set x = 4 %}{% else %}{% set x = 7 %}{% endif %}{{ x }}" `shouldBe` Right "4"
         render2 [aesonQQ| {} |] "{% if false %}{% set x = 4 %}{% elif false %}{% set x = \"foo\" %}{% elif true %}{% set x = \"bar\" %}{% else %}{% set x = 7 %}{% endif %}{{ x }}" `shouldBe` Right "bar"
+
+    it "bool01" $ do
+      render2 [aesonQQ| {} |] "{{ bool01(false) }}" `shouldBe` Right "0"
+      render2 [aesonQQ| {} |] "{{ bool01(true) }}" `shouldBe` Right "1"
 
 render2 json tmplStr = do
   let Right tmpl = parse (Text.encodeUtf8 tmplStr)
