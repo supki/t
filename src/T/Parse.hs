@@ -71,7 +71,7 @@ parser =
 
 parseSet :: Parser Tmpl
 parseSet =
-  between (string "{% set" *> spaces) (spaces <* string "%}") $ do
+  blockP "set" $ do
     name <- nameP
     _ <- symbol "="
     exp <- expP
@@ -100,23 +100,23 @@ parseIf = do
       pure (If ((ifClause :| thenClauses) <> (elseClause :| [])))
  where
   ifBlock =
-    between (string "{% if" *> spaces) (spaces <* string "%}") expP
+    blockP "if" expP
   elifBlock =
-    between (string "{% elif" *> spaces) (spaces <* string "%}") expP
+    blockP "elif" expP
   elseBlock =
-    between (string "{% else" *> spaces) (spaces <* string "%}") (pure ())
+    blockP_ "else"
   endIfBlock =
-    between (string "{% endif" *> spaces) (spaces <* string "%}") (pure ())
+    blockP_ "endif"
 
 parseFor :: Parser Tmpl
 parseFor = do
-  (name, exp) <- between (string "{% for" *> spaces) (spaces <* string "%}") $ do
+  (name, exp) <- blockP "for" $ do
     name <- nameP
     _ <- symbol "in"
     exp <- expP
     pure (name, exp)
   forTmpl <- parser
-  _ <- between (string "{% endfor" *> spaces) (spaces <* string "%}") (pure ())
+  _ <- blockP_ "endfor"
   pure (For name exp forTmpl)
 
 parseExp :: Parser Tmpl
@@ -129,6 +129,8 @@ expP =
  where
   table =
     [ [prefixOp "!"]
+    , [infixrOp "*", infixrOp "/"]
+    , [infixrOp "+", infixrOp "-"]
     , [infixrOp "&&"]
     , [infixrOp "||"]
     ]
@@ -218,3 +220,11 @@ parseRaw =
       , do x <- anyChar
            go (x : acc)
       ]
+
+blockP :: String -> Parser a -> Parser a
+blockP name p =
+  between (string ("{% " <> name) *> spaces) (spaces <* string "%}") p
+
+blockP_ :: String -> Parser ()
+blockP_ name =
+  blockP name (pure ())

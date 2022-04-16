@@ -39,17 +39,38 @@ spec =
         render2 [aesonQQ| {} |] "{% if true %}{% set x = 4 %}{% else %}{% set x = 7 %}{% endif %}{{ x }}" `shouldBe` Right "4"
         render2 [aesonQQ| {} |] "{% if false %}{% set x = 4 %}{% elif false %}{% set x = \"foo\" %}{% elif true %}{% set x = \"bar\" %}{% else %}{% set x = 7 %}{% endif %}{{ x }}" `shouldBe` Right "bar"
 
-    it "bool01" $ do
-      render2 [aesonQQ| {} |] "{{ bool01(false) }}" `shouldBe` Right "0"
-      render2 [aesonQQ| {} |] "{{ bool01(true) }}" `shouldBe` Right "1"
+    context "functions" $ do
+      it "numeric operations" $ do
+        render2 [aesonQQ| {} |] "{{ 1 + 2 }}" `shouldBe` Right "3"
+        render2 [aesonQQ| {} |] "{{ 0.1 + 0.2 }}" `shouldBe` Right "0.3"
+        render2 [aesonQQ| {} |] "{{ 1 - 2 }}" `shouldBe` Right "-1"
+        render2 [aesonQQ| {} |] "{{ 4 * 7 }}" `shouldBe` Right "28"
+        render2 [aesonQQ| {} |] "{{ 4 / 8 }}" `shouldBe` Right "0.5"
 
-    it "join" $ do
-      render2 [aesonQQ| {} |] "{{ join(\",\", [\"foo\", \"bar\", \"baz\"]) }}" `shouldBe`
-        Right "foo,bar,baz"
+      it "bool01" $ do
+        render2 [aesonQQ| {} |] "{{ bool01(false) }}" `shouldBe` Right "0"
+        render2 [aesonQQ| {} |] "{{ bool01(true) }}" `shouldBe` Right "1"
 
-    it "split" $ do
-      render2 [aesonQQ| {} |] "{% for x in split(\",\", \"foo,bar,baz\") %}{{ x }}{% endfor %}" `shouldBe`
-        Right "foobarbaz"
+      it "null" $ do
+        render2 [aesonQQ| {} |] "{{ empty(\"\") }}" `shouldBe` Right "true"
+        render2 [aesonQQ| {} |] "{{ empty(\"hello\") }}" `shouldBe` Right "false"
+        render2 [aesonQQ| {} |] "{{ empty([]) }}" `shouldBe` Right "true"
+        render2 [aesonQQ| {} |] "{{ empty([1, 2, 3]) }}" `shouldBe` Right "false"
+        render2 [aesonQQ| {} |] "{{ empty({}) }}" `shouldBe` Right "true"
+        render2 [aesonQQ| {} |] "{{ empty({x: 4, y: 7}) }}" `shouldBe` Right "false"
+
+      it "length" $ do
+        render2 [aesonQQ| {} |] "{{ length(\"hello\") }}" `shouldBe` Right "5"
+        render2 [aesonQQ| {} |] "{{ length([1, 2, 3]) }}" `shouldBe` Right "3"
+        render2 [aesonQQ| {} |] "{{ length({x: 4, y: 7}) }}" `shouldBe` Right "2"
+
+      it "join" $ do
+        render2 [aesonQQ| {} |] "{{ join(\",\", [\"foo\", \"bar\", \"baz\"]) }}" `shouldBe`
+          Right "foo,bar,baz"
+
+      it "split" $ do
+        render2 [aesonQQ| {} |] "{% for x in split(\",\", \"foo,bar,baz\") %}{{ x }}{% endfor %}" `shouldBe`
+          Right "foobarbaz"
 
 render2 json tmplStr = do
   let Right tmpl = parse (Text.encodeUtf8 tmplStr)

@@ -47,14 +47,14 @@ render env0 tmpl =
             value <- evalExp exp
             if ifTrue value then go thenTmpl else acc
       foldr matchClause (pure "") clauses
-    For name exp tmpl -> do
+    For name exp tmpl0 -> do
       value <- evalExp exp
       case value of
         Value.Array xs -> do
           rs <- for xs $ \x -> do
             env <- get
             modifyM (insertVar name x)
-            r <- go tmpl
+            r <- go tmpl0
             put env
             pure r
           pure (mconcat rs)

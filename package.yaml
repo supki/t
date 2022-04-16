@@ -53,9 +53,11 @@ tests:
   spec:
     dependencies:
       - t
+      - aeson-qq
       - hspec
       - scientific
       - text
+      - unordered-containers
     source-dirs:
       test
     main:
