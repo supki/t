@@ -4,8 +4,10 @@ module T.Parse
   ( parse
   ) where
 
-import           Data.Foldable (asum)
+import           Data.Bool (bool)
 import           Data.ByteString (ByteString)
+import           Data.Foldable (asum)
+import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Scientific as Scientific
 import           Data.String (fromString)
 import           Prelude hiding (exp)
@@ -28,9 +30,11 @@ cleanup = \case
   Raw "" :*: x ->
     cleanup x
   x :*: Raw "" ->
-    x
+    cleanup x
+  If p x0 x1 ->
+    If p (cleanup x0) (cleanup x1)
   x :*: y ->
-    x :*: cleanup y
+    cleanup x :*: cleanup y
   x ->
     x
 
@@ -40,13 +44,45 @@ parser =
  where
   go acc =
     asum
-      [ do _ <- eof
-           pure (acc (Raw ""))
+      [ do set <- parseSet
+           go (acc . (:*:) set)
+      , do if_ <- parseIf
+           go (acc . (:*:) if_)
       , do exp <- parseExp
            go (acc . (:*:) exp)
-      , do raw <- parseRaw
-           go (acc . (:*:) raw)
+        -- `parseRaw` succeeds on the empty string; so to avoid
+        -- looping indefinitely, we check that the parser position
+        -- moved at least a bit.
+      , do pos0 <- position
+           raw <- parseRaw
+           pos1 <- position
+           bool (go (acc . (:*:) raw)) (pure (acc raw)) (pos0 == pos1)
       ]
+
+parseSet :: Parser Tmpl
+parseSet =
+  between (string "{% set" *> spaces) (spaces <* string "%}") $ do
+    name <- nameP
+    _ <- symbol "="
+    exp <- expP
+    pure (Set name exp)
+
+parseIf :: Parser Tmpl
+parseIf = do
+  exp <- ifClause
+  trueTmpl <- parser
+  _ <- elseClause
+  falseTmpl <- parser
+  _ <- endIfClause
+  pure (If exp trueTmpl falseTmpl)
+ where
+  ifClause =
+    between (string "{% if" *> spaces) (spaces <* string "%}") $ do
+      expP
+  elseClause =
+    between (string "{% else" *> spaces) (spaces <* string "%}") (pure ())
+  endIfClause =
+    between (string "{% endif" *> spaces) (spaces <* string "%}") (pure ())
 
 parseExp :: Parser Tmpl
 parseExp =
@@ -67,6 +103,7 @@ lit =
     , numberP
     , stringP
     , arrayP
+    , objectP
     ]
  where
   nullP =
@@ -82,6 +119,16 @@ lit =
     fmap String stringLiteral
   arrayP =
     fmap Array (between (string "[" *> spaces) (spaces <* string "]") (sepBy expP (symbol ",")))
+  objectP =
+    fmap (Object . HashMap.fromList)
+      (between
+        (string "{" *> spaces) (spaces <* string "}") (sepBy kv (symbol ",")))
+   where
+    kv = do
+      k <- fmap fromString (some letter)
+      _ <- symbol ":"
+      v <- expP
+      pure (k, v)
 
 var :: Parser Exp
 var =
@@ -100,6 +147,8 @@ parseRaw =
       [ do _ <- eof
            pure acc
       , do _ <- lookAhead (string "{{")
+           pure acc
+      , do _ <- lookAhead (string "{%")
            pure acc
       , do x <- anyChar
            go (x : acc)

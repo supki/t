@@ -10,8 +10,10 @@ module T.Exp
 import           Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
 import           Data.Foldable (toList)
+import           Data.HashMap.Strict (HashMap)
 import           Data.List.NonEmpty (NonEmpty)
 import           Data.Scientific (Scientific)
+import           Data.String (IsString(..))
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import           Prelude hiding (exp)
@@ -24,9 +26,17 @@ data Tmpl
   = Raw Text
     -- ^ {{ exp }} context
   | Exp Exp
+    -- ^ {% set _ = _ %}
+  | Set Name Exp
+    -- ^ {% if _ %} _ {% else %} _ {% endif %}
+  | If Exp Tmpl Tmpl
     -- ^ Glue two `Tmpl`s together
   | Tmpl :*: Tmpl
     deriving (Show, Eq)
+
+instance IsString Tmpl where
+  fromString =
+    Raw . fromString
 
 instance Aeson.ToJSON Tmpl where
   toJSON =
@@ -38,6 +48,17 @@ instance Aeson.ToJSON Tmpl where
       Exp exp ->
         [ "variant" .= ("exp" :: Text)
         , "exp" .= exp
+        ]
+      Set name exp ->
+        [ "variant" .= ("set" :: Text)
+        , "name" .= name
+        , "exp" .= exp
+        ]
+      If exp tmplTrue tmplFalse ->
+        [ "variant" .= ("if" :: Text)
+        , "exp" .= exp
+        , "true" .= tmplTrue
+        , "false" .= tmplFalse
         ]
       tmpl0 :*: tmpl1 ->
         [ "variant" .= (":*:" :: Text)
@@ -68,6 +89,7 @@ data Literal
   | Number Scientific
   | String Text
   | Array [Exp]
+  | Object (HashMap Text Exp)
     deriving (Show, Eq)
 
 instance Aeson.ToJSON Literal where
@@ -90,6 +112,10 @@ instance Aeson.ToJSON Literal where
         ]
       Array value ->
         [ "variant" .= ("array" :: Text)
+        , "value" .= value
+        ]
+      Object value ->
+        [ "variant" .= ("object" :: Text)
         , "value" .= value
         ]
   

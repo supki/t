@@ -20,6 +20,7 @@ library:
     - bytestring
     - containers
     - either
+    - mtl
     - parsers
     - scientific
     - text
@@ -37,7 +38,6 @@ executables:
     dependencies:
       - t
       - aeson
-      - bytestring
       - text
     source-dirs:
       driver

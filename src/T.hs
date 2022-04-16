@@ -1,11 +1,13 @@
 module T
   ( Tmpl
-  , Env(..)
+  , Env
 
   , parse
   , render
+
+  , envFromJson
   ) where
 
 import           T.Exp (Tmpl)
 import           T.Parse (parse)
-import           T.Render (Env(..), render)
+import           T.Render (Env, render, envFromJson)

@@ -1,8 +1,9 @@
 module Main (main) where
 
 import qualified Data.Aeson as Aeson
-import qualified Data.ByteString as ByteString
 import           Data.String (fromString)
+import qualified Data.Text.IO as Text
+import qualified Data.Text.Encoding as Text
 import qualified Data.Text.Lazy.IO as Text.Lazy
 import           Prelude hiding (exp)
 import           System.Environment (getArgs)
@@ -14,8 +15,8 @@ import qualified T
 main :: IO ()
 main = do
   templateName : envStr : _ <- getArgs
-  str <- ByteString.readFile templateName
-  case T.parse str of
+  str <- Text.readFile templateName
+  case T.parse (Text.encodeUtf8 str) of
     Left err ->
       die err
     Right exp ->
@@ -31,4 +32,4 @@ main = do
 
 envParse :: String -> Either String T.Env
 envParse =
-  fmap T.Env . Aeson.eitherDecode . fromString
+  fmap T.envFromJson . Aeson.eitherDecode . fromString

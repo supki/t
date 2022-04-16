@@ -1,13 +1,19 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 module T.Render
-  ( Env(..)
+  ( Env
   , render
+  , envFromJson
   ) where
 
+import           Control.Monad.Except (MonadError(..), runExcept)
+import           Control.Monad.State (MonadState(..), evalStateT)
 import qualified Data.Aeson as Aeson
 import           Data.Bool (bool)
 import           Data.Foldable (toList)
+import           Data.Scientific (floatingOrInteger)
 import           Data.String (fromString)
 import           Data.Text (Text)
 import qualified Data.Text.Lazy as Lazy (Text)
@@ -20,38 +26,52 @@ import           T.Value (Value)
 import qualified T.Value as Value
 
 
-newtype Env = Env { unEnv :: Aeson.Value }
+newtype Env = Env { unEnv :: Value }
     deriving (Show, Eq)
 
 render :: Env -> Tmpl -> Either String Lazy.Text
-render env = fmap Builder.toLazyText . go
+render env0 tmpl =
+  fmap Builder.toLazyText (runExcept (evalStateT (go tmpl) env0))
  where
   go = \case
     Raw str ->
       pure (Builder.fromText str)
+    Set name exp -> do
+      value <- evalExp exp
+      modifyM (insertVar name value)
+      pure ""
+    If exp tmplTrue tmplFalse -> do
+      value <- evalExp exp
+      if ifTrue value then go tmplTrue else go tmplFalse
     Exp exp -> do
-      str <- renderExp env exp
+      str <- renderExp exp
       pure (Builder.fromText str)
     tmpl0 :*: tmpl1 -> do
       b0 <- go tmpl0
       b1 <- go tmpl1
       pure (b0 <> b1)
+
+modifyM :: MonadState s m => (s -> m s) -> m ()
+modifyM f = do 
+  s <- get
+  s' <- f s
+  put s'
   
-renderExp :: Env -> Exp -> Either String Text
-renderExp env exp = do
-  value <- evalExp env exp
+renderExp :: (MonadState Env m, MonadError String m) => Exp -> m Text
+renderExp exp = do
+  value <- evalExp exp
   case value of
-    (Value.Bool b) ->
+    Value.Bool b ->
       pure (bool "false" "true" b)
-    (Value.Number n) ->
-      pure (fromString (show n))
-    (Value.String str) ->
+    Value.Number n ->
+      pure (fromString (either (show @Double) (show @Int) (floatingOrInteger n)))
+    Value.String str ->
       pure str
     o ->
-      Left ("not renderable: " <> show o)
+      throwError ("not renderable: " <> show o)
 
-evalExp :: Env -> Exp -> Either String Value
-evalExp env = \case
+evalExp :: (MonadState Env m, MonadError String m) => Exp -> m Value
+evalExp = \case
   Lit literal ->
     case literal of
       Null ->
@@ -63,40 +83,68 @@ evalExp env = \case
       String str ->
         pure (Value.String str)
       Array xs -> do
-        ys <- traverse (evalExp env) xs
+        ys <- traverse evalExp xs
         pure (Value.Array ys)
-  Var name ->
+      Object xs -> do
+        ys <- traverse evalExp xs
+        pure (Value.Object ys)
+  Var name -> do
+    env <- get
     case lookupVar env name of
       Nothing ->
-        Left ("not in scope: " <> show name)
-      Just json -> do
-        value <- fromJson json
-        evalExp env value
- where
-  fromJson :: Aeson.Value -> Either String Exp
-  fromJson = \case
-    Aeson.Null ->
-      pure (Lit Null)
-    Aeson.Bool b ->
-      pure (Lit (Bool b))
-    Aeson.Number n ->
-      pure (Lit (Number n))
-    Aeson.String str ->
-      pure (Lit (String str))
-    Aeson.Array xs -> do
-      ys <- traverse fromJson xs
-      pure (Lit (Array (toList ys)))
-    o ->
-      Left ("unsupported json: " <> show o)
+        throwError ("not in scope: " <> show name)
+      Just value -> do
+        pure value
 
-lookupVar :: Env -> Name -> Maybe Aeson.Value
+envFromJson :: Aeson.Value -> Env
+envFromJson =
+  Env . go
+ where
+  go = \case
+    Aeson.Null ->
+      Value.Null
+    Aeson.Bool b ->
+      Value.Bool b
+    Aeson.Number n ->
+      Value.Number n
+    Aeson.String str ->
+      Value.String str
+    Aeson.Array xs ->
+      Value.Array (toList (fmap go xs))
+    Aeson.Object xs ->
+      Value.Object (fmap go xs)
+
+lookupVar :: Env -> Name -> Maybe Value
 lookupVar (Env env) (Name name) =
   go env (toList name)
  where
   go o [] =
     pure o
-  go (Aeson.Object o) (x : xs) = do
+  go (Value.Object o) (x : xs) = do
     o' <- HashMap.lookup x o
     go o' xs
   go _ _ =
     Nothing
+
+insertVar :: MonadError String m => Name -> Value -> Env -> m Env
+insertVar (Name name) value (Env env) =
+  fmap Env (go env (toList name))
+ where
+  go _ [] =
+    pure value
+  go (Value.Object o) (x : xs) = do
+    case HashMap.lookup x o of
+      Nothing -> do
+        v <- go Value.Null xs
+        pure (Value.Object (HashMap.insert x v o))
+      Just o' -> do
+        v <- go o' xs
+        pure (Value.Object (HashMap.insert x v o))
+  go o (x : _) =
+    throwError ("cannot set property ." <> show x <> " to " <> show o)
+
+ifTrue :: Value -> Bool
+ifTrue = \case
+  Value.Null -> False
+  Value.Bool False -> False
+  _ -> True

@@ -4,6 +4,7 @@ module T.ParseSpec (spec) where
 
 import           Data.Scientific (Scientific)
 import           Data.List.NonEmpty (NonEmpty)
+import qualified Data.HashMap.Strict as HashMap
 import           Data.Text (Text)
 import           Prelude hiding (null)
 import           Test.Hspec
@@ -14,15 +15,15 @@ import           T.Exp (Tmpl(..), Exp(..), Literal(..), Name(..))
 
 spec :: Spec
 spec =
-  describe "parse" $
+  describe "parse" $ do
     it "examples" $ do
-      parse "" `shouldBe` Right (Raw "")
-      parse "foo" `shouldBe` Right (Raw "foo")
+      parse "" `shouldBe` Right ""
+      parse "foo" `shouldBe` Right "foo"
       parse "{{ x }}" `shouldBe` Right (Exp (var ["x"]))
       parse "{{ x }}{{ y }}" `shouldBe` Right (Exp (var ["x"]) :*: Exp (var ["y"]))
       parse "{{ x.y.z }}" `shouldBe` Right (Exp (var ["x", "y", "z"]))
-      parse "foo{{ x }}" `shouldBe` Right (Raw "foo" :*: Exp (var ["x"]))
-      parse "foo{{ x }}bar" `shouldBe` Right (Raw "foo" :*: Exp (var ["x"]) :*: Raw "bar")
+      parse "foo{{ x }}" `shouldBe` Right ("foo" :*: Exp (var ["x"]))
+      parse "foo{{ x }}bar" `shouldBe` Right ("foo" :*: Exp (var ["x"]) :*: "bar")
       parse "{{ null }}" `shouldBe` Right (Exp null)
       parse "{{ false }}" `shouldBe` Right (Exp false)
       parse "{{ true }}" `shouldBe` Right (Exp true)
@@ -38,6 +39,23 @@ spec =
               , var ["x", "y"]
               , string "foo"
               ]))
+      parse "{{ {} }}" `shouldBe` Right (Exp (object []))
+      parse "{{ {x: 4} }}" `shouldBe` Right (Exp (object [("x", number 4)]))
+      parse "{{ {x: 4, y: \"foo\"} }}" `shouldBe`
+        Right
+          (Exp
+            (object
+              [ ("x", number 4)
+              , ("y", string "foo")
+              ]))
+      parse "{% set x = 4 %}" `shouldBe` Right (Set (Name ["x"]) (number 4))
+      parse "{% if x %}t{% else %}f{% endif %}" `shouldBe`
+        Right (If (var ["x"]) "t" "f")
+
+    context "if" $
+      it "can nest arbitrarily" $
+        parse "{% if x %}{% if y %}tt{% else %}tf{% endif %}{% else %}{% if z %}ft{% else %}ff{% endif %}{% endif %}" `shouldBe`
+          Right (If (var ["x"]) (If (var ["y"]) "tt" "tf") (If (var ["z"]) "ft" "ff"))
 
 var :: NonEmpty Text -> Exp
 var =
@@ -66,3 +84,7 @@ string =
 array :: [Exp] -> Exp
 array =
   Lit . Array
+
+object :: [(Text, Exp)] -> Exp
+object =
+  Lit . Object . HashMap.fromList

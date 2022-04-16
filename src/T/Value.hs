@@ -6,6 +6,7 @@ module T.Value
 
 import           Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
+import           Data.HashMap.Strict (HashMap)
 import           Data.Scientific (Scientific)
 import           Data.Text (Text)
 
@@ -16,6 +17,7 @@ data Value
   | Number Scientific
   | String Text
   | Array [Value]
+  | Object (HashMap Text Value)
     deriving (Show, Eq)
 
 instance Aeson.ToJSON Value where
@@ -38,5 +40,9 @@ instance Aeson.ToJSON Value where
         ]
       Array value ->
         [ "variant" .= ("array" :: Text)
+        , "value" .= value
+        ]
+      Object value ->
+        [ "variant" .= ("object" :: Text)
         , "value" .= value
         ]
