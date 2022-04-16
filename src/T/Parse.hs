@@ -39,6 +39,8 @@ cleanup = \case
     cleanup x
   If clauses ->
     If (fmap (second cleanup) clauses)
+  For name exp x ->
+    For name exp (cleanup x)
   x :*: y ->
     cleanup x :*: cleanup y
   x ->
@@ -54,6 +56,8 @@ parser =
            go (acc . (:*:) set)
       , do if_ <- parseIf
            go (acc . (:*:) if_)
+      , do for <- parseFor
+           go (acc . (:*:) for)
       , do exp <- parseExp
            go (acc . (:*:) exp)
         -- `parseRaw` succeeds on the empty string; so to avoid
@@ -103,6 +107,17 @@ parseIf = do
     between (string "{% else" *> spaces) (spaces <* string "%}") (pure ())
   endIfBlock =
     between (string "{% endif" *> spaces) (spaces <* string "%}") (pure ())
+
+parseFor :: Parser Tmpl
+parseFor = do
+  (name, exp) <- between (string "{% for" *> spaces) (spaces <* string "%}") $ do
+    name <- nameP
+    _ <- symbol "in"
+    exp <- expP
+    pure (name, exp)
+  forTmpl <- parser
+  _ <- between (string "{% endfor" *> spaces) (spaces <* string "%}") (pure ())
+  pure (For name exp forTmpl)
 
 parseExp :: Parser Tmpl
 parseExp =

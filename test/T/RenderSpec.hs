@@ -43,6 +43,14 @@ spec =
       render2 [aesonQQ| {} |] "{{ bool01(false) }}" `shouldBe` Right "0"
       render2 [aesonQQ| {} |] "{{ bool01(true) }}" `shouldBe` Right "1"
 
+    it "join" $ do
+      render2 [aesonQQ| {} |] "{{ join(\",\", [\"foo\", \"bar\", \"baz\"]) }}" `shouldBe`
+        Right "foo,bar,baz"
+
+    it "split" $ do
+      render2 [aesonQQ| {} |] "{% for x in split(\",\", \"foo,bar,baz\") %}{{ x }}{% endfor %}" `shouldBe`
+        Right "foobarbaz"
+
 render2 json tmplStr = do
   let Right tmpl = parse (Text.encodeUtf8 tmplStr)
   render (envFromJson json) tmpl

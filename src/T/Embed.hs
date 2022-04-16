@@ -9,6 +9,8 @@ module T.Embed
 
 import           Data.Bool (bool)
 import qualified Data.HashMap.Strict as HashMap
+import           Data.Text (Text)
+import qualified Data.Text as Text
 
 import           T.Value (Value(..), display)
 
@@ -22,6 +24,13 @@ instance Embed Bool where
 instance Embed Int where
   embed =
     Number . fromIntegral
+
+instance Embed Text where
+  embed = String
+
+instance Embed a => Embed [a] where
+  embed =
+    Array . map embed
 
 instance (Eject a, Embed b) => Embed (a -> b) where
   embed f =
@@ -37,6 +46,20 @@ instance Eject Bool where
     value ->
       Left ("cannot eject Bool from: " <> display value)
 
+instance Eject Text where
+  eject = \case
+    String str ->
+      pure str
+    value ->
+      Left ("cannot eject Text from: " <> display value)
+
+instance Eject a => Eject [a] where
+  eject = \case
+    Array xs ->
+      traverse eject xs
+    value ->
+      Left ("cannot eject [a] from: " <> display value)
+
 stdlib :: Value
 stdlib =
   Object (HashMap.fromList bindings)
@@ -47,4 +70,6 @@ stdlib =
     , ("!", embed (not))
 
     , ("bool01", embed (bool @Int 0 1))
+    , ("join", embed Text.intercalate)
+    , ("split", embed Text.splitOn)
     ]

@@ -19,6 +19,7 @@ import           Data.String (fromString)
 import           Data.Text (Text)
 import qualified Data.Text.Lazy as Lazy (Text)
 import qualified Data.Text.Lazy.Builder as Builder
+import           Data.Traversable (for)
 import qualified Data.HashMap.Strict as HashMap
 import           Prelude hiding (exp)
 
@@ -46,6 +47,19 @@ render env0 tmpl =
             value <- evalExp exp
             if ifTrue value then go thenTmpl else acc
       foldr matchClause (pure "") clauses
+    For name exp tmpl -> do
+      value <- evalExp exp
+      case value of
+        Value.Array xs -> do
+          rs <- for xs $ \x -> do
+            env <- get
+            modifyM (insertVar name x)
+            r <- go tmpl
+            put env
+            pure r
+          pure (mconcat rs)
+        _ ->
+          throwError ("cannot iterate on: " <> Value.display value)
     Exp exp -> do
       str <- renderExp exp
       pure (Builder.fromText str)
