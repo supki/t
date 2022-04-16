@@ -50,38 +50,46 @@ parser =
 
 parseExp :: Parser Tmpl
 parseExp =
-  between (string "{{" *> spaces) (spaces <* string "}}") (fmap Exp exp)
- where
-  exp :: Parser Exp
-  exp =
-    asum
-      [ lit
-      , var
-      ]
-  lit :: Parser Exp
-  lit =
-    fmap Lit $ asum
-      [ null
-      , bool
-      , number
-      , string
-      ]
-   where
-    null =
-      Null <$ symbol "null"
-    bool =
-      asum
-        [ Bool False <$ symbol "false"
-        , Bool True <$ symbol "true"
-        ]
-    number =
-      fmap (Number . either fromIntegral Scientific.fromFloatDigits) integerOrDouble
-    string =
-      fmap String stringLiteral
+  between (string "{{" *> spaces) (spaces <* string "}}") (fmap Exp expP)
 
-  var :: Parser Exp
-  var =
-    fmap (Var . Name) (sepByNonEmpty (fmap fromString (some letter)) (string "."))
+expP :: Parser Exp
+expP =
+  asum
+    [ lit
+    , var
+    ]
+
+lit :: Parser Exp
+lit =
+  fmap Lit $ asum
+    [ nullP
+    , boolP
+    , numberP
+    , stringP
+    , arrayP
+    ]
+ where
+  nullP =
+    Null <$ symbol "null"
+  boolP =
+    asum
+      [ Bool False <$ symbol "false"
+      , Bool True <$ symbol "true"
+      ]
+  numberP =
+    fmap (Number . either fromIntegral Scientific.fromFloatDigits) integerOrDouble
+  stringP =
+    fmap String stringLiteral
+  arrayP =
+    fmap Array (between (string "[" *> spaces) (spaces <* string "]") (sepBy expP (symbol ",")))
+
+var :: Parser Exp
+var =
+  fmap Var nameP
+
+nameP :: Parser Name
+nameP =
+  fmap Name (sepByNonEmpty (fmap fromString (some letter)) (string ".")) <* spaces
 
 parseRaw :: Parser Tmpl
 parseRaw =

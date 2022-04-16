@@ -67,6 +67,7 @@ data Literal
   | Bool Bool
   | Number Scientific
   | String Text
+  | Array [Exp]
     deriving (Show, Eq)
 
 instance Aeson.ToJSON Literal where
@@ -85,6 +86,10 @@ instance Aeson.ToJSON Literal where
         ]
       String value ->
         [ "variant" .= ("string" :: Text)
+        , "value" .= value
+        ]
+      Array value ->
+        [ "variant" .= ("array" :: Text)
         , "value" .= value
         ]
   

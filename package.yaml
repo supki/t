@@ -21,6 +21,7 @@ library:
     - containers
     - either
     - parsers
+    - scientific
     - text
     - trifecta
     - unordered-containers
@@ -53,6 +54,8 @@ tests:
     dependencies:
       - t
       - hspec
+      - scientific
+      - text
     source-dirs:
       test
     main:
