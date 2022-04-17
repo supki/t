@@ -41,6 +41,12 @@ spec =
       render2_ "{% for _foo in [1,2,3] %}{{ _foo }}{% endfor %}" `shouldBe`
         Left "not in scope: Name {unName = \"_foo\"}"
 
+    context "line blocks" $
+      it "examples" $ do
+        render2_ "{% if true %}\n4\n{% endif %}\n" `shouldBe` Right "4\n"
+        pendingWith "fiddly parsing"
+        render2_ "  {% if true %}\n  4\n  {% endif %}\n" `shouldBe` Right "  4\n"
+
     context "for" $
       it "examples" $ do
         render2_ "{% for x in [1,2,3] %}{{ x }}{% else %}foo{% endfor %}" `shouldBe` Right "123"

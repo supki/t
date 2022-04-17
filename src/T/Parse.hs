@@ -6,6 +6,7 @@ import           Control.Applicative ((<|>), liftA2)
 import           Data.Bifunctor (second)
 import           Data.Bool (bool)
 import           Data.ByteString (ByteString)
+import qualified Data.Char as Char
 import           Data.Foldable (asum)
 import qualified Data.HashMap.Strict as HashMap
 import           Data.List (foldl')
@@ -219,9 +220,7 @@ parseRaw =
     asum
       [ do _ <- eof
            pure acc
-      , do _ <- lookAhead (string "{{")
-           pure acc
-      , do _ <- lookAhead (string "{%")
+      , do _ <- lookAhead (string "{{" <|> string "{%")
            pure acc
       , do x <- anyChar
            go (x : acc)
@@ -229,7 +228,18 @@ parseRaw =
 
 blockP :: String -> Parser a -> Parser a
 blockP name p =
-  between (string ("{% " <> name) *> spaces) (spaces <* string "%}") p
+  try lineP <|> inlineP
+ where
+  lineP =
+    between
+      (spaces *> string ("{% " <> name) *> spaces)
+      (spaces <* string "%}" <* many (satisfy spaceExceptNewline) <* newline)
+      p
+   where
+    spaceExceptNewline c =
+      Char.isSpace c && (c /= '\n')
+  inlineP =
+    between (string ("{% " <> name) *> spaces) (spaces <* string "%}") p
 
 blockP_ :: String -> Parser ()
 blockP_ name =

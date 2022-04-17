@@ -46,7 +46,7 @@ render env0 tmpl =
     If clauses -> do
       let matchClause (exp, thenTmpl) acc = do
             value <- evalExp exp
-            if ifTrue value then go thenTmpl else acc
+            if truthy value then go thenTmpl else acc
       foldr matchClause (pure "") clauses
     For name it exp forTmpl elseTmpl -> do
       value <- evalExp exp
@@ -180,8 +180,8 @@ insertVar (Name name) value (Env env) =
     _ ->
       throwError ("cannot set property ." <> show name <> " to " <> Value.display value)
 
-ifTrue :: Value -> Bool
-ifTrue = \case
+truthy :: Value -> Bool
+truthy = \case
   Value.Null -> False
   Value.Bool False -> False
   _ -> True
