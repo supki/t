@@ -117,6 +117,27 @@ spec =
         render2_ "{{ die(\"reason\") }}" `shouldBe` Left "die: \"reason\""
         render2_ "{{ die(4) }}" `shouldBe` Left "die: 4"
 
+      it "==" $ do
+        render2_ "{{ null == null }}" `shouldBe` Right "true"
+        render2_ "{{ true == true }}" `shouldBe` Right "true"
+        render2_ "{{ true == false }}" `shouldBe` Right "false"
+        render2_ "{{ 4 == 4 }}" `shouldBe` Right "true"
+        render2_ "{{ 4 == 7 }}" `shouldBe` Right "false"
+        render2_ "{{ \"foo\" == \"foo\" }}" `shouldBe` Right "true"
+        render2_ "{{ \"foo\" == \"bar\" }}" `shouldBe` Right "false"
+        render2_ "{{ [] == [] }}" `shouldBe` Right "true"
+        render2_ "{{ [] == [1, 2] }}" `shouldBe` Right "false"
+        render2_ "{{ [1, \"foo\", false] == [1, \"foo\", false] }}" `shouldBe` Right "true"
+        render2_ "{{ [1, \"foo\", false] == [1, \"bar\", true] }}" `shouldBe` Right "false"
+        render2_ "{{ {} == {} }}" `shouldBe` Right "true"
+        render2_ "{{ {} == {a: 4} }}" `shouldBe` Right "false"
+        render2_ "{{ {a: 4, b: \"foo\"} == {a: 4, b: \"foo\"} }}" `shouldBe` Right "true"
+        render2_ "{{ {a: 4, b: \"foo\"} == {a: 4, b: \"bar\"} }}" `shouldBe` Right "false"
+        render2_ "{{ 4 == \"foo\" }}" `shouldBe`
+          Left "cannot compare 4 and \"foo\""
+        render2_ "{{ {a: 4} == length }}" `shouldBe`
+          Left "cannot compare {\"a\":4} and \"<lambda>\""
+
 render2 :: Aeson.Value -> Text -> Either String Lazy.Text
 render2 json tmplStr = do
   let Right tmpl = parse (Text.encodeUtf8 tmplStr)

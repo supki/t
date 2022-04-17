@@ -96,6 +96,9 @@ stdlib =
     , ("||", embed (||))
     , ("!", embed not)
 
+    , ("==", eEq)
+    , ("!=", eNeq)
+
     , ("+", embed ((+) @Scientific))
     , ("-", embed ((-) @Scientific))
     , ("*", embed ((*) @Scientific))
@@ -111,6 +114,39 @@ stdlib =
     , (".", embed (flip (HashMap.lookup @Text @Value)))
     , ("die", eDie)
     ]
+
+eEq :: Value
+eNeq :: Value
+(eEq, eNeq) =
+  ( Lam (\x -> pure (Lam (\y -> fmap Bool (eq x y))))
+  , Lam (\x -> pure (Lam (\y -> fmap (Bool . not) (eq x y))))
+  )
+ where
+  eq x y =
+    case (x, y) of
+      (Null, Null) ->
+        pure True
+      (Bool b0, Bool b1) ->
+        pure (b0 == b1)
+      (Number n0, Number n1) ->
+        pure (n0 == n1)
+      (String s0, String s1) ->
+        pure (s0 == s1)
+      (Array arr0, Array arr1)
+        | Vector.length arr0 == Vector.length arr1 -> do
+            b <- fmap Vector.and (Vector.zipWithM eq arr0 arr1)
+            pure b
+        | otherwise ->
+            pure False
+      (Object o0, Object o1)
+        | HashMap.null (HashMap.difference o0 o1) &&
+          HashMap.null (HashMap.difference o1 o0) ->
+            fmap (HashMap.foldl' (&&) True) (sequenceA (HashMap.intersectionWith eq o0 o1))
+        | otherwise ->
+            pure False
+      (_, _) ->
+        Left ("cannot compare " <> display x <> " and " <> display y)
+
 
 eNull :: Value
 eNull =

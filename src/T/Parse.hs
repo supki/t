@@ -122,6 +122,7 @@ expP =
     , [prefixOp "!"]
     , [infixrOp "*", infixrOp "/"]
     , [infixrOp "+", infixrOp "-"]
+    , [infixOp "=="]
     , [infixrOp "&&"]
     , [infixrOp "||"]
     ]
@@ -138,6 +139,10 @@ expP =
                 -- we actually want them as strings.
                 (case b of Var (Name b') -> Lit (String b'); _ -> b)))
         AssocLeft
+    infixOp name =
+      Infix
+        (reserve emptyOps name *> pure (\a b -> App (App (Var (Name (fromString name))) a) b))
+        AssocNone
     infixrOp name =
       Infix
         (reserve emptyOps name *> pure (\a b -> App (App (Var (Name (fromString name))) a) b))
@@ -186,12 +191,10 @@ litP =
     fmap String stringLiteral
   arrayP =
     fmap (Array . Vector.fromList)
-      (between
-        (string "[" *> spaces) (spaces <* string "]") (sepBy expP (symbol ",")))
+      (brackets (sepBy expP (symbol ",")))
   objectP =
     fmap (Object . HashMap.fromList)
-      (between
-        (string "{" *> spaces) (spaces <* string "}") (sepBy kv (symbol ",")))
+      (braces (sepBy kv (symbol ",")))
    where
     kv = do
       k <- fmap fromString (some letter)
