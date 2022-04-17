@@ -56,6 +56,8 @@ parser =
            go (acc . (:*:) set)
       , do if_ <- parseIf
            go (acc . (:*:) if_)
+      , do case_ <- parseCase
+           go (acc . (:*:) case_)
       , do for <- parseFor
            go (acc . (:*:) for)
       , do exp <- parseExp
@@ -93,6 +95,22 @@ parseIf = do
       pure (If (ifClause :| thenClauses))
     Just elseClause ->
       pure (If ((ifClause :| thenClauses) <> (elseClause :| [])))
+
+parseCase :: Parser Tmpl
+parseCase = do
+  exp0 <- blockP "case" expP
+  when : whens <- some (liftA2 (,) (blockP "when" expP) parser)
+  elseTmplQ <- optional (blockP_ "else" *> parser)
+  _ <- blockP_ "endcase"
+  let clauses =
+        fmap (\(exp1, tmpl) -> (App (App (Var "==") exp0) exp1, tmpl)) (when :| whens)
+      elseClauseQ =
+        fmap (\tmpl -> (Lit (Bool True), tmpl)) elseTmplQ
+  case elseClauseQ of
+    Nothing ->
+      pure (If clauses)
+    Just elseClause ->
+      pure (If (clauses <> (elseClause :| [])))
 
 parseFor :: Parser Tmpl
 parseFor = do

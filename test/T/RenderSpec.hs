@@ -40,6 +40,9 @@ spec =
         Left "not in scope: Name {unName = \"_\"}"
       render2_ "{% for _foo in [1,2,3] %}{{ _foo }}{% endfor %}" `shouldBe`
         Left "not in scope: Name {unName = \"_foo\"}"
+      render2_ "{% case 4 %}{% when 4 %}4{% when 7 %}7{% endcase %}" `shouldBe` Right "4"
+      render2_ "{% case 7 %}{% when 4 %}4{% when 7 %}7{% endcase %}" `shouldBe` Right "7"
+      render2_ "{% case 11 %}{% when 4 %}4{% else %}11{% endcase %}" `shouldBe` Right "11"
 
     context "line blocks" $
       it "examples" $ do
@@ -133,10 +136,8 @@ spec =
         render2_ "{{ {} == {a: 4} }}" `shouldBe` Right "false"
         render2_ "{{ {a: 4, b: \"foo\"} == {a: 4, b: \"foo\"} }}" `shouldBe` Right "true"
         render2_ "{{ {a: 4, b: \"foo\"} == {a: 4, b: \"bar\"} }}" `shouldBe` Right "false"
-        render2_ "{{ 4 == \"foo\" }}" `shouldBe`
-          Left "cannot compare 4 and \"foo\""
-        render2_ "{{ {a: 4} == length }}" `shouldBe`
-          Left "cannot compare {\"a\":4} and \"<lambda>\""
+        render2_ "{{ 4 == \"foo\" }}" `shouldBe` Right "false"
+        render2_ "{{ {a: 4} == length }}" `shouldBe` Right "false"
 
 render2 :: Aeson.Value -> Text -> Either String Lazy.Text
 render2 json tmplStr = do
