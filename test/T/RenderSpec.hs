@@ -39,10 +39,13 @@ spec =
 
     context "for" $
       it "examples" $ do
-        render2_ "{% for x in [1,2,3] %}{{ x }}{% endfor %}" `shouldBe` Right "123"
-        render2_ "{% for x in {a: 4, b: 7} %}{{ x }}{% endfor %}" `shouldBe` Right "47"
+        render2_ "{% for x in [1,2,3] %}{{ x }}{% else %}foo{% endfor %}" `shouldBe` Right "123"
+        render2_ "{% for x in {a: 4, b: 7} %}{{ x }}{% else %}foo{% endfor %}" `shouldBe`
+          Right "47"
         render2_ "{% for x in [1,2,3] %}{% endfor %}{{ x }}" `shouldBe`
           Left "not in scope: Name {unName = \"x\" :| []}"
+        render2_ "{% for x in [] %}{{ x }}{% else %}foo{% endfor %}" `shouldBe` Right "foo"
+        render2_ "{% for x in {} %}{{ x }}{% else %}foo{% endfor %}" `shouldBe` Right "foo"
 
     context "if + set" $
       it "only evaluates {% set %} in the clause that is true" $ do

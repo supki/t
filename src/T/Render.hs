@@ -49,24 +49,27 @@ render env0 tmpl =
             value <- evalExp exp
             if ifTrue value then go thenTmpl else acc
       foldr matchClause (pure "") clauses
-    For name exp tmpl0 -> do
+    For name exp forTmpl elseTmpl -> do
       value <- evalExp exp
-      rs <- case value of
+      itemsQ <- case value of
         Value.Array xs ->
-          for xs $ \x -> do
-            env <- get
-            env' <- insertVar name x env
-            lift (evalStateT (go tmpl0) env')
-        Value.Object o ->
+          pure (bool (Just xs) Nothing (null xs))
+        Value.Object o -> do
           -- When iterating on objects, we sort the keys to get a
           -- predictable order of elements.
-          for (List.sortOn fst (HashMap.toList o)) $ \(_k, x) -> do
-            env <- get
-            env' <- insertVar name x env
-            lift (evalStateT (go tmpl0) env')
+          let xs = (map (\(_k, x) -> x) (List.sortOn fst (HashMap.toList o)))
+          pure (bool (Just xs) Nothing (null xs))
         _ ->
           throwError ("cannot iterate on: " <> Value.display value)
-      pure (mconcat rs)
+      case itemsQ of
+        Nothing ->
+          maybe (pure "") go elseTmpl
+        Just items -> do
+          rs <- for items $ \x -> do
+            env <- get
+            env' <- insertVar name x env
+            lift (evalStateT (go forTmpl) env')
+          pure (mconcat rs)
     Exp exp -> do
       str <- renderExp exp
       pure (Builder.fromText str)

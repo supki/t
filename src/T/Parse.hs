@@ -39,8 +39,8 @@ cleanup = \case
     cleanup x
   If clauses ->
     If (fmap (second cleanup) clauses)
-  For name exp x ->
-    For name exp (cleanup x)
+  For name exp x y ->
+    For name exp (cleanup x) (fmap cleanup y)
   x :*: y ->
     cleanup x :*: cleanup y
   x ->
@@ -79,16 +79,11 @@ parseSet =
 
 parseIf :: Parser Tmpl
 parseIf = do
-  exp <- ifBlock
+  exp <- blockP "if" expP
   ifTmpl <- parser
-  thenClauses <- many $ do
-    exp' <- elifBlock
-    elifTmpl <- parser
-    pure (exp', elifTmpl)
-  elseTmplQ <- optional $ do
-    _ <- elseBlock
-    parser
-  _ <- endIfBlock
+  thenClauses <- many (liftA2 (,) (blockP "elif" expP) parser)
+  elseTmplQ <- optional (blockP_ "else" *> parser)
+  _ <- blockP_ "endif"
   let ifClause =
         (exp, ifTmpl)
       elseClauseQ =
@@ -98,15 +93,6 @@ parseIf = do
       pure (If (ifClause :| thenClauses))
     Just elseClause ->
       pure (If ((ifClause :| thenClauses) <> (elseClause :| [])))
- where
-  ifBlock =
-    blockP "if" expP
-  elifBlock =
-    blockP "elif" expP
-  elseBlock =
-    blockP_ "else"
-  endIfBlock =
-    blockP_ "endif"
 
 parseFor :: Parser Tmpl
 parseFor = do
@@ -116,8 +102,9 @@ parseFor = do
     exp <- expP
     pure (name, exp)
   forTmpl <- parser
+  elseTmpl <- optional (blockP_ "else" *> parser)
   _ <- blockP_ "endfor"
-  pure (For name exp forTmpl)
+  pure (For name exp forTmpl elseTmpl)
 
 parseExp :: Parser Tmpl
 parseExp =

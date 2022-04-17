@@ -31,7 +31,7 @@ data Tmpl
     -- ^ {% if _ %} _ {% elif _ %} _ {% else %} _ {% endif %}
   | If (NonEmpty (Exp, Tmpl))
     -- ^ {% for _ in _ %} _ {% endfor %}
-  | For Name Exp Tmpl
+  | For Name Exp Tmpl (Maybe Tmpl)
     -- ^ Glue two `Tmpl`s together
   | Tmpl :*: Tmpl
     deriving (Show, Eq)
@@ -60,11 +60,12 @@ instance Aeson.ToJSON Tmpl where
         [ "variant" .= ("if" :: Text)
         , "clauses" .= clauses
         ]
-      For name exp tmpl ->
+      For name exp forTmpl elseTmpl ->
         [ "variant" .= ("for" :: Text)
         , "name" .= name
         , "exp" .= exp
-        , "tmpl" .= tmpl
+        , "for" .= forTmpl
+        , "else" .= elseTmpl
         ]
       tmpl0 :*: tmpl1 ->
         [ "variant" .= (":*:" :: Text)
