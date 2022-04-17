@@ -36,6 +36,10 @@ spec =
       render2_ "{{ true || false }}" `shouldBe` Right "true"
       render2_ "{{ ! true }}" `shouldBe` Right "false"
       render2_ "{{ {a: 4, b: 7}.a }}" `shouldBe` Right "4"
+      render2_ "{% for _ in [1,2,3] %}{{ _ }}{% endfor %}" `shouldBe`
+        Left "not in scope: Name {unName = \"_\"}"
+      render2_ "{% for _foo in [1,2,3] %}{{ _foo }}{% endfor %}" `shouldBe`
+        Left "not in scope: Name {unName = \"_foo\"}"
 
     context "for" $
       it "examples" $ do

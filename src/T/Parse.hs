@@ -97,7 +97,7 @@ parseFor :: Parser Tmpl
 parseFor = do
   (name, it, exp) <- blockP "for" $ do
     name <- nameP
-    it <- optional $ do
+    it <- option "_" $ do
       _ <- symbol ","
       nameP
     _ <- symbol "in"
@@ -204,7 +204,12 @@ varP =
 
 nameP :: Parser Name
 nameP =
-  fmap (Name . fromString) (liftA2 (:) letter (many (digit <|> letter))) <* spaces
+  fmap (Name . fromString) (liftA2 (:) firstL (many restL)) <* spaces
+ where
+  firstL =
+    letter <|> char '_'
+  restL =
+    letter <|> digit <|> char '_'
 
 parseRaw :: Parser Tmpl
 parseRaw =

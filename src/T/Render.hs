@@ -17,6 +17,7 @@ import qualified Data.List as List
 import           Data.Scientific (floatingOrInteger)
 import           Data.String (fromString)
 import           Data.Text (Text)
+import qualified Data.Text as Text
 import qualified Data.Text.Lazy as Lazy (Text)
 import qualified Data.Text.Lazy.Builder as Builder
 import           Data.Traversable (for)
@@ -47,7 +48,7 @@ render env0 tmpl =
             value <- evalExp exp
             if ifTrue value then go thenTmpl else acc
       foldr matchClause (pure "") clauses
-    For name itQ exp forTmpl elseTmpl -> do
+    For name it exp forTmpl elseTmpl -> do
       value <- evalExp exp
       itemsQ <- case value of
         Value.Array arr -> do
@@ -77,11 +78,7 @@ render env0 tmpl =
           rs <- for items $ \(x, itObj) -> do
             env <- get
             env' <- insertVar name x env
-            env'' <- case itQ of
-              Nothing ->
-                pure env'
-              Just it ->
-                insertVar it itObj env'
+            env'' <- insertVar it itObj env'
             lift (evalStateT (go forTmpl) env'')
           pure (mconcat rs)
     Exp exp -> do
@@ -174,12 +171,14 @@ lookupVar (Env env) (Name name) =
 
 insertVar :: MonadError String m => Name -> Value -> Env -> m Env
 insertVar (Name name) value (Env env) =
-  fmap Env (go env name)
- where
-  go (Value.Object o) x = do
-    pure (Value.Object (HashMap.insert x value o))
-  go o x =
-    throwError ("cannot set property ." <> show x <> " to " <> Value.display o)
+  fmap Env $ case env of
+    Value.Object o
+      | "_" `Text.isPrefixOf` name ->
+        pure env
+      | otherwise ->
+        pure (Value.Object (HashMap.insert name value o))
+    _ ->
+      throwError ("cannot set property ." <> show name <> " to " <> Value.display value)
 
 ifTrue :: Value -> Bool
 ifTrue = \case
