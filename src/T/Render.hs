@@ -11,9 +11,11 @@ module T.Render
 import           Control.Applicative ((<|>))
 import           Control.Monad.Except (MonadError(..), runExcept, liftEither)
 import           Control.Monad.State (MonadState(..), evalStateT)
+import           Control.Monad.Trans.Class (lift)
 import qualified Data.Aeson as Aeson
 import           Data.Bool (bool)
 import           Data.Foldable (toList)
+import qualified Data.List as List
 import           Data.Scientific (floatingOrInteger)
 import           Data.String (fromString)
 import           Data.Text (Text)
@@ -49,17 +51,22 @@ render env0 tmpl =
       foldr matchClause (pure "") clauses
     For name exp tmpl0 -> do
       value <- evalExp exp
-      case value of
-        Value.Array xs -> do
-          rs <- for xs $ \x -> do
+      rs <- case value of
+        Value.Array xs ->
+          for xs $ \x -> do
             env <- get
-            modifyM (insertVar name x)
-            r <- go tmpl0
-            put env
-            pure r
-          pure (mconcat rs)
+            env' <- insertVar name x env
+            lift (evalStateT (go tmpl0) env')
+        Value.Object o ->
+          -- When iterating on objects, we sort the keys to get a
+          -- predictable order of elements.
+          for (List.sortOn fst (HashMap.toList o)) $ \(_k, x) -> do
+            env <- get
+            env' <- insertVar name x env
+            lift (evalStateT (go tmpl0) env')
         _ ->
           throwError ("cannot iterate on: " <> Value.display value)
+      pure (mconcat rs)
     Exp exp -> do
       str <- renderExp exp
       pure (Builder.fromText str)
