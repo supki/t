@@ -1,3 +1,4 @@
 :set -isrc -itest
+:set -Wall
 :set -XOverloadedStrings
 :set -XLambdaCase

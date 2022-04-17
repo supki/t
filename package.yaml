@@ -65,6 +65,7 @@ tests:
       - scientific
       - text
       - unordered-containers
+      - vector
     source-dirs:
       test
     main:

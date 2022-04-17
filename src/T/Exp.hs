@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralisedNewtypeDeriving #-}
 module T.Exp
   ( Tmpl(..)
   , Exp(..)
@@ -7,13 +8,11 @@ module T.Exp
 
 import           Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
-import           Data.Foldable (toList)
 import           Data.HashMap.Strict (HashMap)
 import           Data.List.NonEmpty (NonEmpty)
 import           Data.Scientific (Scientific)
 import           Data.String (IsString(..))
 import           Data.Text (Text)
-import qualified Data.Text as Text
 import           Data.Vector (Vector)
 import           Prelude hiding (exp)
 
@@ -132,9 +131,9 @@ instance Aeson.ToJSON Literal where
         , "value" .= value
         ]
   
-newtype Name = Name { unName :: NonEmpty Text }
-    deriving (Show, Eq)
+newtype Name = Name { unName :: Text }
+    deriving (Show, Eq, IsString)
 
 instance Aeson.ToJSON Name where
   toJSON =
-    Aeson.toJSON . Text.intercalate "." . toList . unName
+    Aeson.toJSON . unName

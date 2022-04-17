@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 module T.Embed
   ( Embed(..)
   , Eject(..)
@@ -7,6 +8,7 @@ module T.Embed
 
 import           Data.Bool (bool)
 import           Data.Foldable (toList)
+import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import           Data.Scientific (Scientific)
 import           Data.Text (Text)
@@ -18,6 +20,9 @@ import           T.Value (Value(..), display)
 
 class Embed t where
   embed :: t -> Value
+
+instance Embed Value where
+  embed x = x
 
 instance Embed Bool where
   embed = Bool
@@ -31,6 +36,10 @@ instance Embed Scientific where
 
 instance Embed Text where
   embed = String
+
+instance Embed a => Embed (Maybe a) where
+  embed =
+    maybe Null embed
 
 instance Embed a => Embed [a] where
   embed =
@@ -64,6 +73,13 @@ instance Eject Text where
     value ->
       Left ("cannot eject Text from: " <> display value)
 
+instance (k ~ Text, v ~ Value) => Eject (HashMap k v) where
+  eject = \case
+    Object o ->
+      pure o
+    value ->
+      Left ("cannot eject HashMap Text Value from: " <> display value)
+
 instance Eject a => Eject [a] where
   eject = \case
     Array xs ->
@@ -85,18 +101,19 @@ stdlib =
     , ("*", embed ((*) @Scientific))
     , ("/", embed ((/) @Scientific))
 
-    , ("empty", embeddedNull)
-    , ("length", embeddedLength)
+    , ("empty", eNull)
+    , ("length", eLength)
 
     , ("bool01", embed (bool @Int 0 1))
     , ("join", embed Text.intercalate)
     , ("split", embed Text.splitOn)
 
-    , ("die", embeddedDie)
+    , (".", embed (flip (HashMap.lookup @Text @Value)))
+    , ("die", eDie)
     ]
 
-embeddedNull :: Value
-embeddedNull =
+eNull :: Value
+eNull =
   Lam $ \case
     String str ->
       pure (embed (Text.null str))
@@ -107,8 +124,8 @@ embeddedNull =
     value ->
       Left ("empty is non-applicable for: " <> display value)
 
-embeddedLength :: Value
-embeddedLength =
+eLength :: Value
+eLength =
   Lam $ \case
     String str ->
       pure (embed (Text.length str))
@@ -119,8 +136,8 @@ embeddedLength =
     value ->
       Left ("cannot find length of: " <> display value)
 
-embeddedDie :: Value
-embeddedDie =
+eDie :: Value
+eDie =
   Lam $ \case
     value ->
       Left ("die: " <> display value)

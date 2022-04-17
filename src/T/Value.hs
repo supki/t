@@ -11,7 +11,6 @@ import           Data.Text (Text)
 import qualified Data.Text.Lazy as Text.Lazy
 import qualified Data.Text.Lazy.Encoding as Text.Lazy
 import           Data.Vector (Vector)
-import qualified Data.Vector as Vector
 
 
 data Value

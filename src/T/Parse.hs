@@ -117,20 +117,33 @@ expP =
   buildExpressionParser table expP'
  where
   table =
-    [ [prefixOp "!"]
+    [ [dotOp "."]
+    , [prefixOp "!"]
     , [infixrOp "*", infixrOp "/"]
     , [infixrOp "+", infixrOp "-"]
     , [infixrOp "&&"]
     , [infixrOp "||"]
     ]
    where
+    dotOp name =
+      Infix
+        (do reserve emptyOps name
+            pure (\a b ->
+              App
+                (App
+                  (Var (Name (fromString name)))
+                  a)
+                -- Property lookups have the syntax of variables, but
+                -- we actually want them as strings.
+                (case b of Var (Name b') -> Lit (String b'); _ -> b)))
+        AssocLeft
     infixrOp name =
       Infix
-        (reserve emptyOps name *> pure (\a b -> App (App (Var (Name (pure (fromString name)))) a) b))
+        (reserve emptyOps name *> pure (\a b -> App (App (Var (Name (fromString name))) a) b))
         AssocRight
     prefixOp name =
       Prefix
-        (reserve emptyOps name *> pure (\a -> App (Var (Name (pure (fromString name)))) a))
+        (reserve emptyOps name *> pure (\a -> App (Var (Name (fromString name))) a))
   expP' =
     asum
       [ litP
@@ -191,10 +204,7 @@ varP =
 
 nameP :: Parser Name
 nameP =
-  fmap Name (sepByNonEmpty chunk (string ".")) <* spaces
- where
-  chunk =
-    fmap fromString (liftA2 (:) letter (many (digit <|> letter)))
+  fmap (Name . fromString) (liftA2 (:) letter (many (digit <|> letter))) <* spaces
 
 parseRaw :: Parser Tmpl
 parseRaw =

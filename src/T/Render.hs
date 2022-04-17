@@ -165,31 +165,20 @@ envFromJson =
 
 lookupVar :: Env -> Name -> Maybe Value
 lookupVar (Env env) (Name name) =
-  go env (toList name) <|> go stdlib (toList name)
+  go env name <|> go stdlib name
  where
-  go o [] =
-    pure o
-  go (Value.Object o) (x : xs) = do
-    o' <- HashMap.lookup x o
-    go o' xs
+  go (Value.Object o) x = do
+    HashMap.lookup x o
   go _ _ =
     Nothing
 
 insertVar :: MonadError String m => Name -> Value -> Env -> m Env
 insertVar (Name name) value (Env env) =
-  fmap Env (go env (toList name))
+  fmap Env (go env name)
  where
-  go _ [] =
-    pure value
-  go (Value.Object o) (x : xs) = do
-    case HashMap.lookup x o of
-      Nothing -> do
-        v <- go Value.Null xs
-        pure (Value.Object (HashMap.insert x v o))
-      Just o' -> do
-        v <- go o' xs
-        pure (Value.Object (HashMap.insert x v o))
-  go o (x : _) =
+  go (Value.Object o) x = do
+    pure (Value.Object (HashMap.insert x value o))
+  go o x =
     throwError ("cannot set property ." <> show x <> " to " <> Value.display o)
 
 ifTrue :: Value -> Bool
@@ -199,11 +188,11 @@ ifTrue = \case
   _ -> True
 
 loopObj :: Maybe Text -> Int -> Int -> Value
-loopObj key length idx =
+loopObj key len idx =
   Value.Object $ HashMap.fromList
-    [ ("length", Value.Number (fromIntegral length))
+    [ ("length", Value.Number (fromIntegral len))
     , ("index", Value.Number (fromIntegral idx))
     , ("first", Value.Bool (idx == 0))
-    , ("last", Value.Bool (idx == length - 1))
+    , ("last", Value.Bool (idx == len - 1))
     , ("key", maybe Value.Null Value.String key)
     ]
