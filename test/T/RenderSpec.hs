@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 module T.RenderSpec (spec) where
 
@@ -46,6 +45,24 @@ spec =
           Left "not in scope: Name {unName = \"x\" :| []}"
         render2_ "{% for x in [] %}{{ x }}{% else %}foo{% endfor %}" `shouldBe` Right "foo"
         render2_ "{% for x in {} %}{{ x }}{% else %}foo{% endfor %}" `shouldBe` Right "foo"
+        render2_ "{% for x, it in [1,2,3] %}{{ it.first }}{% endfor %}" `shouldBe`
+          Right "truefalsefalse"
+        render2_ "{% for x, it in [1,2,3] %}{{ it.last }}{% endfor %}" `shouldBe`
+          Right "falsefalsetrue"
+        render2_ "{% for x, it in [1,2,3] %}{{ it.index }}{% endfor %}" `shouldBe`
+          Right "012"
+        render2_ "{% for x, it in [1,2,3] %}{{ it.length }}{% endfor %}" `shouldBe`
+          Right "333"
+        render2_ "{% for x, it in {a: 4, b: 7} %}{{ it.first }}{% endfor %}" `shouldBe`
+          Right "truefalse"
+        render2_ "{% for x, it in {a: 4, b: 7} %}{{ it.last }}{% endfor %}" `shouldBe`
+          Right "falsetrue"
+        render2_ "{% for x, it in {a: 4, b: 7} %}{{ it.index }}{% endfor %}" `shouldBe`
+          Right "01"
+        render2_ "{% for x, it in {a: 4, b: 7} %}{{ it.length }}{% endfor %}" `shouldBe`
+          Right "22"
+        render2_ "{% for x, it in {a: 4, b: 7} %}{{ it.key }}{% endfor %}" `shouldBe`
+          Right "ab"
 
     context "if + set" $
       it "only evaluates {% set %} in the clause that is true" $ do

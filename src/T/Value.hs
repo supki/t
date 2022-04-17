@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
 module T.Value
   ( Value(..)
   , display
@@ -12,6 +10,7 @@ import           Data.Scientific (Scientific)
 import           Data.Text (Text)
 import qualified Data.Text.Lazy as Text.Lazy
 import qualified Data.Text.Lazy.Encoding as Text.Lazy
+import           Data.Vector (Vector)
 import qualified Data.Vector as Vector
 
 
@@ -20,7 +19,7 @@ data Value
   | Bool Bool
   | Number Scientific
   | String Text
-  | Array [Value]
+  | Array (Vector Value)
   | Object (HashMap Text Value)
   | Lam (Value -> Either String Value)
 
@@ -68,7 +67,7 @@ display =
     String str ->
       Aeson.String str
     Array xs ->
-      Aeson.Array (Vector.fromList (map embedAeson xs))
+      Aeson.Array (fmap embedAeson xs)
     Object o ->
       Aeson.Object (fmap embedAeson o)
     Lam _f ->

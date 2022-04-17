@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
 module T.Exp
   ( Tmpl(..)
   , Exp(..)
@@ -16,6 +14,7 @@ import           Data.Scientific (Scientific)
 import           Data.String (IsString(..))
 import           Data.Text (Text)
 import qualified Data.Text as Text
+import           Data.Vector (Vector)
 import           Prelude hiding (exp)
 
 
@@ -31,7 +30,7 @@ data Tmpl
     -- ^ {% if _ %} _ {% elif _ %} _ {% else %} _ {% endif %}
   | If (NonEmpty (Exp, Tmpl))
     -- ^ {% for _ in _ %} _ {% endfor %}
-  | For Name Exp Tmpl (Maybe Tmpl)
+  | For Name (Maybe Name) Exp Tmpl (Maybe Tmpl)
     -- ^ Glue two `Tmpl`s together
   | Tmpl :*: Tmpl
     deriving (Show, Eq)
@@ -60,9 +59,10 @@ instance Aeson.ToJSON Tmpl where
         [ "variant" .= ("if" :: Text)
         , "clauses" .= clauses
         ]
-      For name exp forTmpl elseTmpl ->
+      For name it exp forTmpl elseTmpl ->
         [ "variant" .= ("for" :: Text)
         , "name" .= name
+        , "it" .= it
         , "exp" .= exp
         , "for" .= forTmpl
         , "else" .= elseTmpl
@@ -101,7 +101,7 @@ data Literal
   | Bool Bool
   | Number Scientific
   | String Text
-  | Array [Exp]
+  | Array (Vector Exp)
   | Object (HashMap Text Exp)
     deriving (Show, Eq)
 

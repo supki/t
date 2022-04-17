@@ -1,11 +1,11 @@
 {-# LANGUAGE OverloadedLists #-}
-{-# LANGUAGE OverloadedStrings #-}
 module T.ParseSpec (spec) where
 
 import           Data.Scientific (Scientific)
 import           Data.List.NonEmpty (NonEmpty)
 import qualified Data.HashMap.Strict as HashMap
 import           Data.Text (Text)
+import qualified Data.Vector as Vector
 import           Prelude hiding (null)
 import           Test.Hspec
 
@@ -65,9 +65,11 @@ spec =
       parse "{% if ! true %}foo{% endif %}" `shouldBe`
         Right (whenIf (App (var ["!"]) true) "foo")
       parse "{% for x in [1, 2, 3] %}{{ x }}{% endfor %}" `shouldBe`
-        Right (For (Name ["x"]) (array [number 1, number 2, number 3]) (Exp (var ["x"])) Nothing)
+        Right (For (Name ["x"]) Nothing (array [number 1, number 2, number 3]) (Exp (var ["x"])) Nothing)
       parse "{% for x in [] %}{{ x }}{% else %}foo{% endfor %}" `shouldBe`
-        Right (For (Name ["x"]) (array []) (Exp (var ["x"])) (pure "foo"))
+        Right (For (Name ["x"]) Nothing (array []) (Exp (var ["x"])) (pure "foo"))
+      parse "{% for x, it in [1, 2, 3] %}{{ x }}{% endfor %}" `shouldBe`
+        Right (For (Name ["x"]) (pure (Name ["it"])) (array [number 1, number 2, number 3]) (Exp (var ["x"])) Nothing)
 
     context "if" $
       it "can nest arbitrarily" $
@@ -103,7 +105,7 @@ string =
 
 array :: [Exp] -> Exp
 array =
-  Lit . Array
+  Lit . Array . Vector.fromList
 
 object :: [(Text, Exp)] -> Exp
 object =

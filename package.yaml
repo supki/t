@@ -14,6 +14,10 @@ github: supki/t
 dependencies:
   - base >= 4.14 && < 5
 
+default-extensions:
+  - LambdaCase
+  - OverloadedStrings
+
 library:
   dependencies:
     - aeson
@@ -24,6 +28,7 @@ library:
     - parsers
     - scientific
     - text
+    - transformers
     - trifecta
     - unordered-containers
     - vector
@@ -54,6 +59,7 @@ tests:
   spec:
     dependencies:
       - t
+      - aeson
       - aeson-qq
       - hspec
       - scientific

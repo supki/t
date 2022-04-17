@@ -1,0 +1,3 @@
+:set -isrc -itest
+:set -XOverloadedStrings
+:set -XLambdaCase

@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 module T.Embed
   ( Embed(..)
@@ -8,10 +6,12 @@ module T.Embed
   ) where
 
 import           Data.Bool (bool)
+import           Data.Foldable (toList)
 import qualified Data.HashMap.Strict as HashMap
 import           Data.Scientific (Scientific)
 import           Data.Text (Text)
 import qualified Data.Text as Text
+import qualified Data.Vector as Vector
 
 import           T.Value (Value(..), display)
 
@@ -34,7 +34,7 @@ instance Embed Text where
 
 instance Embed a => Embed [a] where
   embed =
-    Array . map embed
+    Array . Vector.fromList . map embed
 
 instance (Eject a, Embed b) => Embed (a -> b) where
   embed f =
@@ -67,7 +67,7 @@ instance Eject Text where
 instance Eject a => Eject [a] where
   eject = \case
     Array xs ->
-      traverse eject xs
+      fmap toList (traverse eject xs)
     value ->
       Left ("cannot eject [a] from: " <> display value)
 

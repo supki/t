@@ -1,6 +1,4 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 module T.Render
   ( Env
@@ -49,15 +47,26 @@ render env0 tmpl =
             value <- evalExp exp
             if ifTrue value then go thenTmpl else acc
       foldr matchClause (pure "") clauses
-    For name exp forTmpl elseTmpl -> do
+    For name itQ exp forTmpl elseTmpl -> do
       value <- evalExp exp
       itemsQ <- case value of
-        Value.Array xs ->
+        Value.Array arr -> do
+          let xs =
+                zipWith
+                  (\i x -> (x, loopObj Nothing (length arr) i))
+                  [0..]
+                  (toList arr)
           pure (bool (Just xs) Nothing (null xs))
         Value.Object o -> do
           -- When iterating on objects, we sort the keys to get a
           -- predictable order of elements.
-          let xs = (map (\(_k, x) -> x) (List.sortOn fst (HashMap.toList o)))
+          let xs =
+                zipWith
+                  (\i (k, x) -> (x, loopObj (pure k) (length o) i))
+                  [0..]
+                  (List.sortOn
+                    fst
+                    (HashMap.toList o))
           pure (bool (Just xs) Nothing (null xs))
         _ ->
           throwError ("cannot iterate on: " <> Value.display value)
@@ -65,10 +74,15 @@ render env0 tmpl =
         Nothing ->
           maybe (pure "") go elseTmpl
         Just items -> do
-          rs <- for items $ \x -> do
+          rs <- for items $ \(x, itObj) -> do
             env <- get
             env' <- insertVar name x env
-            lift (evalStateT (go forTmpl) env')
+            env'' <- case itQ of
+              Nothing ->
+                pure env'
+              Just it ->
+                insertVar it itObj env'
+            lift (evalStateT (go forTmpl) env'')
           pure (mconcat rs)
     Exp exp -> do
       str <- renderExp exp
@@ -145,7 +159,7 @@ envFromJson =
     Aeson.String str ->
       Value.String str
     Aeson.Array xs ->
-      Value.Array (toList (fmap go xs))
+      Value.Array (fmap go xs)
     Aeson.Object xs ->
       Value.Object (fmap go xs)
 
@@ -183,3 +197,13 @@ ifTrue = \case
   Value.Null -> False
   Value.Bool False -> False
   _ -> True
+
+loopObj :: Maybe Text -> Int -> Int -> Value
+loopObj key length idx =
+  Value.Object $ HashMap.fromList
+    [ ("length", Value.Number (fromIntegral length))
+    , ("index", Value.Number (fromIntegral idx))
+    , ("first", Value.Bool (idx == 0))
+    , ("last", Value.Bool (idx == length - 1))
+    , ("key", maybe Value.Null Value.String key)
+    ]

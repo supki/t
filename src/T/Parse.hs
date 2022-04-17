@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
 module T.Parse
   ( parse
   ) where
@@ -14,6 +12,7 @@ import           Data.List (foldl')
 import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Scientific as Scientific
 import           Data.String (fromString)
+import qualified Data.Vector as Vector
 import           Prelude hiding (exp)
 import           Text.Trifecta
 import           Text.Parser.Expression (Assoc(..), Operator(..), buildExpressionParser)
@@ -39,8 +38,8 @@ cleanup = \case
     cleanup x
   If clauses ->
     If (fmap (second cleanup) clauses)
-  For name exp x y ->
-    For name exp (cleanup x) (fmap cleanup y)
+  For name it exp x y ->
+    For name it exp (cleanup x) (fmap cleanup y)
   x :*: y ->
     cleanup x :*: cleanup y
   x ->
@@ -96,15 +95,18 @@ parseIf = do
 
 parseFor :: Parser Tmpl
 parseFor = do
-  (name, exp) <- blockP "for" $ do
+  (name, it, exp) <- blockP "for" $ do
     name <- nameP
+    it <- optional $ do
+      _ <- symbol ","
+      nameP
     _ <- symbol "in"
     exp <- expP
-    pure (name, exp)
+    pure (name, it, exp)
   forTmpl <- parser
   elseTmpl <- optional (blockP_ "else" *> parser)
   _ <- blockP_ "endfor"
-  pure (For name exp forTmpl elseTmpl)
+  pure (For name it exp forTmpl elseTmpl)
 
 parseExp :: Parser Tmpl
 parseExp =
@@ -169,7 +171,9 @@ litP =
   stringP =
     fmap String stringLiteral
   arrayP =
-    fmap Array (between (string "[" *> spaces) (spaces <* string "]") (sepBy expP (symbol ",")))
+    fmap (Array . Vector.fromList)
+      (between
+        (string "[" *> spaces) (spaces <* string "]") (sepBy expP (symbol ",")))
   objectP =
     fmap (Object . HashMap.fromList)
       (between
