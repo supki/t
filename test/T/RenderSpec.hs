@@ -50,6 +50,10 @@ spec =
         pendingWith "fiddly parsing"
         render2_ "  {% if true %}\n  4\n  {% endif %}\n" `shouldBe` Right "  4\n"
 
+    context "let" $
+      it "examples" $
+        render2 [aesonQQ| {x: 4} |] "{% let x = 7 %}{{ x }}{% let x = 11 %}{{ x }}{% endlet %}{% endlet %}" `shouldBe` Right "711"
+
     context "for" $
       it "examples" $ do
         render2_ "{% for x in [1,2,3] %}{{ x }}{% else %}foo{% endfor %}" `shouldBe` Right "123"

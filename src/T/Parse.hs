@@ -41,6 +41,8 @@ cleanup = \case
     If (fmap (second cleanup) clauses)
   For name it exp x y ->
     For name it exp (cleanup x) (fmap cleanup y)
+  Let name exp x ->
+    Let name exp (cleanup x)
   x :*: y ->
     cleanup x :*: cleanup y
   x ->
@@ -54,6 +56,8 @@ parser =
     asum
       [ do set <- parseSet
            go (acc . (:*:) set)
+      , do let_ <- parseLet
+           go (acc . (:*:) let_)
       , do if_ <- parseIf
            go (acc . (:*:) if_)
       , do case_ <- parseCase
@@ -78,6 +82,16 @@ parseSet =
     _ <- symbol "="
     exp <- expP
     pure (Set name exp)
+
+parseLet :: Parser Tmpl
+parseLet = do
+  (name, exp) <- blockP "let" $ do
+    name <- nameP
+    _ <- symbol "="
+    exp <- expP
+    pure (name, exp)
+  tmpl <- parser
+  pure (Let name exp tmpl)
 
 parseIf :: Parser Tmpl
 parseIf = do

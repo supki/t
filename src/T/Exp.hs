@@ -26,9 +26,11 @@ data Tmpl
   | Exp Exp
     -- ^ {% set _ = _ %}
   | Set Name Exp
+    -- ^ {% let _ = _ %} _ {% endlet %}
+  | Let Name Exp Tmpl
     -- ^ {% if _ %} _ {% elif _ %} _ {% else %} _ {% endif %}
   | If (NonEmpty (Exp, Tmpl))
-    -- ^ {% for _ in _ %} _ {% endfor %}
+    -- ^ {% for _, _ in _ %} _ {% else %} _ {% endfor %}
   | For Name Name Exp Tmpl (Maybe Tmpl)
     -- ^ Glue two `Tmpl`s together
   | Tmpl :*: Tmpl
@@ -53,6 +55,12 @@ instance Aeson.ToJSON Tmpl where
         [ "variant" .= ("set" :: Text)
         , "name" .= name
         , "exp" .= exp
+        ]
+      Let name exp tmpl ->
+        [ "variant" .= ("let" :: Text)
+        , "name" .= name
+        , "exp" .= exp
+        , "tmpl" .= tmpl
         ]
       If clauses ->
         [ "variant" .= ("if" :: Text)

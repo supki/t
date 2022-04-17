@@ -60,6 +60,7 @@ spec =
               , ("y", string "foo")
               ]))
       parse "{% set x = 4 %}" `shouldBe` Right (Set "x" (number 4))
+      parse "{% let x = 4 %}foo{% endlet %}" `shouldBe` Right (Let "x" (number 4) "foo")
       parse "{% if x %}t{% endif %}" `shouldBe`
         Right (whenIf (var "x") "t")
       parse "{% if x %}t{% else %}f{% endif %}" `shouldBe`

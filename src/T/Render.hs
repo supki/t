@@ -43,6 +43,11 @@ render env0 tmpl =
       value <- evalExp exp
       modifyM (insertVar name value)
       pure ""
+    Let name exp tmpl0 -> do
+      value <- evalExp exp
+      env <- get
+      env' <- insertVar name value env
+      lift (evalStateT (go tmpl0) env')
     If clauses -> do
       let matchClause (exp, thenTmpl) acc = do
             value <- evalExp exp
