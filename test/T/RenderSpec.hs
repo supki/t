@@ -47,8 +47,9 @@ spec =
     context "line blocks" $
       it "examples" $ do
         render2_ "{% if true %}\n4\n{% endif %}\n" `shouldBe` Right "4\n"
-        pendingWith "fiddly parsing"
         render2_ "  {% if true %}\n  4\n  {% endif %}\n" `shouldBe` Right "  4\n"
+        render2_ "{% if true %}  \n4  \n{% endif %}  \n" `shouldBe` Right "4  \n"
+        render2_ "  {% let x = true %}{% endlet %}x" `shouldBe` Right "  x"
 
     context "let" $
       it "examples" $

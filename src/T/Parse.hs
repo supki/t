@@ -91,6 +91,7 @@ parseLet = do
     exp <- expP
     pure (name, exp)
   tmpl <- parser
+  _ <- blockP_ "endlet"
   pure (Let name exp tmpl)
 
 parseIf :: Parser Tmpl
@@ -255,6 +256,10 @@ parseRaw =
     asum
       [ do _ <- eof
            pure acc
+           -- Attempt to fish for a line block.
+      , do _ <- lookAhead (try (spacesExceptNewline *> string "{%" *> manyTill anyChar (try (string "%}")) *> spacesExceptNewline *> newline))
+           pure acc
+           -- Attempt to fish for a inline block.
       , do _ <- lookAhead (string "{{" <|> string "{%")
            pure acc
       , do x <- anyChar
@@ -268,14 +273,19 @@ blockP name p =
   lineP =
     between
       (spaces *> string ("{% " <> name) *> spaces)
-      (spaces <* string "%}" <* many (satisfy spaceExceptNewline) <* newline)
+      (spaces <* string "%}" <* spacesExceptNewline <* newline)
       p
-   where
-    spaceExceptNewline c =
-      Char.isSpace c && (c /= '\n')
   inlineP =
     between (string ("{% " <> name) *> spaces) (spaces <* string "%}") p
 
 blockP_ :: String -> Parser ()
 blockP_ name =
   blockP name (pure ())
+
+spacesExceptNewline :: Parser String
+spacesExceptNewline =
+  many spaceExceptNewline
+
+spaceExceptNewline :: Parser Char
+spaceExceptNewline =
+  satisfy (\c -> Char.isSpace c && (c /= '\n'))
