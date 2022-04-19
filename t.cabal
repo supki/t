@@ -47,6 +47,7 @@ library
     , either
     , mtl
     , parsers
+    , pcre-light
     , scientific
     , text
     , transformers

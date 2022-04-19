@@ -144,6 +144,11 @@ spec =
         render2_ "{{ 4 == \"foo\" }}" `shouldBe` Right "false"
         render2_ "{{ {a: 4} == length }}" `shouldBe` Right "false"
 
+      it "=~" $ do
+        render2_ "{{ \"foo\" =~ /foo/ }}" `shouldBe` Right "true"
+        render2_ "{{ \"Foo\" =~ /foo/ }}" `shouldBe` Right "false"
+        render2_ "{{ \"Foo\" =~ /foo/i }}" `shouldBe` Right "true"
+
 render2 :: Aeson.Value -> Text -> Either String Lazy.Text
 render2 json tmplStr = do
   let Right tmpl = parse (Text.encodeUtf8 tmplStr)

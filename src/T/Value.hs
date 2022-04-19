@@ -11,6 +11,7 @@ import           Data.Text (Text)
 import qualified Data.Text.Lazy as Text.Lazy
 import qualified Data.Text.Lazy.Encoding as Text.Lazy
 import           Data.Vector (Vector)
+import qualified Text.Regex.PCRE.Light as Pcre
 
 
 data Value
@@ -20,6 +21,7 @@ data Value
   | String Text
   | Array (Vector Value)
   | Object (HashMap Text Value)
+  | Regexp Pcre.Regex
   | Lam (Value -> Either String Value)
 
 instance Aeson.ToJSON Value where
@@ -39,6 +41,10 @@ instance Aeson.ToJSON Value where
       String value ->
         [ "variant" .= ("string" :: Text)
         , "value" .= value
+        ]
+      Regexp value ->
+        [ "variant" .= ("regexp" :: Text)
+        , "value" .= show value
         ]
       Array value ->
         [ "variant" .= ("array" :: Text)
@@ -65,6 +71,8 @@ display =
       Aeson.Number n
     String str ->
       Aeson.String str
+    Regexp _regexp ->
+      Aeson.String "<regexp>"
     Array xs ->
       Aeson.Array (fmap embedAeson xs)
     Object o ->

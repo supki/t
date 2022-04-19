@@ -15,6 +15,7 @@ import           Data.String (IsString(..))
 import           Data.Text (Text)
 import           Data.Vector (Vector)
 import           Prelude hiding (exp)
+import qualified Text.Regex.PCRE.Light as Pcre
 
 
 infixr 1 :*:
@@ -108,6 +109,7 @@ data Literal
   | Bool Bool
   | Number Scientific
   | String Text
+  | Regexp Pcre.Regex
   | Array (Vector Exp)
   | Object (HashMap Text Exp)
     deriving (Show, Eq)
@@ -129,6 +131,10 @@ instance Aeson.ToJSON Literal where
       String value ->
         [ "variant" .= ("string" :: Text)
         , "value" .= value
+        ]
+      Regexp value ->
+        [ "variant" .= ("regexp" :: Text)
+        , "value" .= show value
         ]
       Array value ->
         [ "variant" .= ("array" :: Text)

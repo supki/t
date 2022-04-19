@@ -6,6 +6,7 @@ pkgs.mkShell {
   buildInputs = with pkgs; [
     ghc
     stack
+    pcre
   ];
 
   shellHook = ''

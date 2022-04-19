@@ -13,12 +13,14 @@ import           Data.List (foldl')
 import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Scientific as Scientific
 import           Data.String (fromString)
+import qualified Data.Text.Encoding as Text
 import qualified Data.Vector as Vector
 import           Prelude hiding (exp)
 import           Text.Trifecta
 import           Text.Parser.Expression (Assoc(..), Operator(..), buildExpressionParser)
 import           Text.Parser.LookAhead (lookAhead)
 import           Text.Parser.Token.Style (emptyOps)
+import qualified Text.Regex.PCRE.Light as Pcre
 
 import           T.Exp (Tmpl(..), Exp(..), Literal(..), Name(..))
 
@@ -155,7 +157,7 @@ expP =
     , [prefixOp "!"]
     , [infixrOp "*", infixrOp "/"]
     , [infixrOp "+", infixrOp "-"]
-    , [infixOp "=="]
+    , [infixOp "==", infixOp "=~"]
     , [infixrOp "&&"]
     , [infixrOp "||"]
     ]
@@ -207,6 +209,7 @@ litP =
     , boolP
     , numberP
     , stringP
+    , regexpP
     , arrayP
     , objectP
     ]
@@ -234,6 +237,31 @@ litP =
       _ <- symbol ":"
       v <- expP
       pure (k, v)
+
+regexpP :: Parser Literal
+regexpP = do
+  str <- between (char '/') (char '/') (normalChar [])
+  modifiers <- many modifier
+  spaces
+  either fail (pure . Regexp) (Pcre.compileM (Text.encodeUtf8 str) (Pcre.utf8 : modifiers))
+ where
+  normalChar acc = do
+    c <- noneOf ['/']
+    case c of
+      '\\' -> excapedChar acc
+      _ -> normalChar (c : acc)
+   <|>
+    pure (fromString (reverse acc))
+  excapedChar acc = do
+    c <- anyChar
+    case c of
+      '/' ->
+        normalChar ('/' : acc)
+      _ ->
+        normalChar (c : '\\' : acc)
+  modifier = do
+    'i' <- char 'i'
+    pure Pcre.caseless
 
 varP :: Parser Exp
 varP =
@@ -268,6 +296,9 @@ parseRaw =
 
 blockP :: String -> Parser a -> Parser a
 blockP name p =
+  -- The whitespace is either significant or not, depending on
+  -- what kind of a block we can parse. Line blocks "remove" all
+  -- the whitespace from the result; inline blocks preserve all of it.
   try lineP <|> inlineP
  where
   lineP =

@@ -125,6 +125,8 @@ evalExp = \case
         pure (Value.Number n)
       String str ->
         pure (Value.String str)
+      Regexp str ->
+        pure (Value.Regexp str)
       Array xs -> do
         ys <- traverse evalExp xs
         pure (Value.Array ys)

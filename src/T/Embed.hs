@@ -10,10 +10,13 @@ import           Data.Bool (bool)
 import           Data.Foldable (toList)
 import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
+import           Data.Maybe (isJust)
 import           Data.Scientific (Scientific)
 import           Data.Text (Text)
 import qualified Data.Text as Text
+import qualified Data.Text.Encoding as Text
 import qualified Data.Vector as Vector
+import qualified Text.Regex.PCRE.Light as Pcre
 
 import           T.Value (Value(..), display)
 
@@ -73,6 +76,13 @@ instance Eject Text where
     value ->
       Left ("cannot eject Text from: " <> display value)
 
+instance Eject Pcre.Regex where
+  eject = \case
+    Regexp regexp ->
+      pure regexp
+    value ->
+      Left ("cannot eject Pcre.Regex from: " <> display value)
+
 instance (k ~ Text, v ~ Value) => Eject (HashMap k v) where
   eject = \case
     Object o ->
@@ -97,6 +107,7 @@ stdlib =
     , ("!", embed not)
 
     , ("==", eEq)
+    , ("=~", embed match)
     , ("!=", eNeq)
 
     , ("+", embed ((+) @Scientific))
@@ -146,6 +157,9 @@ eNeq :: Value
       (_, _) ->
         False
 
+match :: Text -> Pcre.Regex -> Bool
+match str regexp =
+  isJust (Pcre.match regexp (Text.encodeUtf8 str) [])
 
 eNull :: Value
 eNull =
