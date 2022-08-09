@@ -1,4 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeApplications #-}
 module T.Render
   ( Env
@@ -7,20 +9,20 @@ module T.Render
   ) where
 
 import           Control.Applicative ((<|>))
+import           Control.Monad ((<=<))
 import           Control.Monad.Except (MonadError(..), runExcept, liftEither)
-import           Control.Monad.State (MonadState(..), evalStateT)
-import           Control.Monad.Trans.Class (lift)
+import           Control.Monad.State (MonadState(..), execStateT, modify)
 import qualified Data.Aeson as Aeson
 import           Data.Bool (bool)
-import           Data.Foldable (toList)
+import           Data.Foldable (for_, toList)
 import qualified Data.List as List
 import           Data.Scientific (floatingOrInteger)
 import           Data.String (fromString)
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy as Lazy (Text)
+import           Data.Text.Lazy.Builder (Builder)
 import qualified Data.Text.Lazy.Builder as Builder
-import           Data.Traversable (for)
 import qualified Data.HashMap.Strict as HashMap
 import           Prelude hiding (exp)
 
@@ -30,29 +32,32 @@ import qualified T.Value as Value
 import           T.Embed (stdlib)
 
 
-newtype Env = Env { unEnv :: Value }
+data Env = Env
+  { vars   :: Value
+  , result :: Builder
+  }
 
 render :: Env -> Tmpl -> Either String Lazy.Text
 render env0 tmpl =
-  fmap Builder.toLazyText (runExcept (evalStateT (go tmpl) env0))
+  fmap (Builder.toLazyText . result) (runExcept (execStateT (go tmpl) env0))
  where
   go = \case
     Raw str ->
-      pure (Builder.fromText str)
+      build (Builder.fromText str)
     Set name exp -> do
       value <- evalExp exp
-      modifyM (insertVar name value)
-      pure ""
+      _ <- modifyM (insertVar name value)
+      pure ()
     Let name exp tmpl0 -> do
       value <- evalExp exp
-      env <- get
-      env' <- insertVar name value env
-      lift (evalStateT (go tmpl0) env')
+      oldEnv <- modifyM (insertVar name value)
+      go tmpl0
+      modify (\env -> env {vars = vars oldEnv})
     If clauses -> do
       let matchClause (exp, thenTmpl) acc = do
             value <- evalExp exp
             if truthy value then go thenTmpl else acc
-      foldr matchClause (pure "") clauses
+      foldr matchClause (pure ()) clauses
     For name it exp forTmpl elseTmpl -> do
       value <- evalExp exp
       itemsQ <- case value of
@@ -78,27 +83,18 @@ render env0 tmpl =
           throwError ("cannot iterate on: " <> Value.display value)
       case itemsQ of
         Nothing ->
-          maybe (pure "") go elseTmpl
+          maybe (pure ()) go elseTmpl
         Just items -> do
-          rs <- for items $ \(x, itObj) -> do
-            env <- get
-            env' <- insertVar name x env
-            env'' <- insertVar it itObj env'
-            lift (evalStateT (go forTmpl) env'')
-          pure (mconcat rs)
+          for_ items $ \(x, itObj) -> do
+            oldEnv <- modifyM (insertVar it itObj <=< insertVar name x)
+            go forTmpl
+            modify (\env -> env {vars = vars oldEnv})
     Exp exp -> do
       str <- renderExp exp
-      pure (Builder.fromText str)
+      build (Builder.fromText str)
     tmpl0 :*: tmpl1 -> do
-      b0 <- go tmpl0
-      b1 <- go tmpl1
-      pure (b0 <> b1)
-
-modifyM :: MonadState s m => (s -> m s) -> m ()
-modifyM f = do 
-  s <- get
-  s' <- f s
-  put s'
+      go tmpl0
+      go tmpl1
   
 renderExp :: (MonadState Env m, MonadError String m) => Exp -> m Text
 renderExp exp = do
@@ -150,8 +146,9 @@ evalExp = \case
         throwError ("not a function: " <> Value.display value)
 
 envFromJson :: Aeson.Value -> Env
-envFromJson =
-  Env . go
+envFromJson val = emptyEnv
+  { vars = go val
+  }
  where
   go = \case
     Aeson.Null ->
@@ -167,25 +164,40 @@ envFromJson =
     Aeson.Object xs ->
       Value.Object (fmap go xs)
 
+emptyEnv :: Env
+emptyEnv = Env {vars = Value.Null, result = mempty}
+
 lookupVar :: Env -> Name -> Maybe Value
-lookupVar (Env env) (Name name) =
-  go env name <|> go stdlib name
+lookupVar Env {vars} (Name name) =
+  go vars name <|> go stdlib name
  where
   go (Value.Object o) x = do
     HashMap.lookup x o
   go _ _ =
     Nothing
 
+modifyM :: MonadState s m => (s -> m s) -> m s
+modifyM f = do
+  s <- get
+  s' <- f s
+  put s'
+  pure s
+
 insertVar :: MonadError String m => Name -> Value -> Env -> m Env
-insertVar (Name name) value (Env env) =
-  fmap Env $ case env of
+insertVar (Name name) value env = do
+  vars' <- case vars env of
     Value.Object o
       | "_" `Text.isPrefixOf` name ->
-        pure env
+        pure (vars env)
       | otherwise ->
         pure (Value.Object (HashMap.insert name value o))
     _ ->
       throwError ("cannot set property ." <> show name <> " to " <> Value.display value)
+  pure env {vars = vars'}
+
+build :: MonadState Env m => Builder -> m ()
+build chunk =
+  modify (\env -> env {result = result env <> chunk})
 
 truthy :: Value -> Bool
 truthy = \case
