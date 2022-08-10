@@ -8,6 +8,7 @@ import qualified Data.Text.Encoding as Text
 import qualified Data.Text.Lazy as Lazy (Text)
 import           Test.Hspec
 
+import           T.Error (Error(..))
 import           T.Parse (parse)
 import           T.Render (render, envFromJson)
 
@@ -24,7 +25,8 @@ spec =
       render2 [aesonQQ| {x: 4} |] "foo{{ x }}" `shouldBe` Right "foo4"
       render2 [aesonQQ| {x: {y: 4}} |] "foo{{ x.y }}" `shouldBe` Right "foo4"
       render2_ "{% set x = 4 %}foo{{ x }}" `shouldBe` Right "foo4"
-      render2_ "{% set x = 4 %}{% set x = 7 %}foo{{ x }}" `shouldBe` Right "foo7"
+      -- TODO: Rethink shadowing maybe?
+      render2_ "{% set x = 4 %}{% set y = 7 %}foo{{ y }}" `shouldBe` Right "foo7"
       render2 [aesonQQ| {x: 4} |] "{% set y = x %}foo{{ y }}" `shouldBe` Right "foo4"
       render2_ "{% if true %}foo{% else %}bar{% endif %}" `shouldBe` Right "foo"
       render2_ "{% if false %}foo{% else %}bar{% endif %}" `shouldBe` Right "bar"
@@ -37,9 +39,9 @@ spec =
       render2_ "{{ ! true }}" `shouldBe` Right "false"
       render2_ "{{ {a: 4, b: 7}.a }}" `shouldBe` Right "4"
       render2_ "{% for _ in [1,2,3] %}{{ _ }}{% endfor %}" `shouldBe`
-        Left "not in scope: Name {unName = \"_\"}"
+        Left (GenericError "not in scope: Name {unName = \"_\"}")
       render2_ "{% for _foo in [1,2,3] %}{{ _foo }}{% endfor %}" `shouldBe`
-        Left "not in scope: Name {unName = \"_foo\"}"
+        Left (GenericError "not in scope: Name {unName = \"_foo\"}")
       render2_ "{% case 4 %}{% when 4 %}4{% when 7 %}7{% endcase %}" `shouldBe` Right "4"
       render2_ "{% case 7 %}{% when 4 %}4{% when 7 %}7{% endcase %}" `shouldBe` Right "7"
       render2_ "{% case 11 %}{% when 4 %}4{% else %}11{% endcase %}" `shouldBe` Right "11"
@@ -53,7 +55,8 @@ spec =
 
     context "let" $
       it "examples" $
-        render2 [aesonQQ| {x: 4} |] "{% let x = 7 %}{{ x }}{% let x = 11 %}{{ x }}{% endlet %}{% endlet %}" `shouldBe` Right "711"
+        -- TODO: Rethink shadowing maybe?
+        render2 [aesonQQ| {x: 4} |] "{% let y = 7 %}{{ y }}{% let z = 11 %}{{ z }}{% endlet %}{% endlet %}" `shouldBe` Right "711"
 
     context "for" $
       it "examples" $ do
@@ -61,7 +64,7 @@ spec =
         render2_ "{% for x in {a: 4, b: 7} %}{{ x }}{% else %}foo{% endfor %}" `shouldBe`
           Right "47"
         render2_ "{% for x in [1,2,3] %}{% endfor %}{{ x }}" `shouldBe`
-          Left "not in scope: Name {unName = \"x\"}"
+          Left (GenericError "not in scope: Name {unName = \"x\"}")
         render2_ "{% for x in [] %}{{ x }}{% else %}foo{% endfor %}" `shouldBe` Right "foo"
         render2_ "{% for x in {} %}{{ x }}{% else %}foo{% endfor %}" `shouldBe` Right "foo"
         render2_ "{% for x, it in [1,2,3] %}{{ it.first }}{% endfor %}" `shouldBe`
@@ -87,6 +90,11 @@ spec =
       it "only evaluates {% set %} in the clause that is true" $ do
         render2_ "{% if true %}{% set x = 4 %}{% else %}{% set x = 7 %}{% endif %}{{ x }}" `shouldBe` Right "4"
         render2_ "{% if false %}{% set x = 4 %}{% elif false %}{% set x = \"foo\" %}{% elif true %}{% set x = \"bar\" %}{% else %}{% set x = 7 %}{% endif %}{{ x }}" `shouldBe` Right "bar"
+
+    context "shadowing" $
+      it "is an error" $
+        render2_ "{% let x = 4 %}{% set x = 7 %}{% endlet %}" `shouldBe`
+          Left ("x" `ShadowedBy` "x")
 
     context "functions" $ do
       it "numeric operations" $ do
@@ -122,8 +130,8 @@ spec =
           Right "foobarbaz"
 
       it "die" $ do
-        render2_ "{{ die(\"reason\") }}" `shouldBe` Left "die: \"reason\""
-        render2_ "{{ die(4) }}" `shouldBe` Left "die: 4"
+        render2_ "{{ die(\"reason\") }}" `shouldBe` Left (GenericError "die: \"reason\"")
+        render2_ "{{ die(4) }}" `shouldBe` Left (GenericError "die: 4")
 
       it "==" $ do
         render2_ "{{ null == null }}" `shouldBe` Right "true"
@@ -149,11 +157,12 @@ spec =
         render2_ "{{ \"Foo\" =~ /foo/ }}" `shouldBe` Right "false"
         render2_ "{{ \"Foo\" =~ /foo/i }}" `shouldBe` Right "true"
 
-render2 :: Aeson.Value -> Text -> Either String Lazy.Text
+render2 :: Aeson.Value -> Text -> Either Error Lazy.Text
 render2 json tmplStr = do
-  let Right tmpl = parse (Text.encodeUtf8 tmplStr)
-  render (envFromJson json) tmpl
+  let Just env = envFromJson json
+      Right tmpl = parse (Text.encodeUtf8 tmplStr)
+  render env tmpl
 
-render2_ :: Text -> Either String Lazy.Text
+render2_ :: Text -> Either Error Lazy.Text
 render2_ =
   render2 [aesonQQ| {} |]

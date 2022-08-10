@@ -1,13 +1,16 @@
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE TypeOperators #-}
 module T.Exp
   ( Tmpl(..)
   , Exp(..)
   , Literal(..)
   , Name(..)
+  , (:<)(..)
   ) where
 
 import           Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
+import           Data.Hashable (Hashable)
 import           Data.HashMap.Strict (HashMap)
 import           Data.List.NonEmpty (NonEmpty)
 import           Data.Scientific (Scientific)
@@ -16,6 +19,8 @@ import           Data.Text (Text)
 import           Data.Vector (Vector)
 import           Prelude hiding (exp)
 import qualified Text.Regex.PCRE.Light as Pcre
+
+import           T.Exp.Ann (Span, (:<)(..), unann)
 
 
 infixr 1 :*:
@@ -26,13 +31,13 @@ data Tmpl
     -- ^ {{ exp }} context
   | Exp Exp
     -- ^ {% set _ = _ %}
-  | Set Name Exp
+  | Set (Span :< Name) Exp
     -- ^ {% let _ = _ %} _ {% endlet %}
-  | Let Name Exp Tmpl
+  | Let (Span :< Name) Exp Tmpl
     -- ^ {% if _ %} _ {% elif _ %} _ {% else %} _ {% endif %}
   | If (NonEmpty (Exp, Tmpl))
     -- ^ {% for _, _ in _ %} _ {% else %} _ {% endfor %}
-  | For Name (Maybe Name) Exp Tmpl (Maybe Tmpl)
+  | For (Span :< Name) (Maybe (Span :< Name)) Exp Tmpl (Maybe Tmpl)
     -- ^ Glue two `Tmpl`s together
   | Tmpl :*: Tmpl
     deriving (Show, Eq)
@@ -54,12 +59,12 @@ instance Aeson.ToJSON Tmpl where
         ]
       Set name exp ->
         [ "variant" .= ("set" :: Text)
-        , "name" .= name
+        , "name" .= unann name
         , "exp" .= exp
         ]
       Let name exp tmpl ->
         [ "variant" .= ("let" :: Text)
-        , "name" .= name
+        , "name" .= unann name
         , "exp" .= exp
         , "tmpl" .= tmpl
         ]
@@ -69,8 +74,8 @@ instance Aeson.ToJSON Tmpl where
         ]
       For name it exp forTmpl elseTmpl ->
         [ "variant" .= ("for" :: Text)
-        , "name" .= name
-        , "it" .= it
+        , "name" .= unann name
+        , "it" .= fmap unann it
         , "exp" .= exp
         , "for" .= forTmpl
         , "else" .= elseTmpl
@@ -146,7 +151,7 @@ instance Aeson.ToJSON Literal where
         ]
   
 newtype Name = Name { unName :: Text }
-    deriving (Show, Eq, IsString)
+    deriving (Show, Eq, IsString, Hashable)
 
 instance Aeson.ToJSON Name where
   toJSON =

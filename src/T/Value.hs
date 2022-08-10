@@ -13,6 +13,8 @@ import qualified Data.Text.Lazy.Encoding as Text.Lazy
 import           Data.Vector (Vector)
 import qualified Text.Regex.PCRE.Light as Pcre
 
+import           T.Error (Error)
+
 
 data Value
   = Null
@@ -22,7 +24,7 @@ data Value
   | Array (Vector Value)
   | Object (HashMap Text Value)
   | Regexp Pcre.Regex
-  | Lam (Value -> Either String Value)
+  | Lam (Value -> Either Error Value)
 
 instance Aeson.ToJSON Value where
   toJSON =

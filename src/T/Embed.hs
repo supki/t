@@ -18,6 +18,8 @@ import qualified Data.Text.Encoding as Text
 import qualified Data.Vector as Vector
 import qualified Text.Regex.PCRE.Light as Pcre
 
+import           T.Error (Error(..))
+import           T.Exp (Name)
 import           T.Value (Value(..), display)
 
 
@@ -53,53 +55,53 @@ instance (Eject a, Embed b) => Embed (a -> b) where
     Lam (\x -> fmap (embed . f) (eject x))
 
 class Eject t where
-  eject :: Value -> Either String t
+  eject :: Value -> Either Error t
 
 instance Eject Bool where
   eject = \case
     Bool b ->
       pure b
     value ->
-      Left ("cannot eject Bool from: " <> display value)
+      Left (GenericError ("cannot eject Bool from: " <> display value))
 
 instance Eject Scientific where
   eject = \case
     Number n ->
       pure n
     value ->
-      Left ("cannot eject Scientific from: " <> display value)
+      Left (GenericError ("cannot eject Scientific from: " <> display value))
 
 instance Eject Text where
   eject = \case
     String str ->
       pure str
     value ->
-      Left ("cannot eject Text from: " <> display value)
+      Left (GenericError ("cannot eject Text from: " <> display value))
 
 instance Eject Pcre.Regex where
   eject = \case
     Regexp regexp ->
       pure regexp
     value ->
-      Left ("cannot eject Pcre.Regex from: " <> display value)
+      Left (GenericError ("cannot eject Pcre.Regex from: " <> display value))
 
 instance (k ~ Text, v ~ Value) => Eject (HashMap k v) where
   eject = \case
     Object o ->
       pure o
     value ->
-      Left ("cannot eject HashMap Text Value from: " <> display value)
+      Left (GenericError ("cannot eject HashMap Text Value from: " <> display value))
 
 instance Eject a => Eject [a] where
   eject = \case
     Array xs ->
       fmap toList (traverse eject xs)
     value ->
-      Left ("cannot eject [a] from: " <> display value)
+      Left (GenericError ("cannot eject [a] from: " <> display value))
 
-stdlib :: Value
+stdlib :: HashMap Name Value
 stdlib =
-  Object (HashMap.fromList bindings)
+  HashMap.fromList bindings
  where
   bindings =
     [ ("&&", embed (&&))
@@ -171,7 +173,7 @@ eNull =
     Object o ->
       pure (embed (HashMap.null o))
     value ->
-      Left ("empty is non-applicable for: " <> display value)
+      Left (GenericError ("empty is non-applicable for: " <> display value))
 
 eLength :: Value
 eLength =
@@ -183,10 +185,10 @@ eLength =
     Object o ->
       pure (embed (HashMap.size o))
     value ->
-      Left ("cannot find length of: " <> display value)
+      Left (GenericError ("cannot find length of: " <> display value))
 
 eDie :: Value
 eDie =
   Lam $ \case
     value ->
-      Left ("die: " <> display value)
+      Left (GenericError ("die: " <> display value))

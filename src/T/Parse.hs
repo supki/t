@@ -23,6 +23,7 @@ import           Text.Parser.Token.Style (emptyOps)
 import qualified Text.Regex.PCRE.Light as Pcre
 
 import           T.Exp (Tmpl(..), Exp(..), Literal(..), Name(..))
+import           T.Exp.Ann (anned)
 
 
 parse :: ByteString -> Either String Tmpl
@@ -80,7 +81,7 @@ parser =
 parseSet :: Parser Tmpl
 parseSet =
   blockP "set" $ do
-    name <- nameP
+    name <- anned nameP
     _ <- symbol "="
     exp <- expP
     pure (Set name exp)
@@ -88,7 +89,7 @@ parseSet =
 parseLet :: Parser Tmpl
 parseLet = do
   (name, exp) <- blockP "let" $ do
-    name <- nameP
+    name <- anned nameP
     _ <- symbol "="
     exp <- expP
     pure (name, exp)
@@ -132,10 +133,10 @@ parseCase = do
 parseFor :: Parser Tmpl
 parseFor = do
   (name, it, exp) <- blockP "for" $ do
-    name <- nameP
+    name <- anned nameP
     it <- optional $ do
       _ <- symbol ","
-      nameP
+      anned nameP
     _ <- symbol "in"
     exp <- expP
     pure (name, it, exp)

@@ -2,6 +2,8 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ViewPatterns #-}
 module T.Render
   ( Env
   , render
@@ -15,6 +17,7 @@ import           Control.Monad.State (MonadState(..), execStateT, modify)
 import qualified Data.Aeson as Aeson
 import           Data.Bool (bool)
 import           Data.Foldable (for_, toList)
+import           Data.HashMap.Strict (HashMap)
 import qualified Data.List as List
 import           Data.Scientific (floatingOrInteger)
 import           Data.String (fromString)
@@ -25,19 +28,21 @@ import           Data.Text.Lazy.Builder (Builder)
 import qualified Data.Text.Lazy.Builder as Builder
 import qualified Data.HashMap.Strict as HashMap
 import           Prelude hiding (exp)
+import           Text.Trifecta (Span)
 
-import           T.Exp (Tmpl(..), Exp(..), Literal(..), Name(..))
+import           T.Embed (stdlib)
+import           T.Exp (Tmpl(..), Exp(..), Literal(..), Name(..), (:<)(..))
+import           T.Error (Error(..))
 import           T.Value (Value)
 import qualified T.Value as Value
-import           T.Embed (stdlib)
 
 
 data Env = Env
-  { vars   :: Value
+  { vars   :: HashMap Name (Span, Value)
   , result :: Builder
   }
 
-render :: Env -> Tmpl -> Either String Lazy.Text
+render :: Env -> Tmpl -> Either Error Lazy.Text
 render env0 tmpl =
   fmap (Builder.toLazyText . result) (runExcept (execStateT (go tmpl) env0))
  where
@@ -80,7 +85,7 @@ render env0 tmpl =
                     (HashMap.toList o))
           pure (bool (Just xs) Nothing (null xs))
         _ ->
-          throwError ("cannot iterate on: " <> Value.display value)
+          throwError (GenericError ("cannot iterate on: " <> Value.display value))
       case itemsQ of
         Nothing ->
           maybe (pure ()) go elseTmpl
@@ -97,7 +102,7 @@ render env0 tmpl =
       go tmpl0
       go tmpl1
   
-renderExp :: (MonadState Env m, MonadError String m) => Exp -> m Text
+renderExp :: (MonadState Env m, MonadError Error m) => Exp -> m Text
 renderExp exp = do
   value <- evalExp exp
   case value of
@@ -108,9 +113,9 @@ renderExp exp = do
     Value.String str ->
       pure str
     o ->
-      throwError ("not renderable: " <> Value.display o)
+      throwError (GenericError ("not renderable: " <> Value.display o))
 
-evalExp :: (MonadState Env m, MonadError String m) => Exp -> m Value
+evalExp :: (MonadState Env m, MonadError Error m) => Exp -> m Value
 evalExp = \case
   Lit literal ->
     case literal of
@@ -134,7 +139,7 @@ evalExp = \case
     env <- get
     case lookupVar env name of
       Nothing ->
-        throwError ("not in scope: " <> show name)
+        throwError (GenericError ("not in scope: " <> show name))
       Just value -> do
         pure value
   App exp0 exp1 -> do
@@ -144,12 +149,13 @@ evalExp = \case
         x <- evalExp exp1
         liftEither (f x)
       value ->
-        throwError ("not a function: " <> Value.display value)
+        throwError (GenericError ("not a function: " <> Value.display value))
 
-envFromJson :: Aeson.Value -> Env
-envFromJson val = emptyEnv
-  { vars = go val
-  }
+envFromJson :: Aeson.Value -> Maybe Env
+envFromJson (Aeson.Object val) =
+  Just emptyEnv
+    { vars = fmap (\x -> (error "M", go x)) (HashMap.mapKeys Name val)
+    }
  where
   go = \case
     Aeson.Null ->
@@ -164,18 +170,15 @@ envFromJson val = emptyEnv
       Value.Array (fmap go xs)
     Aeson.Object xs ->
       Value.Object (fmap go xs)
+envFromJson _ =
+  Nothing
 
 emptyEnv :: Env
-emptyEnv = Env {vars = Value.Null, result = mempty}
+emptyEnv = Env {vars = mempty, result = mempty}
 
 lookupVar :: Env -> Name -> Maybe Value
-lookupVar Env {vars} (Name name) =
-  go vars name <|> go stdlib name
- where
-  go (Value.Object o) x = do
-    HashMap.lookup x o
-  go _ _ =
-    Nothing
+lookupVar Env {vars} name =
+  fmap snd (HashMap.lookup name vars) <|> HashMap.lookup name stdlib
 
 modifyM :: MonadState s m => (s -> m s) -> m s
 modifyM f = do
@@ -184,17 +187,15 @@ modifyM f = do
   put s'
   pure s
 
-insertVar :: MonadError String m => Name -> Value -> Env -> m Env
-insertVar (Name name) value env = do
-  vars' <- case vars env of
-    Value.Object o
-      | "_" `Text.isPrefixOf` name ->
-        pure (vars env)
-      | otherwise ->
-        pure (Value.Object (HashMap.insert name value o))
-    _ ->
-      throwError ("cannot set property ." <> show name <> " to " <> Value.display value)
-  pure env {vars = vars'}
+insertVar :: MonadError Error m => Span :< Name -> Value -> Env -> m Env
+insertVar (_ :< Name (Text.uncons -> Just ('_', _rest))) _ env =
+  pure env
+insertVar (ann :< name) value env =
+  case HashMap.lookup name (vars env) of
+    Nothing ->
+      pure env {vars = HashMap.insert name (ann, value) (vars env)}
+    Just (oldAnn, _) ->
+      throwError (ShadowedBy (oldAnn :< name) (ann :< name))
 
 build :: MonadState Env m => Builder -> m ()
 build chunk =
