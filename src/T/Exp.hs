@@ -32,7 +32,7 @@ data Tmpl
     -- ^ {% if _ %} _ {% elif _ %} _ {% else %} _ {% endif %}
   | If (NonEmpty (Exp, Tmpl))
     -- ^ {% for _, _ in _ %} _ {% else %} _ {% endfor %}
-  | For Name Name Exp Tmpl (Maybe Tmpl)
+  | For Name (Maybe Name) Exp Tmpl (Maybe Tmpl)
     -- ^ Glue two `Tmpl`s together
   | Tmpl :*: Tmpl
     deriving (Show, Eq)

@@ -133,7 +133,7 @@ parseFor :: Parser Tmpl
 parseFor = do
   (name, it, exp) <- blockP "for" $ do
     name <- nameP
-    it <- option "_" $ do
+    it <- optional $ do
       _ <- symbol ","
       nameP
     _ <- symbol "in"

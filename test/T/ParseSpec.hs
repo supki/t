@@ -77,11 +77,11 @@ spec =
       parse "{% if ! true %}foo{% endif %}" `shouldBe`
         Right (whenIf (App (var "!") true) "foo")
       parse "{% for x in [1, 2, 3] %}{{ x }}{% endfor %}" `shouldBe`
-        Right (For "x" "_" (array [number 1, number 2, number 3]) (Exp (var "x")) Nothing)
+        Right (For "x" Nothing (array [number 1, number 2, number 3]) (Exp (var "x")) Nothing)
       parse "{% for x in [] %}{{ x }}{% else %}foo{% endfor %}" `shouldBe`
-        Right (For "x" "_" (array []) (Exp (var "x")) (pure "foo"))
+        Right (For "x" Nothing (array []) (Exp (var "x")) (pure "foo"))
       parse "{% for x, it in [1, 2, 3] %}{{ x }}{% endfor %}" `shouldBe`
-        Right (For "x" "it" (array [number 1, number 2, number 3]) (Exp (var "x")) Nothing)
+        Right (For "x" (Just "it") (array [number 1, number 2, number 3]) (Exp (var "x")) Nothing)
 
     context "if" $
       it "can nest arbitrarily" $

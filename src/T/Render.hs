@@ -58,7 +58,7 @@ render env0 tmpl =
             value <- evalExp exp
             if truthy value then go thenTmpl else acc
       foldr matchClause (pure ()) clauses
-    For name it exp forTmpl elseTmpl -> do
+    For name itQ exp forTmpl elseTmpl -> do
       value <- evalExp exp
       itemsQ <- case value of
         Value.Array arr -> do
@@ -86,7 +86,8 @@ render env0 tmpl =
           maybe (pure ()) go elseTmpl
         Just items -> do
           for_ items $ \(x, itObj) -> do
-            oldEnv <- modifyM (insertVar it itObj <=< insertVar name x)
+            oldEnv <-
+              modifyM (maybe pure (\it -> insertVar it itObj) itQ <=< insertVar name x)
             go forTmpl
             modify (\env -> env {vars = vars oldEnv})
     Exp exp -> do
