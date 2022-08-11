@@ -17,160 +17,175 @@ spec :: Spec
 spec =
   describe "render" $ do
     it "examples" $ do
-      render2_ "" `shouldBe` Right ""
-      render2_ "Слава Україні" `shouldBe` Right "Слава Україні"
-      render2_ "foo" `shouldBe` Right "foo"
-      render2_ "foo{{ 4 }}" `shouldBe` Right "foo4"
-      render2_ "foo{{ 4.7 }}" `shouldBe` Right "foo4.7"
-      render2 [aesonQQ| {x: 4} |] "foo{{ x }}" `shouldBe` Right "foo4"
-      render2 [aesonQQ| {x: {y: 4}} |] "foo{{ x.y }}" `shouldBe` Right "foo4"
-      render2_ "{% set x = 4 %}foo{{ x }}" `shouldBe` Right "foo4"
+      r_ "" `shouldRender` ""
+      r_ "Слава Україні" `shouldRender` "Слава Україні"
+      r_ "foo" `shouldRender` "foo"
+      r_ "foo{{ 4 }}" `shouldRender` "foo4"
+      r_ "foo{{ 4.7 }}" `shouldRender` "foo4.7"
+      rWith [aesonQQ| {x: 4} |] "foo{{ x }}" `shouldRender` "foo4"
+      rWith [aesonQQ| {x: {y: 4}} |] "foo{{ x.y }}" `shouldRender` "foo4"
+      r_ "{% set x = 4 %}foo{{ x }}" `shouldRender` "foo4"
       -- TODO: Rethink shadowing maybe?
-      render2_ "{% set x = 4 %}{% set y = 7 %}foo{{ y }}" `shouldBe` Right "foo7"
-      render2 [aesonQQ| {x: 4} |] "{% set y = x %}foo{{ y }}" `shouldBe` Right "foo4"
-      render2_ "{% if true %}foo{% else %}bar{% endif %}" `shouldBe` Right "foo"
-      render2_ "{% if false %}foo{% else %}bar{% endif %}" `shouldBe` Right "bar"
-      render2 [aesonQQ| {x: true} |] "{% if x %}foo{% else %}bar{% endif %}" `shouldBe` Right "foo"
-      render2_ "{% set x = true %}{% if x %}foo{% else %}bar{% endif %}" `shouldBe` Right "foo"
-      render2_ "{% if false %}4{% elif true %}7{% endif %}" `shouldBe` Right "7"
-      render2_ "{% if false %}4{% elif false %}7{% else %}foo{% endif %}" `shouldBe` Right "foo"
-      render2_ "{{ true && false }}" `shouldBe` Right "false"
-      render2_ "{{ true || false }}" `shouldBe` Right "true"
-      render2_ "{{ ! true }}" `shouldBe` Right "false"
-      render2_ "{{ {a: 4, b: 7}.a }}" `shouldBe` Right "4"
-      render2_ "{% for _ in [1,2,3] %}{{ _ }}{% endfor %}" `shouldBe`
-        Left (NotInScope "_")
-      render2_ "{% for _foo in [1,2,3] %}{{ _foo }}{% endfor %}" `shouldBe`
-        Left (NotInScope "_foo")
-      render2_ "{% case 4 %}{% when 4 %}4{% when 7 %}7{% endcase %}" `shouldBe` Right "4"
-      render2_ "{% case 7 %}{% when 4 %}4{% when 7 %}7{% endcase %}" `shouldBe` Right "7"
-      render2_ "{% case 11 %}{% when 4 %}4{% else %}11{% endcase %}" `shouldBe` Right "11"
-      render2_ "{{ null }}" `shouldBe` Right ""
+      r_ "{% set x = 4 %}{% set y = 7 %}foo{{ y }}" `shouldRender` "foo7"
+      rWith [aesonQQ| {x: 4} |] "{% set y = x %}foo{{ y }}" `shouldRender` "foo4"
+      r_ "{% if true %}foo{% else %}bar{% endif %}" `shouldRender` "foo"
+      r_ "{% if false %}foo{% else %}bar{% endif %}" `shouldRender` "bar"
+      rWith [aesonQQ| {x: true} |] "{% if x %}foo{% else %}bar{% endif %}" `shouldRender` "foo"
+      r_ "{% set x = true %}{% if x %}foo{% else %}bar{% endif %}" `shouldRender` "foo"
+      r_ "{% if false %}4{% elif true %}7{% endif %}" `shouldRender` "7"
+      r_ "{% if false %}4{% elif false %}7{% else %}foo{% endif %}" `shouldRender` "foo"
+      r_ "{{ true && false }}" `shouldRender` "false"
+      r_ "{{ true || false }}" `shouldRender` "true"
+      r_ "{{ ! true }}" `shouldRender` "false"
+      r_ "{{ {a: 4, b: 7}.a }}" `shouldRender` "4"
+      r_ "{% for _ in [1,2,3] %}{{ _ }}{% endfor %}" `shouldRaise` NotInScope "_"
+      r_ "{% for _foo in [1,2,3] %}{{ _foo }}{% endfor %}" `shouldRaise` NotInScope "_foo"
+      r_ "{% case 4 %}{% when 4 %}4{% when 7 %}7{% endcase %}" `shouldRender` "4"
+      r_ "{% case 7 %}{% when 4 %}4{% when 7 %}7{% endcase %}" `shouldRender` "7"
+      r_ "{% case 11 %}{% when 4 %}4{% else %}11{% endcase %}" `shouldRender` "11"
+      r_ "{{ null }}" `shouldRender` ""
 
     context "line blocks" $
       it "examples" $ do
-        render2_ "{% if true %}\n4\n{% endif %}\n" `shouldBe` Right "4\n"
-        render2_ "  {% if true %}\n  4\n  {% endif %}\n" `shouldBe` Right "  4\n"
-        render2_ "{% if true %}  \n4  \n{% endif %}  \n" `shouldBe` Right "4  \n"
-        render2_ "  {% let x = true %}{% endlet %}x" `shouldBe` Right "  x"
+        r_ "{% if true %}\n4\n{% endif %}\n" `shouldRender` "4\n"
+        r_ "  {% if true %}\n  4\n  {% endif %}\n" `shouldRender` "  4\n"
+        r_ "{% if true %}  \n4  \n{% endif %}  \n" `shouldRender` "4  \n"
+        r_ "  {% let x = true %}{% endlet %}x" `shouldRender` "  x"
 
     context "let" $
       it "examples" $
         -- TODO: Rethink shadowing maybe?
-        render2 [aesonQQ| {x: 4} |] "{% let y = 7 %}{{ y }}{% let z = 11 %}{{ z }}{% endlet %}{% endlet %}" `shouldBe` Right "711"
+        rWith [aesonQQ| {x: 4} |] "{% let y = 7 %}{{ y }}{% let z = 11 %}{{ z }}{% endlet %}{% endlet %}" `shouldRender` "711"
 
     context "for" $
       it "examples" $ do
-        render2_ "{% for x in [1,2,3] %}{{ x }}{% else %}foo{% endfor %}" `shouldBe` Right "123"
-        render2_ "{% for x in {a: 4, b: 7} %}{{ x }}{% else %}foo{% endfor %}" `shouldBe`
-          Right "47"
-        render2_ "{% for x in [1,2,3] %}{% endfor %}{{ x }}" `shouldBe`
-          Left (NotInScope "x")
-        render2_ "{% for x in [] %}{{ x }}{% else %}foo{% endfor %}" `shouldBe` Right "foo"
-        render2_ "{% for x in {} %}{{ x }}{% else %}foo{% endfor %}" `shouldBe` Right "foo"
-        render2_ "{% for x, it in [1,2,3] %}{{ it.first }}{% endfor %}" `shouldBe`
-          Right "truefalsefalse"
-        render2_ "{% for x, it in [1,2,3] %}{{ it.last }}{% endfor %}" `shouldBe`
-          Right "falsefalsetrue"
-        render2_ "{% for x, it in [1,2,3] %}{{ it.index }}{% endfor %}" `shouldBe`
-          Right "012"
-        render2_ "{% for x, it in [1,2,3] %}{{ it.length }}{% endfor %}" `shouldBe`
-          Right "333"
-        render2_ "{% for x, it in {a: 4, b: 7} %}{{ it.first }}{% endfor %}" `shouldBe`
-          Right "truefalse"
-        render2_ "{% for x, it in {a: 4, b: 7} %}{{ it.last }}{% endfor %}" `shouldBe`
-          Right "falsetrue"
-        render2_ "{% for x, it in {a: 4, b: 7} %}{{ it.index }}{% endfor %}" `shouldBe`
-          Right "01"
-        render2_ "{% for x, it in {a: 4, b: 7} %}{{ it.length }}{% endfor %}" `shouldBe`
-          Right "22"
-        render2_ "{% for x, it in {a: 4, b: 7} %}{{ it.key }}{% endfor %}" `shouldBe`
-          Right "ab"
+        r_ "{% for x in [1,2,3] %}{{ x }}{% else %}foo{% endfor %}" `shouldRender` "123"
+        r_ "{% for x in {a: 4, b: 7} %}{{ x }}{% else %}foo{% endfor %}" `shouldRender`
+          "47"
+        r_ "{% for x in [1,2,3] %}{% endfor %}{{ x }}" `shouldRaise` NotInScope "x"
+        r_ "{% for x in [] %}{{ x }}{% else %}foo{% endfor %}" `shouldRender` "foo"
+        r_ "{% for x in {} %}{{ x }}{% else %}foo{% endfor %}" `shouldRender` "foo"
+        r_ "{% for x, it in [1,2,3] %}{{ it.first }}{% endfor %}" `shouldRender`
+          "truefalsefalse"
+        r_ "{% for x, it in [1,2,3] %}{{ it.last }}{% endfor %}" `shouldRender`
+          "falsefalsetrue"
+        r_ "{% for x, it in [1,2,3] %}{{ it.index }}{% endfor %}" `shouldRender`
+          "012"
+        r_ "{% for x, it in [1,2,3] %}{{ it.length }}{% endfor %}" `shouldRender`
+          "333"
+        r_ "{% for x, it in {a: 4, b: 7} %}{{ it.first }}{% endfor %}" `shouldRender`
+          "truefalse"
+        r_ "{% for x, it in {a: 4, b: 7} %}{{ it.last }}{% endfor %}" `shouldRender`
+          "falsetrue"
+        r_ "{% for x, it in {a: 4, b: 7} %}{{ it.index }}{% endfor %}" `shouldRender`
+          "01"
+        r_ "{% for x, it in {a: 4, b: 7} %}{{ it.length }}{% endfor %}" `shouldRender`
+          "22"
+        r_ "{% for x, it in {a: 4, b: 7} %}{{ it.key }}{% endfor %}" `shouldRender`
+          "ab"
 
     context "if + set" $
       it "only evaluates {% set %} in the clause that is true" $ do
-        render2_ "{% if true %}{% set x = 4 %}{% else %}{% set x = 7 %}{% endif %}{{ x }}" `shouldBe` Right "4"
-        render2_ "{% if false %}{% set x = 4 %}{% elif false %}{% set x = \"foo\" %}{% elif true %}{% set x = \"bar\" %}{% else %}{% set x = 7 %}{% endif %}{{ x }}" `shouldBe` Right "bar"
+        r_ "{% if true %}{% set x = 4 %}{% else %}{% set x = 7 %}{% endif %}{{ x }}" `shouldRender` "4"
+        r_ "{% if false %}{% set x = 4 %}{% elif false %}{% set x = \"foo\" %}{% elif true %}{% set x = \"bar\" %}{% else %}{% set x = 7 %}{% endif %}{{ x }}" `shouldRender` "bar"
 
     context "shadowing" $
       it "is an error" $
-        render2_ "{% let x = 4 %}{% set x = 7 %}{% endlet %}" `shouldBe`
-          Left ("x" `ShadowedBy` "x")
+        r_ "{% let x = 4 %}{% set x = 7 %}{% endlet %}" `shouldRaise`
+          ("x" `ShadowedBy` "x")
 
     context "functions" $ do
       it "numeric operations" $ do
-        render2_ "{{ 1 + 2 }}" `shouldBe` Right "3"
-        render2_ "{{ 0.1 + 0.2 }}" `shouldBe` Right "0.3"
-        render2_ "{{ 1 - 2 }}" `shouldBe` Right "-1"
-        render2_ "{{ 4 * 7 }}" `shouldBe` Right "28"
-        render2_ "{{ 4 / 8 }}" `shouldBe` Right "0.5"
+        r_ "{{ 1 + 2 }}" `shouldRender` "3"
+        r_ "{{ 0.1 + 0.2 }}" `shouldRender` "0.3"
+        r_ "{{ 1 - 2 }}" `shouldRender` "-1"
+        r_ "{{ 4 * 7 }}" `shouldRender` "28"
+        r_ "{{ 4 / 8 }}" `shouldRender` "0.5"
 
       it "bool01" $ do
-        render2_ "{{ bool01(false) }}" `shouldBe` Right "0"
-        render2_ "{{ bool01(true) }}" `shouldBe` Right "1"
+        r_ "{{ bool01(false) }}" `shouldRender` "0"
+        r_ "{{ bool01(true) }}" `shouldRender` "1"
 
       it "null" $ do
-        render2_ "{{ empty(\"\") }}" `shouldBe` Right "true"
-        render2_ "{{ empty(\"hello\") }}" `shouldBe` Right "false"
-        render2_ "{{ empty([]) }}" `shouldBe` Right "true"
-        render2_ "{{ empty([1, 2, 3]) }}" `shouldBe` Right "false"
-        render2_ "{{ empty({}) }}" `shouldBe` Right "true"
-        render2_ "{{ empty({x: 4, y: 7}) }}" `shouldBe` Right "false"
+        r_ "{{ empty(\"\") }}" `shouldRender` "true"
+        r_ "{{ empty(\"hello\") }}" `shouldRender` "false"
+        r_ "{{ empty([]) }}" `shouldRender` "true"
+        r_ "{{ empty([1, 2, 3]) }}" `shouldRender` "false"
+        r_ "{{ empty({}) }}" `shouldRender` "true"
+        r_ "{{ empty({x: 4, y: 7}) }}" `shouldRender` "false"
 
       it "length" $ do
-        render2_ "{{ length(\"hello\") }}" `shouldBe` Right "5"
-        render2_ "{{ length([1, 2, 3]) }}" `shouldBe` Right "3"
-        render2_ "{{ length({x: 4, y: 7}) }}" `shouldBe` Right "2"
+        r_ "{{ length(\"hello\") }}" `shouldRender` "5"
+        r_ "{{ length([1, 2, 3]) }}" `shouldRender` "3"
+        r_ "{{ length({x: 4, y: 7}) }}" `shouldRender` "2"
 
       it "join" $ do
-        render2_ "{{ join(\",\", [\"foo\", \"bar\", \"baz\"]) }}" `shouldBe`
-          Right "foo,bar,baz"
+        r_ "{{ join(\",\", [\"foo\", \"bar\", \"baz\"]) }}" `shouldRender`
+          "foo,bar,baz"
 
       it "split" $ do
-        render2_ "{% for x in split(\",\", \"foo,bar,baz\") %}{{ x }}{% endfor %}" `shouldBe`
-          Right "foobarbaz"
+        r_ "{% for x in split(\",\", \"foo,bar,baz\") %}{{ x }}{% endfor %}" `shouldRender`
+          "foobarbaz"
 
       it "die" $ do
-        render2_ "{{ die(\"reason\") }}" `shouldBe` Left (GenericError "die: \"reason\"")
-        render2_ "{{ die(4) }}" `shouldBe` Left (GenericError "die: 4")
+        r_ "{{ die(\"reason\") }}" `shouldRaise` GenericError "die: \"reason\""
+        r_ "{{ die(4) }}" `shouldRaise` GenericError "die: 4"
 
       it "show" $
-        render2_ "{{ show([1, {a: 4}, \"foo\"]) }}" `shouldBe` Right "[1,{\"a\":4},\"foo\"]"
+        r_ "{{ show([1, {a: 4}, \"foo\"]) }}" `shouldRender`
+          "[1,{\"a\":4},\"foo\"]"
 
       it "pp" $
-        render2_ "{{ pp([1, {a: 4}, \"foo\"]) }}" `shouldBe`
-          Right "[\n    1,\n    {\n        \"a\": 4\n    },\n    \"foo\"\n]"
+        r_ "{{ pp([1, {a: 4}, \"foo\"]) }}" `shouldRender`
+          "[\n    1,\n    {\n        \"a\": 4\n    },\n    \"foo\"\n]"
 
       it "==" $ do
-        render2_ "{{ null == null }}" `shouldBe` Right "true"
-        render2_ "{{ true == true }}" `shouldBe` Right "true"
-        render2_ "{{ true == false }}" `shouldBe` Right "false"
-        render2_ "{{ 4 == 4 }}" `shouldBe` Right "true"
-        render2_ "{{ 4 == 7 }}" `shouldBe` Right "false"
-        render2_ "{{ \"foo\" == \"foo\" }}" `shouldBe` Right "true"
-        render2_ "{{ \"foo\" == \"bar\" }}" `shouldBe` Right "false"
-        render2_ "{{ [] == [] }}" `shouldBe` Right "true"
-        render2_ "{{ [] == [1, 2] }}" `shouldBe` Right "false"
-        render2_ "{{ [1, \"foo\", false] == [1, \"foo\", false] }}" `shouldBe` Right "true"
-        render2_ "{{ [1, \"foo\", false] == [1, \"bar\", true] }}" `shouldBe` Right "false"
-        render2_ "{{ {} == {} }}" `shouldBe` Right "true"
-        render2_ "{{ {} == {a: 4} }}" `shouldBe` Right "false"
-        render2_ "{{ {a: 4, b: \"foo\"} == {a: 4, b: \"foo\"} }}" `shouldBe` Right "true"
-        render2_ "{{ {a: 4, b: \"foo\"} == {a: 4, b: \"bar\"} }}" `shouldBe` Right "false"
-        render2_ "{{ 4 == \"foo\" }}" `shouldBe` Right "false"
-        render2_ "{{ {a: 4} == length }}" `shouldBe` Right "false"
+        r_ "{{ null == null }}" `shouldRender` "true"
+        r_ "{{ true == true }}" `shouldRender` "true"
+        r_ "{{ true == false }}" `shouldRender` "false"
+        r_ "{{ 4 == 4 }}" `shouldRender` "true"
+        r_ "{{ 4 == 7 }}" `shouldRender` "false"
+        r_ "{{ \"foo\" == \"foo\" }}" `shouldRender` "true"
+        r_ "{{ \"foo\" == \"bar\" }}" `shouldRender` "false"
+        r_ "{{ [] == [] }}" `shouldRender` "true"
+        r_ "{{ [] == [1, 2] }}" `shouldRender` "false"
+        r_ "{{ [1, \"foo\", false] == [1, \"foo\", false] }}" `shouldRender` "true"
+        r_ "{{ [1, \"foo\", false] == [1, \"bar\", true] }}" `shouldRender` "false"
+        r_ "{{ {} == {} }}" `shouldRender` "true"
+        r_ "{{ {} == {a: 4} }}" `shouldRender` "false"
+        r_ "{{ {a: 4, b: \"foo\"} == {a: 4, b: \"foo\"} }}" `shouldRender` "true"
+        r_ "{{ {a: 4, b: \"foo\"} == {a: 4, b: \"bar\"} }}" `shouldRender` "false"
+        r_ "{{ 4 == \"foo\" }}" `shouldRender` "false"
+        r_ "{{ {a: 4} == length }}" `shouldRender` "false"
 
       it "=~" $ do
-        render2_ "{{ \"foo\" =~ /foo/ }}" `shouldBe` Right "true"
-        render2_ "{{ \"Foo\" =~ /foo/ }}" `shouldBe` Right "false"
-        render2_ "{{ \"Foo\" =~ /foo/i }}" `shouldBe` Right "true"
+        r_ "{{ \"foo\" =~ /foo/ }}" `shouldRender` "true"
+        r_ "{{ \"Foo\" =~ /foo/ }}" `shouldRender` "false"
+        r_ "{{ \"Foo\" =~ /foo/i }}" `shouldRender` "true"
 
-render2 :: Aeson.Value -> Text -> Either Error Lazy.Text
-render2 json tmplStr = do
+      xcontext "lazyness" $ do
+        it "||" $ do
+          r_ "{{ true || die(\"no reason\") }}" `shouldRender` "true"
+          r_ "{{ false || die(4) }}" `shouldRaise` GenericError "die: 4"
+
+        it "&&" $ do
+          r_ "{{ false && die(\"no reason\") }}" `shouldRender` "true"
+          r_ "{{ true && die(4) }}" `shouldRaise` GenericError "die: 4"
+
+shouldRender :: (HasCallStack, Show e, Eq e, Show a, Eq a) => Either e a -> a -> Expectation
+tmpl `shouldRender` res =
+  tmpl `shouldBe` Right res
+
+shouldRaise :: (HasCallStack, Show e, Eq e, Show a, Eq a) => Either e a -> e -> Expectation
+tmpl `shouldRaise` res =
+  tmpl `shouldBe` Left res
+
+rWith :: Aeson.Value -> Text -> Either Error Lazy.Text
+rWith json tmplStr = do
   let Just env = envFromJson json
       Right tmpl = parse (Text.encodeUtf8 tmplStr)
   render env tmpl
 
-render2_ :: Text -> Either Error Lazy.Text
-render2_ =
-  render2 [aesonQQ| {} |]
+r_ :: Text -> Either Error Lazy.Text
+r_ =
+  rWith [aesonQQ| {} |]

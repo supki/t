@@ -50,6 +50,9 @@ instance (Eject a, Embed b) => Embed (a -> b) where
 class Eject t where
   eject :: Value -> Either Error t
 
+instance Eject Value where
+  eject = pure
+
 instance Eject Bool where
   eject = \case
     Bool b ->

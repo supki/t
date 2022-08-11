@@ -57,8 +57,8 @@ stdlib =
 eEq :: Value
 eNeq :: Value
 (eEq, eNeq) =
-  ( Lam (\x -> pure (Lam (\y -> pure (Bool (eq x y)))))
-  , Lam (\x -> pure (Lam (\y -> pure (Bool (not (eq x y))))))
+  ( embed eq
+  , embed neq
   )
  where
   eq x y =
@@ -84,6 +84,8 @@ eNeq :: Value
             False
       (_, _) ->
         False
+  neq x y =
+    not (eq x y)
 
 match :: Text -> Pcre.Regex -> Bool
 match str regexp =
