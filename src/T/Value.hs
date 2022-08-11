@@ -1,10 +1,12 @@
 module T.Value
   ( Value(..)
   , display
+  , displayWith
   ) where
 
 import           Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
+import qualified Data.ByteString.Lazy as Lazy (ByteString)
 import           Data.HashMap.Strict (HashMap)
 import           Data.Scientific (Scientific)
 import           Data.Text (Text)
@@ -60,9 +62,13 @@ instance Aeson.ToJSON Value where
         [ "variant" .= ("<lambda>" :: Text)
         ]
 
-display :: Value -> String
+display :: Value -> Text
 display =
-  Text.Lazy.unpack . Text.Lazy.decodeUtf8 . Aeson.encode . embedAeson
+  displayWith Aeson.encode
+
+displayWith :: (Aeson.Value -> Lazy.ByteString) -> Value -> Text
+displayWith f =
+  Text.Lazy.toStrict . Text.Lazy.decodeUtf8 . f . embedAeson
  where
   embedAeson = \case
     Null ->

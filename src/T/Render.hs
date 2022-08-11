@@ -28,10 +28,10 @@ import qualified Data.Text.Lazy.Builder as Builder
 import qualified Data.HashMap.Strict as HashMap
 import           Prelude hiding (exp)
 
-import           T.Embed (stdlib)
 import           T.Exp (Tmpl(..), Exp(..), Literal(..), Name(..), (:<)(..), Ann)
 import           T.Exp.Ann (emptyAnn)
 import           T.Error (Error(..))
+import           T.Stdlib (stdlib)
 import           T.Value (Value)
 import qualified T.Value as Value
 

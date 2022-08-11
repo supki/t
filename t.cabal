@@ -32,6 +32,7 @@ library
       T.Exp.Ann
       T.Parse
       T.Render
+      T.Stdlib
       T.Value
   other-modules:
       Paths_t
@@ -44,6 +45,7 @@ library
   ghc-options: -funbox-strict-fields -Wall
   build-depends:
       aeson
+    , aeson-pretty
     , base >=4.14 && <5
     , bytestring
     , containers

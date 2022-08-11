@@ -134,6 +134,13 @@ spec =
         render2_ "{{ die(\"reason\") }}" `shouldBe` Left (GenericError "die: \"reason\"")
         render2_ "{{ die(4) }}" `shouldBe` Left (GenericError "die: 4")
 
+      it "show" $
+        render2_ "{{ show([1, {a: 4}, \"foo\"]) }}" `shouldBe` Right "[1,{\"a\":4},\"foo\"]"
+
+      it "pp" $
+        render2_ "{{ pp([1, {a: 4}, \"foo\"]) }}" `shouldBe`
+          Right "[\n    1,\n    {\n        \"a\": 4\n    },\n    \"foo\"\n]"
+
       it "==" $ do
         render2_ "{{ null == null }}" `shouldBe` Right "true"
         render2_ "{{ true == true }}" `shouldBe` Right "true"
