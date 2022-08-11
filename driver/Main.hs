@@ -18,18 +18,20 @@ main = do
   str <- Text.readFile templateName
   case T.parse (Text.encodeUtf8 str) of
     Left err ->
-      die err
+      die (show err)
     Right exp ->
       case envParse envStr of
         Left err ->
-          die err
-        Right env ->
+          die (show err)
+        Right Nothing ->
+          die ("not a JSON object: " <> envStr)
+        Right (Just env) ->
           case T.render env exp of
             Left err ->
-              die err
+              die (show err)
             Right res ->
               Text.Lazy.putStrLn res
 
-envParse :: String -> Either String T.Env
+envParse :: String -> Either String (Maybe T.Env)
 envParse =
   fmap T.envFromJson . Aeson.eitherDecode . fromString

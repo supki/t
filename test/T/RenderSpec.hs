@@ -39,12 +39,13 @@ spec =
       render2_ "{{ ! true }}" `shouldBe` Right "false"
       render2_ "{{ {a: 4, b: 7}.a }}" `shouldBe` Right "4"
       render2_ "{% for _ in [1,2,3] %}{{ _ }}{% endfor %}" `shouldBe`
-        Left (GenericError "not in scope: Name {unName = \"_\"}")
+        Left (NotInScope "_")
       render2_ "{% for _foo in [1,2,3] %}{{ _foo }}{% endfor %}" `shouldBe`
-        Left (GenericError "not in scope: Name {unName = \"_foo\"}")
+        Left (NotInScope "_foo")
       render2_ "{% case 4 %}{% when 4 %}4{% when 7 %}7{% endcase %}" `shouldBe` Right "4"
       render2_ "{% case 7 %}{% when 4 %}4{% when 7 %}7{% endcase %}" `shouldBe` Right "7"
       render2_ "{% case 11 %}{% when 4 %}4{% else %}11{% endcase %}" `shouldBe` Right "11"
+      render2_ "{{ null }}" `shouldBe` Right ""
 
     context "line blocks" $
       it "examples" $ do
@@ -64,7 +65,7 @@ spec =
         render2_ "{% for x in {a: 4, b: 7} %}{{ x }}{% else %}foo{% endfor %}" `shouldBe`
           Right "47"
         render2_ "{% for x in [1,2,3] %}{% endfor %}{{ x }}" `shouldBe`
-          Left (GenericError "not in scope: Name {unName = \"x\"}")
+          Left (NotInScope "x")
         render2_ "{% for x in [] %}{{ x }}{% else %}foo{% endfor %}" `shouldBe` Right "foo"
         render2_ "{% for x in {} %}{{ x }}{% else %}foo{% endfor %}" `shouldBe` Right "foo"
         render2_ "{% for x, it in [1,2,3] %}{{ it.first }}{% endfor %}" `shouldBe`

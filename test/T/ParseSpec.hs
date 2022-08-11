@@ -12,6 +12,7 @@ import           Test.Hspec
 
 import           T.Parse (parse)
 import           T.Exp (Tmpl(..), Exp(..), Literal(..), Name(..))
+import           T.Exp.Ann (noann)
 
 
 spec :: Spec
@@ -93,11 +94,11 @@ spec =
 
 vars :: NonEmpty Name -> Exp
 vars (chunk :| chunks) =
-  foldl' (\acc chunk' -> App (App (Var ".") acc) (string (unName chunk'))) (Var chunk) chunks
+  foldl' (\acc chunk' -> App (App (var ".") acc) (string (unName chunk'))) (var chunk) chunks
 
 var :: Name -> Exp
 var =
-  Var
+  Var . noann
 
 null :: Exp
 null =

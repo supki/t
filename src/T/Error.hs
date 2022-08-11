@@ -1,14 +1,12 @@
-{-# LANGUAGE TypeOperators #-}
 module T.Error
   ( Error(..)
   ) where
 
-import Text.Trifecta (Span)
-
-import T.Exp ((:<)(..), Name)
+import T.Exp ((:<)(..), Name, Ann)
 
 
 data Error
-  = ShadowedBy (Span :< Name) (Span :< Name)
+  = ShadowedBy (Ann :< Name) (Ann :< Name)
+  | NotInScope (Ann :< Name)
   | GenericError String
     deriving (Show, Eq)

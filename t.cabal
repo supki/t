@@ -40,6 +40,7 @@ library
   default-extensions:
       LambdaCase
       OverloadedStrings
+      TypeOperators
   ghc-options: -funbox-strict-fields -Wall
   build-depends:
       aeson
@@ -47,6 +48,7 @@ library
     , bytestring
     , containers
     , either
+    , hashable
     , mtl
     , parsers
     , pcre-light
@@ -67,6 +69,7 @@ executable t
   default-extensions:
       LambdaCase
       OverloadedStrings
+      TypeOperators
   ghc-options: -Wall -threaded -with-rtsopts=-N
   build-depends:
       aeson
@@ -87,6 +90,7 @@ test-suite spec
   default-extensions:
       LambdaCase
       OverloadedStrings
+      TypeOperators
   ghc-options: -Wall -threaded -with-rtsopts=-N
   build-depends:
       aeson

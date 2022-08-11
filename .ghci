@@ -2,3 +2,4 @@
 :set -Wall
 :set -XOverloadedStrings
 :set -XLambdaCase
+:set -XTypeOperators

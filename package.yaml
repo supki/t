@@ -17,6 +17,7 @@ dependencies:
 default-extensions:
   - LambdaCase
   - OverloadedStrings
+  - TypeOperators
 
 library:
   dependencies:
@@ -24,6 +25,7 @@ library:
     - bytestring
     - containers
     - either
+    - hashable
     - mtl
     - parsers
     - pcre-light

@@ -2,7 +2,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
 module T.Render
   ( Env
@@ -28,17 +27,17 @@ import           Data.Text.Lazy.Builder (Builder)
 import qualified Data.Text.Lazy.Builder as Builder
 import qualified Data.HashMap.Strict as HashMap
 import           Prelude hiding (exp)
-import           Text.Trifecta (Span)
 
 import           T.Embed (stdlib)
-import           T.Exp (Tmpl(..), Exp(..), Literal(..), Name(..), (:<)(..))
+import           T.Exp (Tmpl(..), Exp(..), Literal(..), Name(..), (:<)(..), Ann)
+import           T.Exp.Ann (emptyAnn)
 import           T.Error (Error(..))
 import           T.Value (Value)
 import qualified T.Value as Value
 
 
 data Env = Env
-  { vars   :: HashMap Name (Span, Value)
+  { vars   :: HashMap Name (Ann, Value)
   , result :: Builder
   }
 
@@ -106,6 +105,8 @@ renderExp :: (MonadState Env m, MonadError Error m) => Exp -> m Text
 renderExp exp = do
   value <- evalExp exp
   case value of
+    Value.Null ->
+      pure ""
     Value.Bool b ->
       pure (bool "false" "true" b)
     Value.Number n ->
@@ -137,11 +138,7 @@ evalExp = \case
         pure (Value.Object ys)
   Var name -> do
     env <- get
-    case lookupVar env name of
-      Nothing ->
-        throwError (GenericError ("not in scope: " <> show name))
-      Just value -> do
-        pure value
+    lookupVar env name
   App exp0 exp1 -> do
     fQ <- evalExp exp0
     case fQ of
@@ -154,7 +151,7 @@ evalExp = \case
 envFromJson :: Aeson.Value -> Maybe Env
 envFromJson (Aeson.Object val) =
   Just emptyEnv
-    { vars = fmap (\x -> (error "M", go x)) (HashMap.mapKeys Name val)
+    { vars = fmap (\x -> (emptyAnn, go x)) (HashMap.mapKeys Name val)
     }
  where
   go = \case
@@ -176,9 +173,13 @@ envFromJson _ =
 emptyEnv :: Env
 emptyEnv = Env {vars = mempty, result = mempty}
 
-lookupVar :: Env -> Name -> Maybe Value
-lookupVar Env {vars} name =
-  fmap snd (HashMap.lookup name vars) <|> HashMap.lookup name stdlib
+lookupVar :: MonadError Error m => Env -> Ann :< Name -> m Value
+lookupVar Env {vars} aname@(_ :< name) =
+  case fmap snd (HashMap.lookup name vars) <|> HashMap.lookup name stdlib of
+    Nothing ->
+      throwError (NotInScope aname)
+    Just value ->
+      pure value
 
 modifyM :: MonadState s m => (s -> m s) -> m s
 modifyM f = do
@@ -187,7 +188,7 @@ modifyM f = do
   put s'
   pure s
 
-insertVar :: MonadError Error m => Span :< Name -> Value -> Env -> m Env
+insertVar :: MonadError Error m => Ann :< Name -> Value -> Env -> m Env
 insertVar (_ :< Name (Text.uncons -> Just ('_', _rest))) _ env =
   pure env
 insertVar (ann :< name) value env =

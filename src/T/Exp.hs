@@ -1,11 +1,11 @@
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
-{-# LANGUAGE TypeOperators #-}
 module T.Exp
   ( Tmpl(..)
   , Exp(..)
   , Literal(..)
   , Name(..)
   , (:<)(..)
+  , Ann
   ) where
 
 import           Data.Aeson ((.=))
@@ -20,7 +20,7 @@ import           Data.Vector (Vector)
 import           Prelude hiding (exp)
 import qualified Text.Regex.PCRE.Light as Pcre
 
-import           T.Exp.Ann (Span, (:<)(..), unann)
+import           T.Exp.Ann (Ann, (:<)(..))
 
 
 infixr 1 :*:
@@ -31,13 +31,13 @@ data Tmpl
     -- ^ {{ exp }} context
   | Exp Exp
     -- ^ {% set _ = _ %}
-  | Set (Span :< Name) Exp
+  | Set (Ann :< Name) Exp
     -- ^ {% let _ = _ %} _ {% endlet %}
-  | Let (Span :< Name) Exp Tmpl
+  | Let (Ann :< Name) Exp Tmpl
     -- ^ {% if _ %} _ {% elif _ %} _ {% else %} _ {% endif %}
   | If (NonEmpty (Exp, Tmpl))
     -- ^ {% for _, _ in _ %} _ {% else %} _ {% endfor %}
-  | For (Span :< Name) (Maybe (Span :< Name)) Exp Tmpl (Maybe Tmpl)
+  | For (Ann :< Name) (Maybe (Ann :< Name)) Exp Tmpl (Maybe Tmpl)
     -- ^ Glue two `Tmpl`s together
   | Tmpl :*: Tmpl
     deriving (Show, Eq)
@@ -59,12 +59,12 @@ instance Aeson.ToJSON Tmpl where
         ]
       Set name exp ->
         [ "variant" .= ("set" :: Text)
-        , "name" .= unann name
+        , "name" .= name
         , "exp" .= exp
         ]
       Let name exp tmpl ->
         [ "variant" .= ("let" :: Text)
-        , "name" .= unann name
+        , "name" .= name
         , "exp" .= exp
         , "tmpl" .= tmpl
         ]
@@ -74,8 +74,8 @@ instance Aeson.ToJSON Tmpl where
         ]
       For name it exp forTmpl elseTmpl ->
         [ "variant" .= ("for" :: Text)
-        , "name" .= unann name
-        , "it" .= fmap unann it
+        , "name" .= name
+        , "it" .= it
         , "exp" .= exp
         , "for" .= forTmpl
         , "else" .= elseTmpl
@@ -88,7 +88,7 @@ instance Aeson.ToJSON Tmpl where
 
 data Exp 
   = Lit Literal
-  | Var Name
+  | Var (Ann :< Name)
   | App Exp Exp
     deriving (Show, Eq)
 

@@ -22,8 +22,8 @@ import           Text.Parser.LookAhead (lookAhead)
 import           Text.Parser.Token.Style (emptyOps)
 import qualified Text.Regex.PCRE.Light as Pcre
 
-import           T.Exp (Tmpl(..), Exp(..), Literal(..), Name(..))
-import           T.Exp.Ann (anned)
+import           T.Exp (Tmpl(..), Exp(..), Literal(..), Name(..), (:<)(..))
+import           T.Exp.Ann (anning, anned)
 
 
 parse :: ByteString -> Either String Tmpl
@@ -165,27 +165,30 @@ expP =
    where
     dotOp name =
       Infix
-        (do reserve emptyOps name
+        (do ann <- anning (reserve emptyOps name)
             pure (\a b ->
               App
                 (App
-                  (Var (Name (fromString name)))
+                  (Var (ann :< Name (fromString name)))
                   a)
                 -- Property lookups have the syntax of variables, but
                 -- we actually want them as strings.
-                (case b of Var (Name b') -> Lit (String b'); _ -> b)))
+                (case b of Var (_ :< Name b') -> Lit (String b'); _ -> b)))
         AssocLeft
     infixOp name =
       Infix
-        (reserve emptyOps name *> pure (\a b -> App (App (Var (Name (fromString name))) a) b))
+        (do ann <- anning (reserve emptyOps name)
+            pure (\a b -> App (App (Var (ann :< Name (fromString name))) a) b))
         AssocNone
     infixrOp name =
       Infix
-        (reserve emptyOps name *> pure (\a b -> App (App (Var (Name (fromString name))) a) b))
+        (do ann <- anning (reserve emptyOps name)
+            pure (\a b -> App (App (Var (ann :< Name (fromString name))) a) b))
         AssocRight
     prefixOp name =
       Prefix
-        (reserve emptyOps name *> pure (\a -> App (Var (Name (fromString name))) a))
+        (do ann <- anning (reserve emptyOps name)
+            pure (\a -> App (Var (ann :< Name (fromString name))) a))
   expP' =
     asum
       [ litP
@@ -266,7 +269,7 @@ regexpP = do
 
 varP :: Parser Exp
 varP =
-  fmap Var nameP
+  fmap Var (anned nameP)
 
 nameP :: Parser Name
 nameP =
