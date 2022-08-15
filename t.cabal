@@ -33,6 +33,7 @@ library
       T.Parse
       T.Render
       T.Stdlib
+      T.Tmpl
       T.Value
   other-modules:
       Paths_t
@@ -98,6 +99,7 @@ test-suite spec
       aeson
     , aeson-qq
     , base >=4.14 && <5
+    , bytestring
     , hspec
     , scientific
     , t

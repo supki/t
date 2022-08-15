@@ -1,7 +1,7 @@
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 module T.Tmpl
   ( Tmpl(..)
-  , (:<)(..)
+  , (:+)(..)
   , Ann
   ) where
 
@@ -12,7 +12,7 @@ import           Data.String (IsString(..))
 import           Data.Text (Text)
 import           Prelude hiding (exp)
 
-import           T.Exp.Ann (Ann, (:<)(..))
+import           T.Exp.Ann (Ann, (:+)(..))
 import           T.Exp (Exp, Name)
 
 
@@ -24,13 +24,13 @@ data Tmpl
     -- ^ {{ exp }} context
   | Exp Exp
     -- ^ {% set _ = _ %}
-  | Set (Ann :< Name) Exp
+  | Set (Ann :+ Name) Exp
     -- ^ {% let _ = _ %} _ {% endlet %}
-  | Let (Ann :< Name) Exp Tmpl
+  | Let (Ann :+ Name) Exp Tmpl
     -- ^ {% if _ %} _ {% elif _ %} _ {% else %} _ {% endif %}
   | If (NonEmpty (Exp, Tmpl))
     -- ^ {% for _, _ in _ %} _ {% else %} _ {% endfor %}
-  | For (Ann :< Name) (Maybe (Ann :< Name)) Exp Tmpl (Maybe Tmpl)
+  | For (Ann :+ Name) (Maybe (Ann :+ Name)) Exp Tmpl (Maybe Tmpl)
     -- ^ Glue two `Tmpl`s together
   | Tmpl :*: Tmpl
     deriving (Show, Eq)

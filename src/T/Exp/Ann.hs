@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeFamilies #-}
 module T.Exp.Ann
-  ( (:<)(..)
+  ( (:+)(..)
   , Ann
   , anning
   , anned
@@ -19,19 +19,19 @@ type Ann = Span
 
 -- | Just a pair. The annotation part is ignored
 -- when checking for equality.
-data ann :< t = ann :< t
+data ann :+ t = ann :+ t
     deriving (Show)
 
 -- | This instance ignores the annotation part.
-instance Eq t => Eq (ann :< t) where
-  _ann0 :< t0 == _ann1 :< t1 =
+instance Eq t => Eq (ann :+ t) where
+  _ann0 :+ t0 == _ann1 :+ t1 =
     t0 == t1
 
-instance (IsString t, ann ~ Ann) => IsString (ann :< t) where
+instance (IsString t, ann ~ Ann) => IsString (ann :+ t) where
   fromString str =
-    emptyAnn :< fromString str
+    emptyAnn :+ fromString str
 
-instance Aeson.ToJSON t => Aeson.ToJSON (ann :< t) where
+instance Aeson.ToJSON t => Aeson.ToJSON (ann :+ t) where
   toJSON =
     Aeson.toJSON . unann
   toEncoding =
@@ -41,17 +41,17 @@ anning :: DeltaParsing m => m a -> m Ann
 anning =
   spanning
 
-anned :: DeltaParsing m => m a -> m (Ann :< a)
+anned :: DeltaParsing m => m a -> m (Ann :+ a)
 anned p = do
   a :~ span <- spanned p
-  pure (span :< a)
+  pure (span :+ a)
 
-noann :: a -> Ann :< a
+noann :: a -> Ann :+ a
 noann a =
-  emptyAnn :< a
+  emptyAnn :+ a
 
-unann :: ann :< t -> t
-unann (_ann :< t) = t
+unann :: ann :+ t -> t
+unann (_ann :+ t) = t
 
 emptyAnn :: Ann
 emptyAnn =

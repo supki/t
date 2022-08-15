@@ -4,11 +4,12 @@ module T.Error
 
 import Data.Text (Text)
 
-import T.Exp ((:<)(..), Name, Ann)
+import T.Exp (Exp, (:+)(..), Name, Ann)
 
 
 data Error
-  = ShadowedBy (Ann :< Name) (Ann :< Name)
-  | NotInScope (Ann :< Name)
+  = ShadowedBy (Ann :+ Name) (Ann :+ Name)
+  | NotInScope (Ann :+ Name)
+  | NotAFunction Exp
   | GenericError Text
     deriving (Show, Eq)

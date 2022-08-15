@@ -8,6 +8,7 @@ import qualified Data.Text.Encoding as Text
 import qualified Data.Text.Lazy as Lazy (Text)
 import           Test.Hspec
 
+import           T.Exp (varE_)
 import           T.Error (Error(..))
 import           T.Parse (parse)
 import           T.Render (render, envFromJson)
@@ -171,6 +172,9 @@ spec =
         it "&&" $ do
           r_ "{{ false && die(\"no reason\") }}" `shouldRender` "false"
           r_ "{{ true && die(4) }}" `shouldRaise` GenericError "die: 4"
+
+      it "not-a-function" $
+        rWith [aesonQQ|{f: "foo"}|] "{{ f(4) }}" `shouldRaise` NotAFunction (varE_ "f")
 
 shouldRender :: (HasCallStack, Show e, Eq e, Show a, Eq a) => Either e a -> a -> Expectation
 tmpl `shouldRender` res =

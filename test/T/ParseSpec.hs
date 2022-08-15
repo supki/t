@@ -12,7 +12,7 @@ import           Prelude hiding (null)
 import           Test.Hspec
 
 import           T.Parse (parse)
-import           T.Exp (Exp(..), Literal(..), Name(..))
+import           T.Exp (Exp, Literal(..), Name(..), litE_, varE_, ifE_, appE_)
 import           T.Exp.Ann (noann)
 import           T.Tmpl (Tmpl((:*:)))
 import qualified T.Tmpl as Tmpl
@@ -28,11 +28,11 @@ spec =
       "{{ x }}{{ y }}" `shouldParseTo` (Tmpl.Exp (var "x") :*: Tmpl.Exp (var "y"))
       "{{ x.y.z }}" `shouldParseTo`
         Tmpl.Exp
-          (App
-            (App
+          (appE_
+            (appE_
               (var ".")
-              (App
-                (App (var ".") (var "x"))
+              (appE_
+                (appE_ (var ".") (var "x"))
                 (string "y")))
               (string "z"))
       "{{ x.y.z }}" `shouldParseTo` Tmpl.Exp (vars ["x", "y", "z"])
@@ -61,7 +61,7 @@ spec =
             , ("y", string "foo")
             ])
       "{{ if 4 then \"foo\" else 7 }}" `shouldParseTo`
-        Tmpl.Exp (If (number 4) (string "foo") (number 7))
+        Tmpl.Exp (ifE_ (number 4) (string "foo") (number 7))
       "{% set x = 4 %}" `shouldParseTo` Tmpl.Set "x" (number 4)
       "{% let x = 4 %}foo{% endlet %}" `shouldParseTo` Tmpl.Let "x" (number 4) "foo"
       "{% if x %}t{% endif %}" `shouldParseTo`
@@ -72,15 +72,15 @@ spec =
         Tmpl.If [(number 4, "4"), (number 7, "7")]
       "{% if 4 %}4{% elif 7 %}7{% else %}foo{% endif %}" `shouldParseTo`
         Tmpl.If [(number 4, "4"), (number 7, "7"), (true, "foo")]
-      "{{ foo(bar) }}" `shouldParseTo` Tmpl.Exp (App (var "foo") (var "bar"))
+      "{{ foo(bar) }}" `shouldParseTo` Tmpl.Exp (appE_ (var "foo") (var "bar"))
       "{{ foo(bar, baz) }}" `shouldParseTo`
-        Tmpl.Exp (App (App (var "foo") (var "bar")) (var "baz"))
+        Tmpl.Exp (appE_ (appE_ (var "foo") (var "bar")) (var "baz"))
       "{% if 4 && null %}foo{% endif %}" `shouldParseTo`
-        whenIf (If (number 4) null false) "foo"
+        whenIf (ifE_ (number 4) null false) "foo"
       "{% if null || 4 %}foo{% endif %}" `shouldParseTo`
-        whenIf (If null true (number 4)) "foo"
+        whenIf (ifE_ null true (number 4)) "foo"
       "{% if ! true %}foo{% endif %}" `shouldParseTo`
-        whenIf (App (var "!") true) "foo"
+        whenIf (appE_ (var "!") true) "foo"
       "{% for x in [1, 2, 3] %}{{ x }}{% endfor %}" `shouldParseTo`
         Tmpl.For "x" Nothing (array [number 1, number 2, number 3]) (Tmpl.Exp (var "x")) Nothing
       "{% for x in [] %}{{ x }}{% else %}foo{% endfor %}" `shouldParseTo`
@@ -97,39 +97,39 @@ spec =
 
 vars :: NonEmpty Name -> Exp
 vars (chunk :| chunks) =
-  foldl' (\acc chunk' -> App (App (var ".") acc) (string (unName chunk'))) (var chunk) chunks
+  foldl' (\acc chunk' -> appE_ (appE_ (var ".") acc) (string (unName chunk'))) (var chunk) chunks
 
 var :: Name -> Exp
 var =
-  Var . noann
+  varE_ . noann
 
 null :: Exp
 null =
-  Lit Null
+  litE_ Null
 
 false :: Exp
 false =
-  Lit (Bool False)
+  litE_ (Bool False)
 
 true :: Exp
 true =
-  Lit (Bool True)
+  litE_ (Bool True)
 
 number :: Scientific -> Exp
 number =
-  Lit . Number
+  litE_ . Number
 
 string :: Text -> Exp
 string =
-  Lit . String
+  litE_ . String
 
 array :: [Exp] -> Exp
 array =
-  Lit . Array . Vector.fromList
+  litE_ . Array . Vector.fromList
 
 object :: [(Text, Exp)] -> Exp
 object =
-  Lit . Object . HashMap.fromList
+  litE_ . Object . HashMap.fromList
 
 simpleIf :: Exp -> Tmpl -> Tmpl -> Tmpl
 simpleIf p thenTmpl elseTmpl =

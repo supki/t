@@ -28,7 +28,7 @@ import qualified Data.Text.Lazy.Builder as Builder
 import qualified Data.HashMap.Strict as HashMap
 import           Prelude hiding (exp)
 
-import           T.Exp (Exp(..), Literal(..), Name(..), (:<)(..), Ann)
+import           T.Exp (Cofree(..), Exp, ExpF(..), Literal(..), Name(..), (:+)(..), Ann)
 import           T.Exp.Ann (emptyAnn)
 import           T.Error (Error(..))
 import           T.Stdlib (stdlib)
@@ -120,7 +120,7 @@ renderExp exp = do
 
 evalExp :: (MonadState Env m, MonadError Error m) => Exp -> m Value
 evalExp = \case
-  Lit literal ->
+  _ :< Lit literal ->
     case literal of
       Null ->
         pure Value.Null
@@ -138,20 +138,20 @@ evalExp = \case
       Object xs -> do
         ys <- traverse evalExp xs
         pure (Value.Object ys)
-  If p expt expf -> do
+  _ :< If p t f -> do
     pv <- evalExp p
-    evalExp (bool expf expt (truthy pv))
-  Var name -> do
+    evalExp (bool f t (truthy pv))
+  _ :< Var name -> do
     env <- get
     lookupVar env name
-  App exp0 exp1 -> do
+  _ :< App exp0 exp1 -> do
     fQ <- evalExp exp0
     case fQ of
       Value.Lam f -> do
         x <- evalExp exp1
         liftEither (f x)
-      value ->
-        throwError (GenericError ("not a function: " <> Value.display value))
+      _value ->
+        throwError (NotAFunction exp0)
 
 envFromJson :: Aeson.Value -> Maybe Env
 envFromJson (Aeson.Object val) =
@@ -178,8 +178,8 @@ envFromJson _ =
 emptyEnv :: Env
 emptyEnv = Env {vars = mempty, result = mempty}
 
-lookupVar :: MonadError Error m => Env -> Ann :< Name -> m Value
-lookupVar Env {vars} aname@(_ :< name) =
+lookupVar :: MonadError Error m => Env -> Ann :+ Name -> m Value
+lookupVar Env {vars} aname@(_ :+ name) =
   case fmap snd (HashMap.lookup name vars) <|> HashMap.lookup name stdlib of
     Nothing ->
       throwError (NotInScope aname)
@@ -193,15 +193,15 @@ modifyM f = do
   put s'
   pure s
 
-insertVar :: MonadError Error m => Ann :< Name -> Value -> Env -> m Env
-insertVar (_ :< Name (Text.uncons -> Just ('_', _rest))) _ env =
+insertVar :: MonadError Error m => Ann :+ Name -> Value -> Env -> m Env
+insertVar (_ :+ Name (Text.uncons -> Just ('_', _rest))) _ env =
   pure env
-insertVar (ann :< name) value env =
+insertVar (ann :+ name) value env =
   case HashMap.lookup name (vars env) of
     Nothing ->
       pure env {vars = HashMap.insert name (ann, value) (vars env)}
     Just (oldAnn, _) ->
-      throwError (ShadowedBy (oldAnn :< name) (ann :< name))
+      throwError (ShadowedBy (oldAnn :+ name) (ann :+ name))
 
 build :: MonadState Env m => Builder -> m ()
 build chunk =

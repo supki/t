@@ -22,7 +22,22 @@ import           Text.Parser.LookAhead (lookAhead)
 import           Text.Parser.Token.Style (emptyOps)
 import qualified Text.Regex.PCRE.Light as Pcre
 
-import           T.Exp (Exp(..), Literal(..), Name(..), (:<)(..))
+import           T.Exp
+  ( Cofree(..)
+  , Exp
+  , ExpF(..)
+  , Literal(..)
+  , Name(..)
+  , (:+)(..)
+  , litE
+  , litE_
+  , varE
+  , varE_
+  , ifE
+  , ifE_
+  , appE
+  , appE_
+  )
 import           T.Exp.Ann (anning, anned)
 import qualified T.Tmpl as Tmpl
 import           T.Tmpl (Tmpl((:*:)))
@@ -109,7 +124,7 @@ parseIf = do
   let ifClause =
         (exp, ifTmpl)
       elseClauseQ =
-        fmap (\tmpl -> (Lit (Bool True), tmpl)) elseTmplQ
+        fmap (\tmpl -> (litE_ (Bool True), tmpl)) elseTmplQ
   case elseClauseQ of
     Nothing ->
       pure (Tmpl.If (ifClause :| thenClauses))
@@ -123,9 +138,9 @@ parseCase = do
   elseTmplQ <- optional (blockP_ "else" *> parser)
   _ <- blockP_ "endcase"
   let clauses =
-        fmap (\(exp1, tmpl) -> (App (App (Var "==") exp0) exp1, tmpl)) (when :| whens)
+        fmap (\(exp1, tmpl) -> (appE_ (appE_ (varE_ "==") exp0) exp1, tmpl)) (when :| whens)
       elseClauseQ =
-        fmap (\tmpl -> (Lit (Bool True), tmpl)) elseTmplQ
+        fmap (\tmpl -> (litE_ (Bool True), tmpl)) elseTmplQ
   case elseClauseQ of
     Nothing ->
       pure (Tmpl.If clauses)
@@ -169,37 +184,37 @@ expP =
       Infix
         (do ann <- anning (reserve emptyOps name)
             pure (\a b ->
-              App
-                (App
-                  (Var (ann :< Name (fromString name)))
+              appE_
+                (appE_
+                  (varE ann (ann :+ Name (fromString name)))
                   a)
                 -- Property lookups have the syntax of variables, but
                 -- we actually want them as strings.
-                (case b of Var (_ :< Name b') -> Lit (String b'); _ -> b)))
+                (case b of ann' :< Var (_ :+ Name b') -> litE ann' (String b'); _ -> b)))
         AssocLeft
     infixOp name =
       Infix
         (do ann <- anning (reserve emptyOps name)
-            pure (\a b -> App (App (Var (ann :< Name (fromString name))) a) b))
+            pure (\a b -> appE_ (appE_ (varE ann (ann :+ Name (fromString name))) a) b))
         AssocNone
     infixrOp name =
       Infix
         (do ann <- anning (reserve emptyOps name)
-            pure (\a b -> App (App (Var (ann :< Name (fromString name))) a) b))
+            pure (\a b -> appE_ (appE_ (varE ann (ann :+ Name (fromString name))) a) b))
         AssocRight
     prefixOp name =
       Prefix
         (do ann <- anning (reserve emptyOps name)
-            pure (\a -> App (Var (ann :< Name (fromString name))) a))
+            pure (\a -> appE_ (varE ann (ann :+ Name (fromString name))) a))
     andOp name =
       Infix
         (do reserve emptyOps name
-            pure (\a b -> If a b (Lit (Bool False))))
+            pure (\a b -> ifE_ a b (litE_ (Bool False))))
         AssocRight
     orOp name =
       Infix
         (do reserve emptyOps name
-            pure (\a b -> If a (Lit (Bool True)) b))
+            pure (\a b -> ifE_ a (litE_ (Bool True)) b))
         AssocRight
   expP' =
     asum
@@ -212,26 +227,9 @@ expP =
       , varP
       ]
 
-ifP :: Parser Exp
-ifP = do
-  _ <- symbol "if"
-  p <- expP
-  _ <- symbol "then"
-  t <- expP
-  _ <- symbol "else"
-  f <- expP
-  pure (If p t f)
-
-appP :: Parser Exp
-appP = do
-  var <- varP
-  arg :| args <-
-    between (string "(" *> spaces) (spaces *> string ")") (sepByNonEmpty expP (symbol ","))
-  pure (foldl' (\acc arg' -> App acc arg') (App var arg) args)
-
 litP :: Parser Exp
-litP =
-  fmap Lit $ asum
+litP = do
+  ann :+ lit <- anned $ asum
     [ nullP
     , boolP
     , numberP
@@ -240,6 +238,7 @@ litP =
     , arrayP
     , objectP
     ]
+  pure (litE ann lit)
  where
   nullP =
     Null <$ symbol "null"
@@ -290,9 +289,31 @@ regexpP = do
     'i' <- char 'i'
     pure Pcre.caseless
 
+ifP :: Parser Exp
+ifP = do
+  ann :+ (p, t, f) <- anned $ do
+    _ <- symbol "if"
+    p <- expP
+    _ <- symbol "then"
+    t <- expP
+    _ <- symbol "else"
+    f <- expP
+    pure (p, t, f)
+  pure (ifE ann p t f)
+
+appP :: Parser Exp
+appP = do
+  ann :+ (var, arg :| args) <- anned $ do
+    var <- varP
+    args <-
+      between (string "(" *> spaces) (spaces *> string ")") (sepByNonEmpty expP (symbol ","))
+    pure (var, args)
+  pure (foldl' (\acc arg' -> appE ann acc arg') (appE ann var arg) args)
+
 varP :: Parser Exp
-varP =
-  fmap Var (anned nameP)
+varP = do
+  name@(ann :+ _) <- anned nameP
+  pure (varE ann name)
 
 nameP :: Parser Name
 nameP =

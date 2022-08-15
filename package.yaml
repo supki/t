@@ -65,6 +65,7 @@ tests:
       - t
       - aeson
       - aeson-qq
+      - bytestring
       - hspec
       - scientific
       - text
