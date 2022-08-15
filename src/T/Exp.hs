@@ -1,7 +1,6 @@
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 module T.Exp
-  ( Tmpl(..)
-  , Exp(..)
+  ( Exp(..)
   , Literal(..)
   , Name(..)
   , (:<)(..)
@@ -23,72 +22,10 @@ import qualified Text.Regex.PCRE.Light as Pcre
 import           T.Exp.Ann (Ann, (:<)(..))
 
 
-infixr 1 :*:
-
-data Tmpl
-    -- ^ Raw template text
-  = Raw Text
-    -- ^ {{ exp }} context
-  | Exp Exp
-    -- ^ {% set _ = _ %}
-  | Set (Ann :< Name) Exp
-    -- ^ {% let _ = _ %} _ {% endlet %}
-  | Let (Ann :< Name) Exp Tmpl
-    -- ^ {% if _ %} _ {% elif _ %} _ {% else %} _ {% endif %}
-  | If (NonEmpty (Exp, Tmpl))
-    -- ^ {% for _, _ in _ %} _ {% else %} _ {% endfor %}
-  | For (Ann :< Name) (Maybe (Ann :< Name)) Exp Tmpl (Maybe Tmpl)
-    -- ^ Glue two `Tmpl`s together
-  | Tmpl :*: Tmpl
-    deriving (Show, Eq)
-
-instance IsString Tmpl where
-  fromString =
-    Raw . fromString
-
-instance Aeson.ToJSON Tmpl where
-  toJSON =
-    Aeson.object . \case
-      Raw str ->
-        [ "variant" .= ("raw" :: Text)
-        , "str" .= str
-        ]
-      Exp exp ->
-        [ "variant" .= ("exp" :: Text)
-        , "exp" .= exp
-        ]
-      Set name exp ->
-        [ "variant" .= ("set" :: Text)
-        , "name" .= name
-        , "exp" .= exp
-        ]
-      Let name exp tmpl ->
-        [ "variant" .= ("let" :: Text)
-        , "name" .= name
-        , "exp" .= exp
-        , "tmpl" .= tmpl
-        ]
-      If clauses ->
-        [ "variant" .= ("if" :: Text)
-        , "clauses" .= clauses
-        ]
-      For name it exp forTmpl elseTmpl ->
-        [ "variant" .= ("for" :: Text)
-        , "name" .= name
-        , "it" .= it
-        , "exp" .= exp
-        , "for" .= forTmpl
-        , "else" .= elseTmpl
-        ]
-      tmpl0 :*: tmpl1 ->
-        [ "variant" .= (":*:" :: Text)
-        , "tmpl0" .= tmpl0
-        , "tmpl1" .= tmpl1
-        ]
-
 data Exp 
   = Lit Literal
   | Var (Ann :< Name)
+  | If Exp Exp Exp
   | App Exp Exp
     deriving (Show, Eq)
 
@@ -102,6 +39,12 @@ instance Aeson.ToJSON Exp where
       Var name ->
         [ "variant" .= ("var" :: Text)
         , "name" .= name
+        ]
+      If p expt expf ->
+        [ "variant" .= ("if" :: Text)
+        , "predicate" .= p
+        , "when-true" .= expt
+        , "when-false" .= expf
         ]
       App exp0 exp1 ->
         [ "variant" .= ("app" :: Text)

@@ -28,12 +28,14 @@ import qualified Data.Text.Lazy.Builder as Builder
 import qualified Data.HashMap.Strict as HashMap
 import           Prelude hiding (exp)
 
-import           T.Exp (Tmpl(..), Exp(..), Literal(..), Name(..), (:<)(..), Ann)
+import           T.Exp (Exp(..), Literal(..), Name(..), (:<)(..), Ann)
 import           T.Exp.Ann (emptyAnn)
 import           T.Error (Error(..))
 import           T.Stdlib (stdlib)
 import           T.Value (Value)
 import qualified T.Value as Value
+import           T.Tmpl (Tmpl((:*:)))
+import qualified T.Tmpl as Tmpl
 
 
 data Env = Env
@@ -46,23 +48,23 @@ render env0 tmpl =
   fmap (Builder.toLazyText . result) (runExcept (execStateT (go tmpl) env0))
  where
   go = \case
-    Raw str ->
+    Tmpl.Raw str ->
       build (Builder.fromText str)
-    Set name exp -> do
+    Tmpl.Set name exp -> do
       value <- evalExp exp
       _ <- modifyM (insertVar name value)
       pure ()
-    Let name exp tmpl0 -> do
+    Tmpl.Let name exp tmpl0 -> do
       value <- evalExp exp
       oldEnv <- modifyM (insertVar name value)
       go tmpl0
       modify (\env -> env {vars = vars oldEnv})
-    If clauses -> do
+    Tmpl.If clauses -> do
       let matchClause (exp, thenTmpl) acc = do
             value <- evalExp exp
             if truthy value then go thenTmpl else acc
       foldr matchClause (pure ()) clauses
-    For name itQ exp forTmpl elseTmpl -> do
+    Tmpl.For name itQ exp forTmpl elseTmpl -> do
       value <- evalExp exp
       itemsQ <- case value of
         Value.Array arr -> do
@@ -94,7 +96,7 @@ render env0 tmpl =
               modifyM (maybe pure (\it -> insertVar it itObj) itQ <=< insertVar name x)
             go forTmpl
             modify (\env -> env {vars = vars oldEnv})
-    Exp exp -> do
+    Tmpl.Exp exp -> do
       str <- renderExp exp
       build (Builder.fromText str)
     tmpl0 :*: tmpl1 -> do
@@ -136,6 +138,9 @@ evalExp = \case
       Object xs -> do
         ys <- traverse evalExp xs
         pure (Value.Object ys)
+  If p expt expf -> do
+    pv <- evalExp p
+    evalExp (bool expf expt (truthy pv))
   Var name -> do
     env <- get
     lookupVar env name

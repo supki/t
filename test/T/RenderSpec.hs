@@ -163,13 +163,13 @@ spec =
         r_ "{{ \"Foo\" =~ /foo/ }}" `shouldRender` "false"
         r_ "{{ \"Foo\" =~ /foo/i }}" `shouldRender` "true"
 
-      xcontext "lazyness" $ do
+      context "lazyness" $ do
         it "||" $ do
           r_ "{{ true || die(\"no reason\") }}" `shouldRender` "true"
           r_ "{{ false || die(4) }}" `shouldRaise` GenericError "die: 4"
 
         it "&&" $ do
-          r_ "{{ false && die(\"no reason\") }}" `shouldRender` "true"
+          r_ "{{ false && die(\"no reason\") }}" `shouldRender` "false"
           r_ "{{ true && die(4) }}" `shouldRaise` GenericError "die: 4"
 
 shouldRender :: (HasCallStack, Show e, Eq e, Show a, Eq a) => Either e a -> a -> Expectation

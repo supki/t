@@ -22,8 +22,10 @@ import           Text.Parser.LookAhead (lookAhead)
 import           Text.Parser.Token.Style (emptyOps)
 import qualified Text.Regex.PCRE.Light as Pcre
 
-import           T.Exp (Tmpl(..), Exp(..), Literal(..), Name(..), (:<)(..))
+import           T.Exp (Exp(..), Literal(..), Name(..), (:<)(..))
 import           T.Exp.Ann (anning, anned)
+import qualified T.Tmpl as Tmpl
+import           T.Tmpl (Tmpl((:*:)))
 
 
 parse :: ByteString -> Either String Tmpl
@@ -36,16 +38,16 @@ parse str =
 
 cleanup :: Tmpl -> Tmpl
 cleanup = \case
-  Raw "" :*: x ->
+  Tmpl.Raw "" :*: x ->
     cleanup x
-  x :*: Raw "" ->
+  x :*: Tmpl.Raw "" ->
     cleanup x
-  If clauses ->
-    If (fmap (second cleanup) clauses)
-  For name it exp x y ->
-    For name it exp (cleanup x) (fmap cleanup y)
-  Let name exp x ->
-    Let name exp (cleanup x)
+  Tmpl.If clauses ->
+    Tmpl.If (fmap (second cleanup) clauses)
+  Tmpl.For name it exp x y ->
+    Tmpl.For name it exp (cleanup x) (fmap cleanup y)
+  Tmpl.Let name exp x ->
+    Tmpl.Let name exp (cleanup x)
   x :*: y ->
     cleanup x :*: cleanup y
   x ->
@@ -84,7 +86,7 @@ parseSet =
     name <- anned nameP
     _ <- symbol "="
     exp <- expP
-    pure (Set name exp)
+    pure (Tmpl.Set name exp)
 
 parseLet :: Parser Tmpl
 parseLet = do
@@ -95,7 +97,7 @@ parseLet = do
     pure (name, exp)
   tmpl <- parser
   _ <- blockP_ "endlet"
-  pure (Let name exp tmpl)
+  pure (Tmpl.Let name exp tmpl)
 
 parseIf :: Parser Tmpl
 parseIf = do
@@ -110,9 +112,9 @@ parseIf = do
         fmap (\tmpl -> (Lit (Bool True), tmpl)) elseTmplQ
   case elseClauseQ of
     Nothing ->
-      pure (If (ifClause :| thenClauses))
+      pure (Tmpl.If (ifClause :| thenClauses))
     Just elseClause ->
-      pure (If ((ifClause :| thenClauses) <> (elseClause :| [])))
+      pure (Tmpl.If ((ifClause :| thenClauses) <> (elseClause :| [])))
 
 parseCase :: Parser Tmpl
 parseCase = do
@@ -126,9 +128,9 @@ parseCase = do
         fmap (\tmpl -> (Lit (Bool True), tmpl)) elseTmplQ
   case elseClauseQ of
     Nothing ->
-      pure (If clauses)
+      pure (Tmpl.If clauses)
     Just elseClause ->
-      pure (If (clauses <> (elseClause :| [])))
+      pure (Tmpl.If (clauses <> (elseClause :| [])))
 
 parseFor :: Parser Tmpl
 parseFor = do
@@ -143,11 +145,11 @@ parseFor = do
   forTmpl <- parser
   elseTmpl <- optional (blockP_ "else" *> parser)
   _ <- blockP_ "endfor"
-  pure (For name it exp forTmpl elseTmpl)
+  pure (Tmpl.For name it exp forTmpl elseTmpl)
 
 parseExp :: Parser Tmpl
 parseExp =
-  between (string "{{" *> spaces) (spaces <* string "}}") (fmap Exp expP)
+  between (string "{{" *> spaces) (spaces <* string "}}") (fmap Tmpl.Exp expP)
 
 expP :: Parser Exp
 expP =
@@ -159,8 +161,8 @@ expP =
     , [infixrOp "*", infixrOp "/"]
     , [infixrOp "+", infixrOp "-"]
     , [infixOp "==", infixOp "=~"]
-    , [infixrOp "&&"]
-    , [infixrOp "||"]
+    , [andOp "&&"]
+    , [orOp "||"]
     ]
    where
     dotOp name =
@@ -189,15 +191,36 @@ expP =
       Prefix
         (do ann <- anning (reserve emptyOps name)
             pure (\a -> App (Var (ann :< Name (fromString name))) a))
+    andOp name =
+      Infix
+        (do reserve emptyOps name
+            pure (\a b -> If a b (Lit (Bool False))))
+        AssocRight
+    orOp name =
+      Infix
+        (do reserve emptyOps name
+            pure (\a b -> If a (Lit (Bool True)) b))
+        AssocRight
   expP' =
     asum
       [ litP
+      , ifP
         -- We have to use `try` here because, unfortunately, function
         -- application `f(x)` shares a prefix with the standalone
         -- variable lookup `f`.
       , try appP
       , varP
       ]
+
+ifP :: Parser Exp
+ifP = do
+  _ <- symbol "if"
+  p <- expP
+  _ <- symbol "then"
+  t <- expP
+  _ <- symbol "else"
+  f <- expP
+  pure (If p t f)
 
 appP :: Parser Exp
 appP = do
@@ -282,7 +305,7 @@ nameP =
 
 parseRaw :: Parser Tmpl
 parseRaw =
-  fmap (Raw . fromString . reverse) (go [])
+  fmap (Tmpl.Raw . fromString . reverse) (go [])
  where
   go acc =
     asum
