@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE QuasiQuotes #-}
 module T.RenderSpec (spec) where
 
@@ -8,7 +9,7 @@ import qualified Data.Text.Encoding as Text
 import qualified Data.Text.Lazy as Lazy (Text)
 import           Test.Hspec
 
-import           T.Exp (varE_)
+import           T.Exp (Literal(..), litE_, varE_)
 import           T.Error (Error(..))
 import           T.Parse (parse)
 import           T.Render (render, envFromJson)
@@ -173,8 +174,14 @@ spec =
           r_ "{{ false && die(\"no reason\") }}" `shouldRender` "false"
           r_ "{{ true && die(4) }}" `shouldRaise` GenericError "die: 4"
 
+      it "not-iterable" $
+        r_ "{% for x in 4 %}{% endfor %}" `shouldRaise` NotIterable (litE_ (Number 4)) "4"
+
+      it "not-renderable" $
+        r_ "{{ [] }}" `shouldRaise` NotRenderable (litE_ (Array [])) "[]"
+
       it "not-a-function" $
-        rWith [aesonQQ|{f: "foo"}|] "{{ f(4) }}" `shouldRaise` NotAFunction (varE_ "f")
+        rWith [aesonQQ|{f: "foo"}|] "{{ f(4) }}" `shouldRaise` NotAFunction (varE_ "f") "\"foo\""
 
 shouldRender :: (HasCallStack, Show e, Eq e, Show a, Eq a) => Either e a -> a -> Expectation
 tmpl `shouldRender` res =

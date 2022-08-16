@@ -86,7 +86,7 @@ render env0 tmpl =
                     (HashMap.toList o))
           pure (bool (Just xs) Nothing (null xs))
         _ ->
-          throwError (GenericError ("cannot iterate on: " <> Value.display value))
+          throwError (NotIterable exp (Value.display value))
       case itemsQ of
         Nothing ->
           maybe (pure ()) go elseTmpl
@@ -116,7 +116,7 @@ renderExp exp = do
     Value.String str ->
       pure str
     o ->
-      throwError (GenericError ("not renderable: " <> Value.display o))
+      throwError (NotRenderable exp (Value.display o))
 
 evalExp :: (MonadState Env m, MonadError Error m) => Exp -> m Value
 evalExp = \case
@@ -150,8 +150,8 @@ evalExp = \case
       Value.Lam f -> do
         x <- evalExp exp1
         liftEither (f x)
-      _value ->
-        throwError (NotAFunction exp0)
+      value ->
+        throwError (NotAFunction exp0 (Value.display value))
 
 envFromJson :: Aeson.Value -> Maybe Env
 envFromJson (Aeson.Object val) =
