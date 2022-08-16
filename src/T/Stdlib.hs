@@ -1,11 +1,10 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 module T.Stdlib
-  ( stdlib
+  ( def
   ) where
 
 import qualified Data.Aeson.Encode.Pretty as Aeson (encodePretty)
-import           Data.Bool (bool)
 import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import           Data.Maybe (isJust)
@@ -22,14 +21,12 @@ import           T.Exp (Name)
 import           T.Value (Value(..), display, displayWith)
 
 
-stdlib :: HashMap Name Value
-stdlib =
+def :: HashMap Name Value
+def =
   HashMap.fromList bindings
  where
   bindings =
-    [ ("&&", embed (&&))
-    , ("||", embed (||))
-    , ("!", embed not)
+    [ ("!", embed not)
 
     , ("==", eEq)
     , ("=~", embed match)
@@ -42,10 +39,6 @@ stdlib =
 
     , ("empty", eNull)
     , ("length", eLength)
-
-    , ("bool01", embed (bool @Int 0 1))
-    , ("join", embed Text.intercalate)
-    , ("split", embed Text.splitOn)
 
     , (".", embed (flip (HashMap.lookup @Text @Value)))
     , ("die", eDie)

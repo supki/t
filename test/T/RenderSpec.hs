@@ -1,18 +1,25 @@
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TypeApplications #-}
 module T.RenderSpec (spec) where
 
-import           Data.Aeson.QQ (aesonQQ)
 import qualified Data.Aeson as Aeson
+import           Data.Aeson.QQ (aesonQQ)
+import           Data.Bool (bool)
+import           Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as HashMap
 import           Data.Text (Text)
+import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
 import qualified Data.Text.Lazy as Lazy (Text)
 import           Test.Hspec
 
-import           T.Exp (Literal(..), litE_, varE_)
+import           T.Exp (Literal(..), Name(..), litE_, varE_)
+import           T.Embed (embed)
 import           T.Error (Error(..))
 import           T.Parse (parse)
-import           T.Render (render, envFromJson)
+import           T.Render (render, mkEnv)
+import           T.Value (Value)
 
 
 spec :: Spec
@@ -193,9 +200,18 @@ tmpl `shouldRaise` res =
 
 rWith :: Aeson.Value -> Text -> Either Error Lazy.Text
 rWith json tmplStr = do
-  let Just env = envFromJson json
+  let Aeson.Object o = json
+      Just env = mkEnv ext (HashMap.mapKeys Name o)
       Right tmpl = parse (Text.encodeUtf8 tmplStr)
   render env tmpl
+
+ext :: HashMap Name Value
+ext =
+  HashMap.fromList
+    [ ("bool01", embed (bool @Int 0 1))
+    , ("join", embed Text.intercalate)
+    , ("split", embed Text.splitOn)
+    ]
 
 r_ :: Text -> Either Error Lazy.Text
 r_ =

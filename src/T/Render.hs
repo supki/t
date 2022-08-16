@@ -5,8 +5,9 @@
 {-# LANGUAGE ViewPatterns #-}
 module T.Render
   ( Env
+  , mkDefEnv
+  , mkEnv
   , render
-  , envFromJson
   ) where
 
 import           Control.Applicative ((<|>))
@@ -31,7 +32,7 @@ import           Prelude hiding (exp)
 import           T.Exp (Cofree(..), Exp, ExpF(..), Literal(..), Name(..), (:+)(..), Ann)
 import           T.Exp.Ann (emptyAnn)
 import           T.Error (Error(..))
-import           T.Stdlib (stdlib)
+import qualified T.Stdlib as Stdlib
 import           T.Value (Value)
 import qualified T.Value as Value
 import           T.Tmpl (Tmpl((:*:)))
@@ -39,9 +40,41 @@ import qualified T.Tmpl as Tmpl
 
 
 data Env = Env
-  { vars   :: HashMap Name (Ann, Value)
+  { stdlib :: HashMap Name Value
+  , scope  :: HashMap Name (Ann, Value)
   , result :: Builder
   }
+
+mkDefEnv
+  :: HashMap Name Aeson.Value
+  -> Maybe Env
+mkDefEnv =
+  mkEnv Stdlib.def
+
+mkEnv
+  :: HashMap Name Value
+  -> HashMap Name Aeson.Value
+  -> Maybe Env
+mkEnv stdlibExt vars =
+  Just Env
+    { stdlib = HashMap.union Stdlib.def stdlibExt
+    , scope = fmap (\x -> (emptyAnn, go x)) vars
+    , result = mempty
+    }
+ where
+  go = \case
+    Aeson.Null ->
+      Value.Null
+    Aeson.Bool b ->
+      Value.Bool b
+    Aeson.Number n ->
+      Value.Number n
+    Aeson.String str ->
+      Value.String str
+    Aeson.Array xs ->
+      Value.Array (fmap go xs)
+    Aeson.Object xs ->
+      Value.Object (fmap go xs)
 
 render :: Env -> Tmpl -> Either Error Lazy.Text
 render env0 tmpl =
@@ -58,7 +91,7 @@ render env0 tmpl =
       value <- evalExp exp
       oldEnv <- modifyM (insertVar name value)
       go tmpl0
-      modify (\env -> env {vars = vars oldEnv})
+      modify (\env -> env {scope = scope oldEnv})
     Tmpl.If clauses -> do
       let matchClause (exp, thenTmpl) acc = do
             value <- evalExp exp
@@ -95,7 +128,7 @@ render env0 tmpl =
             oldEnv <-
               modifyM (maybe pure (\it -> insertVar it itObj) itQ <=< insertVar name x)
             go forTmpl
-            modify (\env -> env {vars = vars oldEnv})
+            modify (\env -> env {scope = scope oldEnv})
     Tmpl.Exp exp -> do
       str <- renderExp exp
       build (Builder.fromText str)
@@ -153,34 +186,9 @@ evalExp = \case
       value ->
         throwError (NotAFunction exp0 (Value.display value))
 
-envFromJson :: Aeson.Value -> Maybe Env
-envFromJson (Aeson.Object val) =
-  Just emptyEnv
-    { vars = fmap (\x -> (emptyAnn, go x)) (HashMap.mapKeys Name val)
-    }
- where
-  go = \case
-    Aeson.Null ->
-      Value.Null
-    Aeson.Bool b ->
-      Value.Bool b
-    Aeson.Number n ->
-      Value.Number n
-    Aeson.String str ->
-      Value.String str
-    Aeson.Array xs ->
-      Value.Array (fmap go xs)
-    Aeson.Object xs ->
-      Value.Object (fmap go xs)
-envFromJson _ =
-  Nothing
-
-emptyEnv :: Env
-emptyEnv = Env {vars = mempty, result = mempty}
-
 lookupVar :: MonadError Error m => Env -> Ann :+ Name -> m Value
-lookupVar Env {vars} aname@(_ :+ name) =
-  case fmap snd (HashMap.lookup name vars) <|> HashMap.lookup name stdlib of
+lookupVar Env {stdlib, scope} aname@(_ :+ name) =
+  case fmap snd (HashMap.lookup name scope) <|> HashMap.lookup name stdlib of
     Nothing ->
       throwError (NotInScope aname)
     Just value ->
@@ -197,9 +205,9 @@ insertVar :: MonadError Error m => Ann :+ Name -> Value -> Env -> m Env
 insertVar (_ :+ Name (Text.uncons -> Just ('_', _rest))) _ env =
   pure env
 insertVar (ann :+ name) value env =
-  case HashMap.lookup name (vars env) of
+  case HashMap.lookup name (scope env) of
     Nothing ->
-      pure env {vars = HashMap.insert name (ann, value) (vars env)}
+      pure env {scope = HashMap.insert name (ann, value) (scope env)}
     Just (oldAnn, _) ->
       throwError (ShadowedBy (oldAnn :+ name) (ann :+ name))
 

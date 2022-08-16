@@ -5,11 +5,16 @@ module T
 
   , parse
   , render
+  , mkDefEnv
+  , mkEnv
+  , stdlib
 
-  , envFromJson
+  , Embed(..)
+  , Eject(..)
   ) where
 
 import           T.Error (Error)
 import           T.Tmpl (Tmpl)
 import           T.Parse (parse)
-import           T.Render (Env, render, envFromJson)
+import           T.Render (Env, render, mkEnv)
+import           T.Stdlib (stdlib)
