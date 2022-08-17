@@ -190,6 +190,9 @@ spec =
       it "not-a-function" $
         rWith [aesonQQ|{f: "foo"}|] "{{ f(4) }}" `shouldRaise` NotAFunction (varE_ "f") "\"foo\""
 
+      it "defined?" $
+        rWith [aesonQQ|{foo: {}}|] "{{ defined?(foo.bar.baz) }}" `shouldRender` "false"
+
 shouldRender :: (HasCallStack, Show e, Eq e, Show a, Eq a) => Either e a -> a -> Expectation
 tmpl `shouldRender` res =
   tmpl `shouldBe` Right res
@@ -211,6 +214,7 @@ ext =
     [ ("bool01", embed (bool @Int 0 1))
     , ("join", embed Text.intercalate)
     , ("split", embed Text.splitOn)
+    , ("?!!", embed Text.splitOn)
     ]
 
 r_ :: Text -> Either Error Lazy.Text

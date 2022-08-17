@@ -322,7 +322,7 @@ nameP =
   firstL =
     letter <|> char '_'
   restL =
-    letter <|> digit <|> char '_'
+    letter <|> digit <|> oneOf "_-?!"
 
 parseRaw :: Parser Tmpl
 parseRaw =

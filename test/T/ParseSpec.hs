@@ -25,6 +25,8 @@ spec =
       "" `shouldParseTo` ""
       "foo" `shouldParseTo` "foo"
       "{{ x }}" `shouldParseTo` Tmpl.Exp (var "x")
+      "{{ x? }}" `shouldParseTo` Tmpl.Exp (var "x?")
+      "{{ foo-bar }}" `shouldParseTo` Tmpl.Exp (var "foo-bar")
       "{{ x }}{{ y }}" `shouldParseTo` (Tmpl.Exp (var "x") :*: Tmpl.Exp (var "y"))
       "{{ x.y.z }}" `shouldParseTo`
         Tmpl.Exp

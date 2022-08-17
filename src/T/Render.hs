@@ -13,9 +13,10 @@ module T.Render
 import           Control.Applicative ((<|>))
 import           Control.Monad ((<=<))
 import           Control.Monad.Except (MonadError(..), runExcept, liftEither)
-import           Control.Monad.State (MonadState(..), execStateT, modify)
+import           Control.Monad.State (MonadState(..), execStateT, evalStateT, modify)
 import qualified Data.Aeson as Aeson
 import           Data.Bool (bool)
+import           Data.Either (isRight)
 import           Data.Foldable (for_, toList)
 import           Data.HashMap.Strict (HashMap)
 import qualified Data.List as List
@@ -177,6 +178,10 @@ evalExp = \case
   _ :< Var name -> do
     env <- get
     lookupVar env name
+  _ :< App (_ :< Var "defined?") exp1 -> do
+    env <- get
+    let subEval exp = runExcept (evalStateT (evalExp exp) env)
+    pure (Value.Bool (isRight (subEval exp1)))
   _ :< App exp0 exp1 -> do
     fQ <- evalExp exp0
     case fQ of
