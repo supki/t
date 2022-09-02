@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 module T.Stdlib
-  ( def
+  ( stdlib
   ) where
 
 import qualified Data.Aeson.Encode.Pretty as Aeson (encodePretty)
@@ -21,8 +21,8 @@ import           T.Exp (Name)
 import           T.Value (Value(..), display, displayWith)
 
 
-def :: HashMap Name Value
-def =
+stdlib :: HashMap Name Value
+stdlib =
   HashMap.fromList bindings
  where
   bindings =

@@ -30,6 +30,7 @@ library
       T.Error
       T.Exp
       T.Exp.Ann
+      T.Exp.Macro
       T.Parse
       T.Render
       T.Stdlib

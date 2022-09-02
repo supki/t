@@ -18,6 +18,8 @@ module T.Exp
   , ifE_
   , appE
   , appE_
+  , falseL
+  , trueL
   ) where
 
 import           Data.Aeson ((.=))
@@ -167,6 +169,14 @@ instance Aeson.ToJSON Literal where
         [ "variant" .= ("object" :: Text)
         , "value" .= value
         ]
+
+falseL :: Literal
+falseL =
+  Bool False
+
+trueL :: Literal
+trueL =
+  Bool True
   
 newtype Name = Name { unName :: Text }
     deriving (Show, Eq, IsString, Hashable)

@@ -34,11 +34,11 @@ import           T.Exp
   , varE
   , varE_
   , ifE
-  , ifE_
   , appE
   , appE_
   )
 import           T.Exp.Ann (anning, anned)
+import qualified T.Exp.Macro as Macro
 import qualified T.Tmpl as Tmpl
 import           T.Tmpl (Tmpl((:*:)))
 
@@ -168,7 +168,7 @@ parseExp =
 
 expP :: Parser Exp
 expP =
-  buildExpressionParser table expP'
+  fmap Macro.expand (buildExpressionParser table expP')
  where
   table =
     [ [dotOp "."]
@@ -176,8 +176,8 @@ expP =
     , [infixrOp "*", infixrOp "/"]
     , [infixrOp "+", infixrOp "-"]
     , [infixOp "==", infixOp "=~"]
-    , [andOp "&&"]
-    , [orOp "||"]
+    , [infixrOp "&&"]
+    , [infixrOp "||"]
     ]
    where
     dotOp name =
@@ -206,16 +206,6 @@ expP =
       Prefix
         (do ann <- anning (reserve emptyOps name)
             pure (\a -> appE_ (varE ann (ann :+ Name (fromString name))) a))
-    andOp name =
-      Infix
-        (do reserve emptyOps name
-            pure (\a b -> ifE_ a b (litE_ (Bool False))))
-        AssocRight
-    orOp name =
-      Infix
-        (do reserve emptyOps name
-            pure (\a b -> ifE_ a (litE_ (Bool True)) b))
-        AssocRight
   expP' =
     asum
       [ litP

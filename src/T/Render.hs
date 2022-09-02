@@ -50,7 +50,7 @@ mkDefEnv
   :: HashMap Name Aeson.Value
   -> Maybe Env
 mkDefEnv =
-  mkEnv Stdlib.def
+  mkEnv Stdlib.stdlib
 
 mkEnv
   :: HashMap Name Value
@@ -58,7 +58,7 @@ mkEnv
   -> Maybe Env
 mkEnv stdlibExt vars =
   Just Env
-    { stdlib = HashMap.union Stdlib.def stdlibExt
+    { stdlib = HashMap.union Stdlib.stdlib stdlibExt
     , scope = fmap (\x -> (emptyAnn, go x)) vars
     , result = mempty
     }
