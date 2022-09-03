@@ -49,6 +49,7 @@ executables:
       - t
       - aeson
       - text
+      - unordered-containers
     source-dirs:
       driver
     main:

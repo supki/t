@@ -1,6 +1,7 @@
 module Main (main) where
 
 import qualified Data.Aeson as Aeson
+import qualified Data.HashMap.Strict as HashMap
 import           Data.String (fromString)
 import qualified Data.Text.IO as Text
 import qualified Data.Text.Encoding as Text
@@ -34,4 +35,4 @@ main = do
 
 envParse :: String -> Either String (Maybe T.Env)
 envParse =
-  fmap T.envFromJson . Aeson.eitherDecode . fromString
+  fmap T.mkDefEnv . fmap (HashMap.mapKeys fromString) . Aeson.eitherDecode . fromString
