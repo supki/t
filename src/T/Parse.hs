@@ -173,7 +173,13 @@ expP =
     , [prefixOp "!"]
     , [infixrOp "*", infixrOp "/"]
     , [infixrOp "+", infixrOp "-"]
-    , [infixOp "==", infixOp "=~"]
+    , [ infixOp "=="
+      , infixOp "=~"
+      , infixOp ">"
+      , infixOp ">="
+      , infixOp "<"
+      , infixOp "<="
+      ]
     , [infixrOp "&&"]
     , [infixrOp "||"]
     ]

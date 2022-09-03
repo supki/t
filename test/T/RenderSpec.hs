@@ -113,6 +113,12 @@ spec =
         r_ "{{ 4 * 7 }}" `shouldRender` "28"
         r_ "{{ 4 / 8 }}" `shouldRender` "0.5"
 
+      it "numeric comparisons" $ do
+        r_ "{{ 1 > 2 }}" `shouldRender` "false"
+        r_ "{{ 1 >= 2 }}" `shouldRender` "false"
+        r_ "{{ 1 < 2 }}" `shouldRender` "true"
+        r_ "{{ 1 <= 2 }}" `shouldRender` "true"
+
       it "bool01" $ do
         r_ "{{ bool01(false) }}" `shouldRender` "0"
         r_ "{{ bool01(true) }}" `shouldRender` "1"

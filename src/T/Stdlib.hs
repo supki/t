@@ -40,6 +40,11 @@ def =
     , ("*", embed ((*) @Scientific))
     , ("/", embed ((/) @Scientific))
 
+    , (">", embed ((>) @Scientific))
+    , (">=", embed ((>=) @Scientific))
+    , ("<", embed ((<) @Scientific))
+    , ("<=", embed ((<=) @Scientific))
+
     , ("empty", eNull)
     , ("length", eLength)
 
