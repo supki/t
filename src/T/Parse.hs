@@ -183,7 +183,7 @@ expP =
         (do ann <- anning (reserve emptyOps name)
             pure (\a b ->
               appE ann
-                (Name (fromString name))
+                (fromString name)
                 (fromList
                   [ a
                   -- Property lookups have the syntax of variables, but
@@ -307,7 +307,7 @@ varP = do
 
 nameP :: Parser Name
 nameP =
-  fmap (Name . fromString) (liftA2 (:) firstL (many restL)) <* spaces
+  fmap fromString (liftA2 (:) firstL (many restL)) <* spaces
  where
   firstL =
     letter <|> char '_'

@@ -10,7 +10,6 @@ module T.Render
   , render
   ) where
 
-import           Control.Applicative ((<|>))
 import           Control.Monad ((<=<))
 import           Control.Monad.Except (MonadError(..), runExcept, liftEither)
 import           Control.Monad.State (MonadState(..), execStateT, evalStateT, modify)
@@ -213,10 +212,14 @@ evalApp name =
 
 lookupVar :: MonadError Error m => Env -> Ann :+ Name -> m Value
 lookupVar Env {stdlib, scope} aname@(_ :+ name) =
-  case fmap snd (HashMap.lookup name scope) <|> HashMap.lookup name stdlib of
+  case HashMap.lookup name scope of
     Nothing ->
-      throwError (NotInScope aname)
-    Just value ->
+      case HashMap.lookup name stdlib of
+        Nothing ->
+          throwError (NotInScope aname)
+        Just value ->
+          pure value
+    Just (_, value) ->
       pure value
 
 modifyM :: MonadState s m => (s -> m s) -> m s
@@ -232,7 +235,11 @@ insertVar (_ :+ Name (Text.uncons -> Just ('_', _rest))) _ env =
 insertVar (ann :+ name) value env =
   case HashMap.lookup name (scope env) of
     Nothing ->
-      pure env {scope = HashMap.insert name (ann, value) (scope env)}
+      case HashMap.lookup name (stdlib env) of
+        Nothing ->
+          pure env {scope = HashMap.insert name (ann, value) (scope env)}
+        Just _ ->
+          throwError (ShadowedBy (emptyAnn :+ name) (ann :+ name))
     Just (oldAnn, _) ->
       throwError (ShadowedBy (oldAnn :+ name) (ann :+ name))
 

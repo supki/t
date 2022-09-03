@@ -99,9 +99,11 @@ spec =
         r_ "{% if false %}{% set x = 4 %}{% elif false %}{% set x = \"foo\" %}{% elif true %}{% set x = \"bar\" %}{% else %}{% set x = 7 %}{% endif %}{{ x }}" `shouldRender` "bar"
 
     context "shadowing" $
-      it "is an error" $
+      it "is an error" $ do
         r_ "{% let x = 4 %}{% set x = 7 %}{% endlet %}" `shouldRaise`
           ("x" `ShadowedBy` "x")
+        r_ "{% set show = \"show\" %}" `shouldRaise`
+          ("show" `ShadowedBy` "show")
 
     context "functions" $ do
       it "numeric operations" $ do
