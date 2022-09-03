@@ -198,7 +198,7 @@ spec =
         r_ "{{ coalesce(foo.bar.baz, true) }}" `shouldRender` "true"
 
       it "macros" $
-        r_ "{{ true && false || true }}" `shouldRender` "true"
+        r_ "{{ true && (false || true) }}" `shouldRender` "true"
 
 shouldRender :: (HasCallStack, Show e, Eq e, Show a, Eq a) => Either e a -> a -> Expectation
 tmpl `shouldRender` res =

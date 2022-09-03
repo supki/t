@@ -90,6 +90,31 @@ spec =
       "{% for x, it in [1, 2, 3] %}{{ x }}{% endfor %}" `shouldParseTo`
         Tmpl.For "x" (Just "it") (array [number 1, number 2, number 3]) (Tmpl.Exp (var "x")) Nothing
 
+    context "nesting" $
+      it "examples" $ do
+        "{{ (null) }}" `shouldParseTo` Tmpl.Exp null
+        "{{ ((null)) }}" `shouldParseTo` Tmpl.Exp null
+        "{{ (1 + 2) + 3 }}" `shouldParseTo`
+          Tmpl.Exp
+            (appE_
+              (appE_
+                (var "+")
+                (appE_
+                  (appE_ (var "+") (number 1))
+                  (number 2)))
+              (number 3))
+        "{{ 1 + (2 + 3) }}" `shouldParseTo`
+          Tmpl.Exp
+            (appE_
+              (appE_
+                (var "+")
+                (number 1))
+              (appE_
+                (appE_
+                  (var "+")
+                  (number 2))
+                (number 3)))
+
     context "if" $
       it "can nest arbitrarily" $
         "{% if x %}{% if y %}tt{% else %}tf{% endif %}{% else %}{% if z %}ft{% else %}ff{% endif %}{% endif %}" `shouldParseTo`

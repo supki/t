@@ -208,7 +208,8 @@ expP =
             pure (\a -> appE_ (varE ann (ann :+ Name (fromString name))) a))
   expP' =
     asum
-      [ litP
+      [ parens expP
+      , litP
       , ifP
         -- We have to use `try` here because, unfortunately, function
         -- application `f(x)` shares a prefix with the standalone
