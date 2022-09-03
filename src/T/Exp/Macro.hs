@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE PatternSynonyms #-}
 module T.Exp.Macro
   ( expand
@@ -13,7 +14,6 @@ import T.Exp
   , appE_
   , ifE
   , litE_
-  , varE_
   , falseL
   , trueL
   )
@@ -30,8 +30,8 @@ expand = \case
     expand (ifE ann expl (litE_ trueL) expr)
 
   -- 'coalesce' macro
-  ann :< Fun "coalesce" expl expr ->
-    expand (ifE ann (appE_ (varE_ "defined?") expl) expl expr)
+  ann :< App "coalesce" args ->
+    expand (foldr1 (\arg acc -> ifE ann (appE_ "defined?" [arg]) arg acc) args)
 
   -- traverse the rest
   exp0@(_ :< Lit _) ->
@@ -40,9 +40,9 @@ expand = \case
     exp0
   ann :< If p t f ->
     ann :< If (expand p) (expand t) (expand f)
-  ann :< App f x ->
-    ann :< App (expand f) (expand x)
+  ann :< App name xs ->
+    ann :< App name (fmap expand xs)
 
 pattern Fun :: Ann :+ Name -> Exp -> Exp -> ExpF Exp
 pattern Fun name exp0 exp1 <-
-  App (_ :< App (_ :< Var name) exp0) exp1
+  App name [exp0, exp1]

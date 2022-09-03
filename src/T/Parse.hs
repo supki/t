@@ -9,8 +9,7 @@ import           Data.ByteString (ByteString)
 import qualified Data.Char as Char
 import           Data.Foldable (asum)
 import qualified Data.HashMap.Strict as HashMap
-import           Data.List (foldl')
-import           Data.List.NonEmpty (NonEmpty(..))
+import           Data.List.NonEmpty (NonEmpty(..), fromList)
 import qualified Data.Scientific as Scientific
 import           Data.String (fromString)
 import qualified Data.Text.Encoding as Text
@@ -32,7 +31,6 @@ import           T.Exp
   , litE
   , litE_
   , varE
-  , varE_
   , ifE
   , appE
   , appE_
@@ -138,7 +136,7 @@ parseCase = do
   elseTmplQ <- optional (blockP_ "else" *> parser)
   _ <- blockP_ "endcase"
   let clauses =
-        fmap (\(exp1, tmpl) -> (appE_ (appE_ (varE_ "==") exp0) exp1, tmpl)) (when :| whens)
+        fmap (\(exp1, tmpl) -> (appE_ "==" (fromList [exp0, exp1]), tmpl)) (when :| whens)
       elseClauseQ =
         fmap (\tmpl -> (litE_ (Bool True), tmpl)) elseTmplQ
   case elseClauseQ of
@@ -184,28 +182,29 @@ expP =
       Infix
         (do ann <- anning (reserve emptyOps name)
             pure (\a b ->
-              appE_
-                (appE_
-                  (varE ann (ann :+ Name (fromString name)))
-                  a)
-                -- Property lookups have the syntax of variables, but
-                -- we actually want them as strings.
-                (case b of ann' :< Var (_ :+ Name b') -> litE ann' (String b'); _ -> b)))
+              appE ann
+                (Name (fromString name))
+                (fromList
+                  [ a
+                  -- Property lookups have the syntax of variables, but
+                  -- we actually want them as strings.
+                  , (case b of ann' :< Var (_ :+ Name b') -> litE ann' (String b'); _ -> b)
+                  ])))
         AssocLeft
     infixOp name =
       Infix
         (do ann <- anning (reserve emptyOps name)
-            pure (\a b -> appE_ (appE_ (varE ann (ann :+ Name (fromString name))) a) b))
+            pure (\a b -> appE ann (fromString name) (fromList [a, b])))
         AssocNone
     infixrOp name =
       Infix
         (do ann <- anning (reserve emptyOps name)
-            pure (\a b -> appE_ (appE_ (varE ann (ann :+ Name (fromString name))) a) b))
+            pure (\a b -> appE ann (fromString name) (fromList [a, b])))
         AssocRight
     prefixOp name =
       Prefix
         (do ann <- anning (reserve emptyOps name)
-            pure (\a -> appE_ (varE ann (ann :+ Name (fromString name))) a))
+            pure (\a -> appE ann (fromString name) (fromList [a])))
   expP' =
     asum
       [ parens expP
@@ -294,12 +293,12 @@ ifP = do
 
 appP :: Parser Exp
 appP = do
-  ann :+ (var, arg :| args) <- anned $ do
-    var <- varP
+  ann :+ (name, args) <- anned $ do
+    name <- nameP
     args <-
       between (string "(" *> spaces) (spaces *> string ")") (sepByNonEmpty expP (symbol ","))
-    pure (var, args)
-  pure (foldl' (\acc arg' -> appE ann acc arg') (appE ann var arg) args)
+    pure (name, args)
+  pure (appE ann name args)
 
 varP :: Parser Exp
 varP = do

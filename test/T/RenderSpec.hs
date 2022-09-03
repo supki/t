@@ -14,7 +14,7 @@ import qualified Data.Text.Encoding as Text
 import qualified Data.Text.Lazy as Lazy (Text)
 import           Test.Hspec
 
-import           T.Exp (Literal(..), Name(..), litE_, varE_)
+import           T.Exp (Literal(..), Name(..), litE_)
 import           T.Embed (embed)
 import           T.Error (Error(..))
 import           T.Parse (parse)
@@ -188,7 +188,7 @@ spec =
         r_ "{{ [] }}" `shouldRaise` NotRenderable (litE_ (Array [])) "[]"
 
       it "not-a-function" $
-        rWith [aesonQQ|{f: "foo"}|] "{{ f(4) }}" `shouldRaise` NotAFunction (varE_ "f") "\"foo\""
+        rWith [aesonQQ|{f: "foo"}|] "{{ f(4) }}" `shouldRaise` NotAFunction "f" "\"foo\""
 
       it "defined?" $
         rWith [aesonQQ|{foo: {}}|] "{{ defined?(foo.bar.baz) }}" `shouldRender` "false"
@@ -196,6 +196,7 @@ spec =
       it "coalesce" $ do
         r_ "{{ coalesce(false, true) }}" `shouldRender` "false"
         r_ "{{ coalesce(foo.bar.baz, true) }}" `shouldRender` "true"
+        r_ "{{ coalesce(foo.bar, foo.bar.baz, true) }}" `shouldRender` "true"
 
       it "macros" $
         r_ "{{ true && (false || true) }}" `shouldRender` "true"

@@ -15,6 +15,6 @@ data Error
     -- and that makes working with Error annoying too.
   | NotIterable Exp Text
   | NotRenderable Exp Text
-  | NotAFunction Exp Text
+  | NotAFunction (Ann :+ Name) Text
   | GenericError Text
     deriving (Show, Eq)

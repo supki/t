@@ -20,6 +20,7 @@ import           Data.Either (isRight)
 import           Data.Foldable (for_, toList)
 import           Data.HashMap.Strict (HashMap)
 import qualified Data.List as List
+import           Data.List.NonEmpty (NonEmpty(..))
 import           Data.Scientific (floatingOrInteger)
 import           Data.String (fromString)
 import           Data.Text (Text)
@@ -178,18 +179,37 @@ evalExp = \case
   _ :< Var name -> do
     env <- get
     lookupVar env name
-  _ :< App (_ :< Var "defined?") exp1 -> do
+  _ :< App "defined?" (exp1 :| []) -> do
+    -- this is a very basic form of try-catch;
+    -- it gives no control to the user over what kind of exceptions
+    -- to catch: it catches all of them indiscriminately.
     env <- get
     let subEval exp = runExcept (evalStateT (evalExp exp) env)
     pure (Value.Bool (isRight (subEval exp1)))
-  _ :< App exp0 exp1 -> do
-    fQ <- evalExp exp0
-    case fQ of
-      Value.Lam f -> do
-        x <- evalExp exp1
-        liftEither (f x)
-      value ->
-        throwError (NotAFunction exp0 (Value.display value))
+  ann :< App name args -> do
+    f <- evalExp (ann :< Var name)
+    evalApp name f (toList args)
+
+evalApp
+  :: (MonadState Env m, MonadError Error m)
+  => Ann :+ Name
+  -> Value
+  -> [Exp]
+  -> m Value
+evalApp name =
+  go
+ where
+  -- either we have to arguments left, so we return whatever we have
+  go val [] =
+    pure val
+  -- or we have a function to apply to the next argument
+  go (Value.Lam f) (exp0 : exps) = do
+    x <- evalExp exp0
+    g <- liftEither (f x)
+    go g exps
+  -- in every other case something went wrong :-(
+  go val _ =
+    throwError (NotAFunction name (Value.display val))
 
 lookupVar :: MonadError Error m => Env -> Ann :+ Name -> m Value
 lookupVar Env {stdlib, scope} aname@(_ :+ name) =

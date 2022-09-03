@@ -25,6 +25,8 @@ module T.Exp
 import           Data.Aeson ((.=))
 import qualified Data.Aeson as Aeson
 import           Data.Functor.Classes (Eq1(..), eq1)
+import           Data.List.NonEmpty (NonEmpty)
+import qualified Data.List.NonEmpty as NonEmpty
 import           Data.Hashable (Hashable)
 import           Data.HashMap.Strict (HashMap)
 import           Data.Scientific (Scientific)
@@ -56,7 +58,7 @@ data ExpF a
   = Lit Literal
   | Var (Ann :+ Name)
   | If a a a
-  | App a a
+  | App (Ann :+ Name) (NonEmpty a)
     deriving (Show, Eq, Generic1)
 
 instance Eq1 ExpF where
@@ -66,8 +68,8 @@ instance Eq1 ExpF where
     v0 == v1
   liftEq (==?) (If p0 t0 f0) (If p1 t1 f1) =
     (p0 ==? p1) && (t0 ==? t1) && (f0 ==? f1)
-  liftEq (==?) (App f0 x0) (App f1 x1) =
-    (f0 ==? f1) && (x0 ==? x1)
+  liftEq (==?) (App n0 as0) (App n1 as1) =
+    (n0 == n1) && and (NonEmpty.zipWith (==?) as0 as1)
   liftEq _ _ _ =
     False
 
@@ -88,10 +90,10 @@ instance Aeson.ToJSON1 ExpF where
         , "when-true" .= f expt
         , "when-false" .= f expf
         ]
-      App exp0 exp1 ->
+      App name args ->
         [ "variant" .= ("app" :: Text)
-        , "exp0" .= f exp0
-        , "exp1" .= f exp1
+        , "name" .= name
+        , "args" .= fmap f args
         ]
 
 instance Aeson.ToJSON a => Aeson.ToJSON (ExpF a) where
@@ -121,11 +123,11 @@ ifE_ :: Exp -> Exp -> Exp -> Exp
 ifE_ =
   ifE emptyAnn
 
-appE :: Ann -> Exp -> Exp -> Exp
-appE ann f x =
-  ann :< App f x
+appE :: Ann -> Name -> NonEmpty Exp -> Exp
+appE ann name args =
+  ann :< App (ann :+ name) args
 
-appE_ :: Exp -> Exp -> Exp
+appE_ :: Name -> NonEmpty Exp -> Exp
 appE_ =
   appE emptyAnn
 

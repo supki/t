@@ -31,12 +31,10 @@ spec =
       "{{ x.y.z }}" `shouldParseTo`
         Tmpl.Exp
           (appE_
-            (appE_
-              (var ".")
-              (appE_
-                (appE_ (var ".") (var "x"))
-                (string "y")))
-              (string "z"))
+            "."
+            [ appE_ "." [var "x", string "y"]
+            , string "z"
+            ])
       "{{ x.y.z }}" `shouldParseTo` Tmpl.Exp (vars ["x", "y", "z"])
       "foo{{ x }}" `shouldParseTo` ("foo" :*: Tmpl.Exp (var "x"))
       "foo{{ x }}bar" `shouldParseTo` ("foo" :*: Tmpl.Exp (var "x") :*: "bar")
@@ -74,15 +72,16 @@ spec =
         Tmpl.If [(number 4, "4"), (number 7, "7")]
       "{% if 4 %}4{% elif 7 %}7{% else %}foo{% endif %}" `shouldParseTo`
         Tmpl.If [(number 4, "4"), (number 7, "7"), (true, "foo")]
-      "{{ foo(bar) }}" `shouldParseTo` Tmpl.Exp (appE_ (var "foo") (var "bar"))
+      "{{ foo(bar) }}" `shouldParseTo`
+        Tmpl.Exp (appE_ "foo" [var "bar"])
       "{{ foo(bar, baz) }}" `shouldParseTo`
-        Tmpl.Exp (appE_ (appE_ (var "foo") (var "bar")) (var "baz"))
+        Tmpl.Exp (appE_ "foo" [var "bar", var "baz"])
       "{% if 4 && null %}foo{% endif %}" `shouldParseTo`
         whenIf (ifE_ (number 4) null false) "foo"
       "{% if null || 4 %}foo{% endif %}" `shouldParseTo`
         whenIf (ifE_ null true (number 4)) "foo"
       "{% if ! true %}foo{% endif %}" `shouldParseTo`
-        whenIf (appE_ (var "!") true) "foo"
+        whenIf (appE_ "!" [true]) "foo"
       "{% for x in [1, 2, 3] %}{{ x }}{% endfor %}" `shouldParseTo`
         Tmpl.For "x" Nothing (array [number 1, number 2, number 3]) (Tmpl.Exp (var "x")) Nothing
       "{% for x in [] %}{{ x }}{% else %}foo{% endfor %}" `shouldParseTo`
@@ -97,23 +96,25 @@ spec =
         "{{ (1 + 2) + 3 }}" `shouldParseTo`
           Tmpl.Exp
             (appE_
-              (appE_
-                (var "+")
-                (appE_
-                  (appE_ (var "+") (number 1))
-                  (number 2)))
-              (number 3))
+              "+"
+              [ appE_
+                  "+"
+                  [ number 1
+                  , number 2
+                  ]
+              , number 3
+              ])
         "{{ 1 + (2 + 3) }}" `shouldParseTo`
           Tmpl.Exp
             (appE_
-              (appE_
-                (var "+")
-                (number 1))
-              (appE_
-                (appE_
-                  (var "+")
-                  (number 2))
-                (number 3)))
+              "+"
+              [ number 1
+              , appE_
+                  "+"
+                  [ number 2
+                  , number 3
+                  ]
+              ])
 
     context "if" $
       it "can nest arbitrarily" $
@@ -124,7 +125,7 @@ spec =
 
 vars :: NonEmpty Name -> Exp
 vars (chunk :| chunks) =
-  foldl' (\acc chunk' -> appE_ (appE_ (var ".") acc) (string (unName chunk'))) (var chunk) chunks
+  foldl' (\acc chunk' -> appE_ "." [acc, string (unName chunk')]) (var chunk) chunks
 
 var :: Name -> Exp
 var =
