@@ -3,7 +3,6 @@ module T.Exp.Macro
   ( expand
   ) where
 
-import Data.Maybe (catMaybes, listToMaybe)
 import T.Exp
   ( Cofree(..)
   , Exp
@@ -11,48 +10,39 @@ import T.Exp
   , Name
   , Ann
   , (:+)
-  , ifE_
+  , appE_
+  , ifE
   , litE_
+  , varE_
   , falseL
   , trueL
   )
 
 
 expand :: Exp -> Exp
-expand exp0 =
-  case listToMaybe (catMaybes (fmap (\f -> f exp0) macros)) of
-    Just exp1 ->
-      expand exp1
-    Nothing ->
-      case exp0 of
-        _ :< Lit _ ->
-          exp0
-        _ :< Var _ ->
-          exp0
-        ann :< If p t f ->
-          ann :< If (expand p) (expand t) (expand f)
-        ann :< App f x ->
-          ann :< App (expand f) (expand x)
- where
-  macros =
-    [ macroAnd
-    , macroOr
-    ]
+expand = \case
+  -- 'and' macro
+  ann :< Fun "&&" expl expr ->
+    expand (ifE ann expl expr (litE_ falseL))
 
-macroAnd :: Exp -> Maybe Exp
-macroAnd = \case
-  Op "&&" exp0 exp1 ->
-    Just (ifE_ exp0 exp1 (litE_ falseL))
-  _ ->
-    Nothing
+  -- 'or' macro
+  ann :< Fun "||" expl expr ->
+    expand (ifE ann expl (litE_ trueL) expr)
 
-macroOr :: Exp -> Maybe Exp
-macroOr = \case
-  Op "||" exp0 exp1 ->
-    Just (ifE_ exp0 (litE_ trueL) exp1)
-  _ ->
-    Nothing
+  -- 'coalesce' macro
+  ann :< Fun "coalesce" expl expr ->
+    expand (ifE ann (appE_ (varE_ "defined?") expl) expl expr)
 
-pattern Op :: Ann :+ Name -> Exp -> Exp -> Exp
-pattern Op name exp0 exp1 <-
-  _ :< App (_ :< App (_ :< Var name) exp0) exp1
+  -- traverse the rest
+  exp0@(_ :< Lit _) ->
+    exp0
+  exp0@(_ :< Var _) ->
+    exp0
+  ann :< If p t f ->
+    ann :< If (expand p) (expand t) (expand f)
+  ann :< App f x ->
+    ann :< App (expand f) (expand x)
+
+pattern Fun :: Ann :+ Name -> Exp -> Exp -> ExpF Exp
+pattern Fun name exp0 exp1 <-
+  App (_ :< App (_ :< Var name) exp0) exp1

@@ -193,6 +193,13 @@ spec =
       it "defined?" $
         rWith [aesonQQ|{foo: {}}|] "{{ defined?(foo.bar.baz) }}" `shouldRender` "false"
 
+      it "coalesce" $ do
+        r_ "{{ coalesce(false, true) }}" `shouldRender` "false"
+        r_ "{{ coalesce(foo.bar.baz, true) }}" `shouldRender` "true"
+
+      it "macros" $
+        r_ "{{ true && false || true }}" `shouldRender` "true"
+
 shouldRender :: (HasCallStack, Show e, Eq e, Show a, Eq a) => Either e a -> a -> Expectation
 tmpl `shouldRender` res =
   tmpl `shouldBe` Right res
@@ -214,7 +221,6 @@ ext =
     [ ("bool01", embed (bool @Int 0 1))
     , ("join", embed Text.intercalate)
     , ("split", embed Text.splitOn)
-    , ("?!!", embed Text.splitOn)
     ]
 
 r_ :: Text -> Either Error Lazy.Text
