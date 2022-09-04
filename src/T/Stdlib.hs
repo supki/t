@@ -29,37 +29,40 @@ def =
   HashMap.fromList bindings
  where
   bindings =
-    [ ("!", embed not)
+    [ ("!" ~> flip embed not)
 
-    , ("==", eEq)
-    , ("=~", embed match)
-    , ("!=", eNeq)
+    , ("==" ~> eEq)
+    , ("=~" ~> flip embed match)
+    , ("!=" ~> eNeq)
 
-    , ("+", embed ((+) @Scientific))
-    , ("-", embed ((-) @Scientific))
-    , ("*", embed ((*) @Scientific))
-    , ("/", embed ((/) @Scientific))
+    , ("+" ~> flip embed ((+) @Scientific))
+    , ("-" ~> flip embed ((-) @Scientific))
+    , ("*" ~> flip embed ((*) @Scientific))
+    , ("/" ~> flip embed ((/) @Scientific))
 
-    , (">", embed ((>) @Scientific))
-    , (">=", embed ((>=) @Scientific))
-    , ("<", embed ((<) @Scientific))
-    , ("<=", embed ((<=) @Scientific))
+    , (">" ~> flip embed ((>) @Scientific))
+    , (">=" ~> flip embed ((>=) @Scientific))
+    , ("<" ~> flip embed ((<) @Scientific))
+    , ("<=" ~> flip embed ((<=) @Scientific))
 
-    , ("empty", eNull)
-    , ("length", eLength)
+    , ("empty" ~> eNull)
+    , ("length" ~> eLength)
 
-    , (".", embed (flip (HashMap.lookup @Text @Value)))
-    , ("die", eDie)
+    , ("." ~> flip embed (flip (HashMap.lookup @Text @Value)))
+    , ("die" ~> eDie)
 
     , ("show", eShow)
     , ("pp", ePP)
     ]
 
-eEq :: Value
-eNeq :: Value
+  name ~> binding =
+    (name, binding name)
+
+eEq :: Name -> Value
+eNeq :: Name -> Value
 (eEq, eNeq) =
-  ( embed eq
-  , embed neq
+  ( flip embed eq
+  , flip embed neq
   )
  where
   eq x y =
@@ -92,35 +95,39 @@ match :: Text -> Pcre.Regex -> Bool
 match str regexp =
   isJust (Pcre.match regexp (Text.encodeUtf8 str) [])
 
-eNull :: Value
-eNull =
+eNull :: Name -> Value
+eNull name =
   Lam $ \case
     String str ->
-      pure (embed (Text.null str))
+      pure (embed name (Text.null str))
     Array xs ->
-      pure (embed (null xs))
+      pure (embed name (null xs))
     Object o ->
-      pure (embed (HashMap.null o))
+      pure (embed name (HashMap.null o))
     value ->
-      Left (GenericError ("empty is non-applicable for: " <> display value))
+      Left
+        (UserError
+          name
+          ("not applicable to " <> display value <> " (not a string, array, or object)"))
 
-eLength :: Value
-eLength =
+eLength :: Name -> Value
+eLength name =
   Lam $ \case
     String str ->
-      pure (embed (Text.length str))
+      pure (embed name (Text.length str))
     Array xs ->
-      pure (embed (length xs))
+      pure (embed name (length xs))
     Object o ->
-      pure (embed (HashMap.size o))
+      pure (embed name (HashMap.size o))
     value ->
-      Left (GenericError ("cannot find length of: " <> display value))
+      Left
+        (UserError
+          name
+          ("not applicable to " <> display value <> " (not a string, array, or object)"))
 
-eDie :: Value
-eDie =
-  Lam $ \case
-    value ->
-      Left (GenericError ("die: " <> display value))
+eDie :: Name -> Value
+eDie name =
+  Lam (Left . UserError name . display)
 
 eShow :: Value
 eShow =

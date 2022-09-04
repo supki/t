@@ -13,84 +13,93 @@ import qualified Data.Vector as Vector
 import qualified Text.Regex.PCRE.Light as Pcre
 
 import           T.Error (Error(..))
+import           T.Exp (Name)
 import           T.Value (Value(..), display)
 
 
 class Embed t where
-  embed :: t -> Value
+  -- Neither order of the arguments is ideal, unfortunately,
+  -- as roughly half of applications wants the name first and
+  -- another half wants it last.
+  --
+  -- I chose Name going first because this order mirrors the Eject class;
+  -- and the idea of Name being some sort of the context in which embedding is
+  -- happening makes more sense than just deciding it being the last argument
+  -- because that suites stdlib definitions list better.
+  embed :: Name -> t -> Value
 
 instance Embed Value where
-  embed x = x
+  embed _name x = x
 
 instance Embed Bool where
-  embed = Bool
+  embed _name = Bool
 
 instance Embed Int where
-  embed =
+  embed _name =
     Number . fromIntegral
 
 instance Embed Scientific where
-  embed = Number
+  embed _name = Number
 
 instance Embed Text where
-  embed = String
+  embed _name = String
 
 instance Embed a => Embed (Maybe a) where
-  embed =
-    maybe Null embed
+  embed name =
+    maybe Null (embed name)
 
 instance Embed a => Embed [a] where
-  embed =
-    Array . Vector.fromList . map embed
+  embed name =
+    Array . Vector.fromList . map (embed name)
 
 instance (Eject a, Embed b) => Embed (a -> b) where
-  embed f =
-    Lam (\x -> fmap (embed . f) (eject x))
+  embed name f =
+    Lam (\x -> fmap (embed name . f) (eject name x))
 
 class Eject t where
-  eject :: Value -> Either Error t
+  eject :: Name -> Value -> Either Error t
 
 instance Eject Value where
-  eject = pure
+  eject name = pure
 
 instance Eject Bool where
-  eject = \case
+  eject name = \case
     Bool b ->
       pure b
     value ->
-      Left (GenericError ("cannot eject Bool from: " <> display value))
+      Left (TypeError name "Bool" (display value))
 
 instance Eject Scientific where
-  eject = \case
+  eject name = \case
     Number n ->
       pure n
     value ->
-      Left (GenericError ("cannot eject Scientific from: " <> display value))
+      Left (TypeError name "Scientific" (display value))
 
 instance Eject Text where
-  eject = \case
+  eject name = \case
     String str ->
       pure str
     value ->
-      Left (GenericError ("cannot eject Text from: " <> display value))
+      Left (TypeError name "Text" (display value))
 
 instance Eject Pcre.Regex where
-  eject = \case
+  eject name = \case
     Regexp regexp ->
       pure regexp
     value ->
-      Left (GenericError ("cannot eject Pcre.Regex from: " <> display value))
+      Left (TypeError name "Pcre.Regex" (display value))
 
 instance (k ~ Text, v ~ Value) => Eject (HashMap k v) where
-  eject = \case
+  eject name = \case
     Object o ->
       pure o
     value ->
-      Left (GenericError ("cannot eject HashMap Text Value from: " <> display value))
+      Left (TypeError name "HashMap Text Value" (display value))
 
 instance Eject a => Eject [a] where
-  eject = \case
+  eject name = \case
     Array xs ->
-      fmap toList (traverse eject xs)
+      fmap toList (traverse (eject name) xs)
     value ->
-      Left (GenericError ("cannot eject [a] from: " <> display value))
+      Left (TypeError name "[a]" (display value))

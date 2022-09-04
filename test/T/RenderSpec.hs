@@ -120,18 +120,22 @@ spec =
         r_ "{{ bool01(false) }}" `shouldRender` "0"
         r_ "{{ bool01(true) }}" `shouldRender` "1"
 
-      it "null" $ do
+      it "empty" $ do
         r_ "{{ empty(\"\") }}" `shouldRender` "true"
         r_ "{{ empty(\"hello\") }}" `shouldRender` "false"
         r_ "{{ empty([]) }}" `shouldRender` "true"
         r_ "{{ empty([1, 2, 3]) }}" `shouldRender` "false"
         r_ "{{ empty({}) }}" `shouldRender` "true"
         r_ "{{ empty({x: 4, y: 7}) }}" `shouldRender` "false"
+        r_ "{{ empty(4) }}" `shouldRaise`
+          UserError "empty" "not applicable to 4 (not a string, array, or object)"
 
       it "length" $ do
         r_ "{{ length(\"hello\") }}" `shouldRender` "5"
         r_ "{{ length([1, 2, 3]) }}" `shouldRender` "3"
         r_ "{{ length({x: 4, y: 7}) }}" `shouldRender` "2"
+        r_ "{{ length(4) }}" `shouldRaise`
+          UserError "length" "not applicable to 4 (not a string, array, or object)"
 
       it "join" $
         r_ "{{ join(\",\", [\"foo\", \"bar\", \"baz\"]) }}" `shouldRender`
@@ -142,8 +146,8 @@ spec =
           "foobarbaz"
 
       it "die" $ do
-        r_ "{{ die(\"reason\") }}" `shouldRaise` GenericError "die: \"reason\""
-        r_ "{{ die(4) }}" `shouldRaise` GenericError "die: 4"
+        r_ "{{ die(\"reason\") }}" `shouldRaise` UserError "die" "\"reason\""
+        r_ "{{ die(4) }}" `shouldRaise` UserError "die" "4"
 
       it "show" $
         r_ "{{ show([1, {a: 4}, \"foo\"]) }}" `shouldRender`
@@ -180,11 +184,11 @@ spec =
       context "lazyness" $ do
         it "||" $ do
           r_ "{{ true || die(\"no reason\") }}" `shouldRender` "true"
-          r_ "{{ false || die(4) }}" `shouldRaise` GenericError "die: 4"
+          r_ "{{ false || die(4) }}" `shouldRaise` UserError "die" "4"
 
         it "&&" $ do
           r_ "{{ false && die(\"no reason\") }}" `shouldRender` "false"
-          r_ "{{ true && die(4) }}" `shouldRaise` GenericError "die: 4"
+          r_ "{{ true && die(4) }}" `shouldRaise` UserError "die" "4"
 
       it "not-iterable" $
         r_ "{% for x in 4 %}{% endfor %}" `shouldRaise` NotIterable (litE_ (Number 4)) "4"
@@ -194,6 +198,9 @@ spec =
 
       it "not-a-function" $
         rWith [aesonQQ|{f: "foo"}|] "{{ f(4) }}" `shouldRaise` NotAFunction "f" "\"foo\""
+
+      it "type errors" $
+        r_ "{{ bool01(\"foo\") }}" `shouldRaise` TypeError "bool01" "Bool" "\"foo\""
 
       it "defined?" $
         rWith [aesonQQ|{foo: {}}|] "{{ defined?(foo.bar.baz) }}" `shouldRender` "false"
@@ -240,9 +247,9 @@ rWith json tmplStr = do
 ext :: HashMap Name Value
 ext =
   HashMap.fromList
-    [ ("bool01", embed (bool @Int 0 1))
-    , ("join", embed Text.intercalate)
-    , ("split", embed Text.splitOn)
+    [ ("bool01", flip embed (bool @Int 0 1) "bool01")
+    , ("join", flip embed Text.intercalate "join")
+    , ("split", flip embed Text.splitOn "split")
     ]
 
 r_ :: Text -> Either Error ([Warning], Lazy.Text)

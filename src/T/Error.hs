@@ -16,7 +16,8 @@ data Error
   | NotIterable Exp Text
   | NotRenderable Exp Text
   | NotAFunction (Ann :+ Name) Text
-  | GenericError Text
+  | UserError Name Text
+  | TypeError Name Text Text
     deriving (Show, Eq)
 
 data Warning
