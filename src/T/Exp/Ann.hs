@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 module T.Exp.Ann
   ( (:+)(..)
@@ -27,9 +28,13 @@ instance Eq t => Eq (ann :+ t) where
   _ann0 :+ t0 == _ann1 :+ t1 =
     t0 == t1
 
-instance (IsString t, ann ~ Ann) => IsString (ann :+ t) where
+instance IsString t => IsString (Ann :+ t) where
   fromString str =
     emptyAnn :+ fromString str
+
+instance IsString t => IsString ((Ann, Ann) :+ t) where
+  fromString str =
+    (emptyAnn, emptyAnn) :+ fromString str
 
 instance Aeson.ToJSON t => Aeson.ToJSON (ann :+ t) where
   toJSON =

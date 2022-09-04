@@ -2,7 +2,8 @@ module T
   ( Tmpl
   , Env
   , Name(..)
-  , Error
+  , Error(..)
+  , Warning(..)
 
   , parse
   , render
@@ -17,7 +18,7 @@ module T
   ) where
 
 import T.Embed (Embed(..), Eject(..))
-import T.Error (Error)
+import T.Error (Error(..), Warning(..))
 import T.Exp (Name(..))
 import T.Tmpl (Tmpl)
 import T.Parse (parse)

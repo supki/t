@@ -16,7 +16,7 @@ import           Test.Hspec
 
 import           T.Exp (Literal(..), Name(..), litE_)
 import           T.Embed (embed)
-import           T.Error (Error(..))
+import           T.Error (Error(..), Warning(..))
 import           T.Parse (parse)
 import           T.Render (render, mkEnv)
 import           T.Value (Value)
@@ -34,8 +34,7 @@ spec =
       rWith [aesonQQ| {x: 4} |] "foo{{ x }}" `shouldRender` "foo4"
       rWith [aesonQQ| {x: {y: 4}} |] "foo{{ x.y }}" `shouldRender` "foo4"
       r_ "{% set x = 4 %}foo{{ x }}" `shouldRender` "foo4"
-      -- TODO: Rethink shadowing maybe?
-      r_ "{% set x = 4 %}{% set y = 7 %}foo{{ y }}" `shouldRender` "foo7"
+      r_ "{% set x = 4 %}{% set x = 7 %}foo{{ x }}" `shouldRender` "foo7"
       rWith [aesonQQ| {x: 4} |] "{% set y = x %}foo{{ y }}" `shouldRender` "foo4"
       r_ "{% if true %}foo{% else %}bar{% endif %}" `shouldRender` "foo"
       r_ "{% if false %}foo{% else %}bar{% endif %}" `shouldRender` "bar"
@@ -63,8 +62,7 @@ spec =
 
     context "let" $
       it "examples" $
-        -- TODO: Rethink shadowing maybe?
-        rWith [aesonQQ| {x: 4} |] "{% let y = 7 %}{{ y }}{% let z = 11 %}{{ z }}{% endlet %}{% endlet %}" `shouldRender` "711"
+        rWith [aesonQQ| {x: 4} |] "{% let x = 7 %}{{ x }}{% let x = 11 %}{{ x }}{% endlet %}{% endlet %}" `shouldRender` "711"
 
     context "for" $
       it "examples" $ do
@@ -99,11 +97,10 @@ spec =
         r_ "{% if false %}{% set x = 4 %}{% elif false %}{% set x = \"foo\" %}{% elif true %}{% set x = \"bar\" %}{% else %}{% set x = 7 %}{% endif %}{{ x }}" `shouldRender` "bar"
 
     context "shadowing" $
-      it "is an error" $ do
-        r_ "{% let x = 4 %}{% set x = 7 %}{% endlet %}" `shouldRaise`
-          ("x" `ShadowedBy` "x")
-        r_ "{% set show = \"show\" %}" `shouldRaise`
-          ("show" `ShadowedBy` "show")
+      it "is a warning" $ do
+        r_ "{% let x = 4 %}{% set x = 7 %}{{x}}{% endlet %}" `shouldRender` "7"
+        r_ "{% let x = 4 %}{% set x = 7 %}{{x}}{% endlet %}" `shouldWarn` [ShadowedBy "x"]
+        r_ "{% set show = \"show\" %}" `shouldWarn` [ShadowedBy "show"]
 
     context "functions" $ do
       it "numeric operations" $ do
@@ -136,11 +133,11 @@ spec =
         r_ "{{ length([1, 2, 3]) }}" `shouldRender` "3"
         r_ "{{ length({x: 4, y: 7}) }}" `shouldRender` "2"
 
-      it "join" $ do
+      it "join" $
         r_ "{{ join(\",\", [\"foo\", \"bar\", \"baz\"]) }}" `shouldRender`
           "foo,bar,baz"
 
-      it "split" $ do
+      it "split" $
         r_ "{% for x in split(\",\", \"foo,bar,baz\") %}{{ x }}{% endfor %}" `shouldRender`
           "foobarbaz"
 
@@ -209,15 +206,31 @@ spec =
       it "macros" $
         r_ "{{ true && (false || true) }}" `shouldRender` "true"
 
-shouldRender :: (HasCallStack, Show e, Eq e, Show a, Eq a) => Either e a -> a -> Expectation
+shouldRender
+  :: (HasCallStack, Show e, Eq e, Show a, Eq a)
+  => Either e (ws, a)
+  -> a
+  -> Expectation
 tmpl `shouldRender` res =
-  tmpl `shouldBe` Right res
+  fmap snd tmpl `shouldBe` Right res
 
-shouldRaise :: (HasCallStack, Show e, Eq e, Show a, Eq a) => Either e a -> e -> Expectation
+shouldWarn
+  :: (HasCallStack, Show e, Eq e, Show ws, Eq ws, Show a, Eq a)
+  => Either e (ws, a)
+  -> ws
+  -> Expectation
+tmpl `shouldWarn` res =
+  fmap fst tmpl `shouldBe` Right res
+
+shouldRaise
+  :: (HasCallStack, Show e, Eq e, Show ws, Eq ws, Show a, Eq a)
+  => Either e (ws, a)
+  -> e
+  -> Expectation
 tmpl `shouldRaise` res =
   tmpl `shouldBe` Left res
 
-rWith :: Aeson.Value -> Text -> Either Error Lazy.Text
+rWith :: Aeson.Value -> Text -> Either Error ([Warning], Lazy.Text)
 rWith json tmplStr = do
   let Aeson.Object o = json
       Just env = mkEnv ext (HashMap.mapKeys Name o)
@@ -232,6 +245,6 @@ ext =
     , ("split", embed Text.splitOn)
     ]
 
-r_ :: Text -> Either Error Lazy.Text
+r_ :: Text -> Either Error ([Warning], Lazy.Text)
 r_ =
   rWith [aesonQQ| {} |]

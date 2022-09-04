@@ -30,7 +30,7 @@ main = do
           case T.render env exp of
             Left err ->
               die (show err)
-            Right res ->
+            Right (_, res) ->
               Text.Lazy.putStrLn res
 
 envParse :: String -> Either String (Maybe T.Env)

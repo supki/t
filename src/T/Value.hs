@@ -1,5 +1,6 @@
 module T.Value
   ( Value(..)
+  , truthy
   , display
   , displayWith
   ) where
@@ -61,6 +62,12 @@ instance Aeson.ToJSON Value where
       Lam _f ->
         [ "variant" .= ("<lambda>" :: Text)
         ]
+
+truthy :: Value -> Bool
+truthy = \case
+  Null -> False
+  Bool False -> False
+  _ -> True
 
 display :: Value -> Text
 display =

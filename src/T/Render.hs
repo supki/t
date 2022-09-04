@@ -10,13 +10,12 @@ module T.Render
   , render
   ) where
 
-import           Control.Monad ((<=<))
 import           Control.Monad.Except (MonadError(..), runExcept, liftEither)
 import           Control.Monad.State (MonadState(..), execStateT, evalStateT, modify)
 import qualified Data.Aeson as Aeson
 import           Data.Bool (bool)
 import           Data.Either (isRight)
-import           Data.Foldable (for_, toList)
+import           Data.Foldable (asum, for_, toList)
 import           Data.HashMap.Strict (HashMap)
 import qualified Data.List as List
 import           Data.List.NonEmpty (NonEmpty(..))
@@ -28,11 +27,11 @@ import qualified Data.Text.Lazy as Lazy (Text)
 import           Data.Text.Lazy.Builder (Builder)
 import qualified Data.Text.Lazy.Builder as Builder
 import qualified Data.HashMap.Strict as HashMap
-import           Prelude hiding (exp)
+import           Prelude hiding (exp, lookup)
 
 import           T.Exp (Cofree(..), Exp, ExpF(..), Literal(..), Name(..), (:+)(..), Ann)
 import           T.Exp.Ann (emptyAnn)
-import           T.Error (Error(..))
+import           T.Error (Error(..), Warning(..))
 import qualified T.Stdlib as Stdlib
 import           T.Value (Value)
 import qualified T.Value as Value
@@ -41,9 +40,10 @@ import qualified T.Tmpl as Tmpl
 
 
 data Env = Env
-  { stdlib :: HashMap Name Value
-  , scope  :: HashMap Name (Ann, Value)
-  , result :: Builder
+  { stdlib   :: HashMap Name Value
+  , scope    :: HashMap Name (Ann, Value)
+  , result   :: Builder
+  , warnings :: [Warning]
   }
 
 mkDefEnv
@@ -61,6 +61,7 @@ mkEnv stdlibExt vars =
     { stdlib = HashMap.union Stdlib.def stdlibExt
     , scope = fmap (\x -> (emptyAnn, go x)) vars
     , result = mempty
+    , warnings = []
     }
  where
   go = \case
@@ -77,26 +78,30 @@ mkEnv stdlibExt vars =
     Aeson.Object xs ->
       Value.Object (fmap go xs)
 
-render :: Env -> Tmpl -> Either Error Lazy.Text
+render :: Env -> Tmpl -> Either Error ([Warning], Lazy.Text)
 render env0 tmpl =
-  fmap (Builder.toLazyText . result) (runExcept (execStateT (go tmpl) env0))
+  fmap fromEnv (runExcept (execStateT (go tmpl) env0))
  where
+  fromEnv Env {result, warnings} =
+    (reverse warnings, Builder.toLazyText result)
+
   go = \case
     Tmpl.Raw str ->
       build (Builder.fromText str)
     Tmpl.Set name exp -> do
       value <- evalExp exp
-      _ <- modifyM (insertVar name value)
+      insertVar name value
       pure ()
     Tmpl.Let name exp tmpl0 -> do
       value <- evalExp exp
-      oldEnv <- modifyM (insertVar name value)
+      oldEnv <- get
+      insertVar name value
       go tmpl0
       modify (\env -> env {scope = scope oldEnv})
     Tmpl.If clauses -> do
       let matchClause (exp, thenTmpl) acc = do
             value <- evalExp exp
-            if truthy value then go thenTmpl else acc
+            if Value.truthy value then go thenTmpl else acc
       foldr matchClause (pure ()) clauses
     Tmpl.For name itQ exp forTmpl elseTmpl -> do
       value <- evalExp exp
@@ -126,8 +131,9 @@ render env0 tmpl =
           maybe (pure ()) go elseTmpl
         Just items -> do
           for_ items $ \(x, itObj) -> do
-            oldEnv <-
-              modifyM (maybe pure (\it -> insertVar it itObj) itQ <=< insertVar name x)
+            oldEnv <- get
+            insertVar name x
+            for_ itQ (\it -> insertVar it itObj)
             go forTmpl
             modify (\env -> env {scope = scope oldEnv})
     Tmpl.Exp exp -> do
@@ -174,7 +180,7 @@ evalExp = \case
         pure (Value.Object ys)
   _ :< If p t f -> do
     pv <- evalExp p
-    evalExp (bool f t (truthy pv))
+    evalExp (bool f t (Value.truthy pv))
   _ :< Var name -> do
     env <- get
     lookupVar env name
@@ -211,47 +217,40 @@ evalApp name =
     throwError (NotAFunction name (Value.display val))
 
 lookupVar :: MonadError Error m => Env -> Ann :+ Name -> m Value
-lookupVar Env {stdlib, scope} aname@(_ :+ name) =
-  case HashMap.lookup name scope of
+lookupVar env aname@(_ :+ name) =
+  case lookup env name of
     Nothing ->
-      case HashMap.lookup name stdlib of
-        Nothing ->
-          throwError (NotInScope aname)
-        Just value ->
-          pure value
+      throwError (NotInScope aname)
     Just (_, value) ->
       pure value
 
-modifyM :: MonadState s m => (s -> m s) -> m s
-modifyM f = do
-  s <- get
-  s' <- f s
-  put s'
-  pure s
+insertVar :: MonadState Env m => Ann :+ Name -> Value -> m ()
+insertVar (_ :+ Name (Text.uncons -> Just ('_', _rest))) _ =
+  pure ()
+insertVar (ann :+ name) value = do
+  env <- get
+  for_ (lookup env name) $ \(ann', _value) ->
+    warn (ShadowedBy ((ann', ann) :+ name))
+  modify $ \env' -> env'
+    { scope = HashMap.insert name (ann, value) (scope env')
+    }
 
-insertVar :: MonadError Error m => Ann :+ Name -> Value -> Env -> m Env
-insertVar (_ :+ Name (Text.uncons -> Just ('_', _rest))) _ env =
-  pure env
-insertVar (ann :+ name) value env =
-  case HashMap.lookup name (scope env) of
-    Nothing ->
-      case HashMap.lookup name (stdlib env) of
-        Nothing ->
-          pure env {scope = HashMap.insert name (ann, value) (scope env)}
-        Just _ ->
-          throwError (ShadowedBy (emptyAnn :+ name) (ann :+ name))
-    Just (oldAnn, _) ->
-      throwError (ShadowedBy (oldAnn :+ name) (ann :+ name))
+lookup :: Env -> Name -> Maybe (Ann, Value)
+lookup Env {stdlib, scope} name =
+  asum
+    [ HashMap.lookup name scope
+    , do
+      value <- HashMap.lookup name stdlib
+      pure (emptyAnn, value)
+    ]
+
+warn :: MonadState Env m => Warning -> m ()
+warn warning =
+  modify (\s -> s {warnings = warning : warnings s})
 
 build :: MonadState Env m => Builder -> m ()
 build chunk =
   modify (\env -> env {result = result env <> chunk})
-
-truthy :: Value -> Bool
-truthy = \case
-  Value.Null -> False
-  Value.Bool False -> False
-  _ -> True
 
 loopObj :: Maybe Text -> Int -> Int -> Value
 loopObj key len idx =
