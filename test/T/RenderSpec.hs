@@ -240,7 +240,7 @@ tmpl `shouldRaise` res =
 rWith :: Aeson.Value -> Text -> Either Error ([Warning], Lazy.Text)
 rWith json tmplStr = do
   let Aeson.Object o = json
-      Just env = mkEnv ext (HashMap.mapKeys Name o)
+      env = mkEnv ext (HashMap.mapKeys Name o)
       Right tmpl = parse (Text.encodeUtf8 tmplStr)
   render env tmpl
 

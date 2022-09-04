@@ -46,23 +46,17 @@ data Env = Env
   , warnings :: [Warning]
   }
 
-mkDefEnv
-  :: HashMap Name Aeson.Value
-  -> Maybe Env
+mkDefEnv :: HashMap Name Aeson.Value -> Env
 mkDefEnv =
   mkEnv Stdlib.def
 
-mkEnv
-  :: HashMap Name Value
-  -> HashMap Name Aeson.Value
-  -> Maybe Env
-mkEnv stdlibExt vars =
-  Just Env
-    { stdlib = HashMap.union Stdlib.def stdlibExt
-    , scope = fmap (\x -> (emptyAnn, go x)) vars
-    , result = mempty
-    , warnings = []
-    }
+mkEnv :: HashMap Name Value -> HashMap Name Aeson.Value -> Env
+mkEnv stdlibExt vars = Env
+  { stdlib = HashMap.union Stdlib.def stdlibExt
+  , scope = fmap (\x -> (emptyAnn, go x)) vars
+  , result = mempty
+  , warnings = []
+  }
  where
   go = \case
     Aeson.Null ->
