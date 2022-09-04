@@ -1,4 +1,4 @@
-:set -isrc -itest
+:set -isrc -itest -idriver
 :set -Wall
 :set -XOverloadedStrings
 :set -XLambdaCase

@@ -7,15 +7,16 @@ import qualified Data.Text.IO as Text
 import qualified Data.Text.Encoding as Text
 import qualified Data.Text.Lazy.IO as Text.Lazy
 import           Prelude hiding (exp)
-import           System.Environment (getArgs)
 import           System.Exit (die)
 
 import qualified T
 
+import qualified Opts
+
 
 main :: IO ()
 main = do
-  templateName : envStr : _ <- getArgs
+  (templateName, envStr) <- Opts.parse
   str <- Text.readFile templateName
   case T.parse (Text.encodeUtf8 str) of
     Left err ->
@@ -31,8 +32,8 @@ main = do
             Left err ->
               die (show err)
             Right (_, res) ->
-              Text.Lazy.putStrLn res
+              Text.Lazy.putStr res
 
 envParse :: String -> Either String (Maybe T.Env)
 envParse =
-  fmap T.mkDefEnv . fmap (HashMap.mapKeys fromString) . Aeson.eitherDecode . fromString
+  fmap (T.mkDefEnv . HashMap.mapKeys fromString) . Aeson.eitherDecode . fromString

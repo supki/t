@@ -1,4 +1,3 @@
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 module T.Embed
   ( Embed(..)
@@ -60,7 +59,7 @@ class Eject t where
   eject :: Name -> Value -> Either Error t
 
 instance Eject Value where
-  eject name = pure
+  eject _name = pure
 
 instance Eject Bool where
   eject name = \case
