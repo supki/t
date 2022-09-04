@@ -49,7 +49,10 @@ executables:
       - t
       - aeson
       - optparse-applicative
+      - prettyprinter
+      - prettyprinter-ansi-terminal
       - text
+      - trifecta
       - unordered-containers
     source-dirs:
       driver

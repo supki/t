@@ -80,8 +80,11 @@ executable t
       aeson
     , base >=4.14 && <5
     , optparse-applicative
+    , prettyprinter
+    , prettyprinter-ansi-terminal
     , t
     , text
+    , trifecta
     , unordered-containers
   default-language: Haskell2010
 

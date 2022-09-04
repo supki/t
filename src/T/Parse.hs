@@ -41,11 +41,11 @@ import qualified T.Tmpl as Tmpl
 import           T.Tmpl (Tmpl((:*:)))
 
 
-parse :: ByteString -> Either String Tmpl
+parse :: ByteString -> Either ErrInfo Tmpl
 parse str =
   case parseByteString parser mempty str of
     Failure errDoc ->
-      Left (show errDoc)
+      Left errDoc
     Success tmpl ->
       Right (cleanup tmpl)
 
