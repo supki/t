@@ -5,6 +5,7 @@ module T
   , Error(..)
   , prettyError
   , Warning(..)
+  , prettyWarning
 
   , parse
   , parseFile
@@ -20,7 +21,7 @@ module T
   ) where
 
 import T.Embed (Embed(..), Eject(..))
-import T.Error (Error(..), Warning(..), prettyError)
+import T.Error (Error(..), Warning(..), prettyError, prettyWarning)
 import T.Exp (Name(..))
 import T.Tmpl (Tmpl)
 import T.Parse (parse, parseFile)

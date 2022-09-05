@@ -1,6 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 module Main (main) where
 
+import           Data.Foldable (traverse_)
 import qualified Data.Text.IO as Text
 import qualified Data.Text.Encoding as Text
 import qualified Data.Text.Lazy.IO as Text.Lazy
@@ -27,10 +28,15 @@ main = do
       case T.render env exp of
         Left err ->
           ppDie (T.prettyError err)
-        Right (_, res) ->
+        Right (warnings, res) -> do
+          traverse_ (ppWarn . T.prettyWarning) warnings
           Text.Lazy.putStr res
 
 ppDie :: PP.Doc PP.AnsiStyle -> IO a
 ppDie doc = do
-  PP.hPutDoc stderr (doc <> PP.line)
+  ppWarn doc
   exitFailure
+
+ppWarn :: PP.Doc PP.AnsiStyle -> IO ()
+ppWarn doc =
+  PP.hPutDoc stderr (doc <> PP.line)

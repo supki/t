@@ -1,7 +1,8 @@
 module T.Error
   ( Error(..)
-  , Warning(..)
   , prettyError
+  , Warning(..)
+  , prettyWarning
   ) where
 
 import           Data.Text (Text)
@@ -61,9 +62,25 @@ prettyError = \case
   header (Tri.Span from _to _line) =
     Tri.prettyDelta from <> ": " <>
     PP.annotate (PP.color PP.Red) "error" <> ": "
-  excerpt (Tri.Span from to line) =
-    Tri.prettyRendering (Tri.addSpan from to (Tri.rendered from line))
 
 data Warning
   = ShadowedBy ((Ann, Ann) :+ Name)
     deriving (Show, Eq)
+
+prettyWarning :: Warning -> Doc AnsiStyle
+prettyWarning = \case
+  ShadowedBy ((shadowed, shadower) :+ name) ->
+    header shadower <>
+    "shadowed binding: " <> PP.pretty name <> PP.line <>
+    "first defined at: " <> PP.line <>
+    excerpt shadowed <> PP.line <>
+    "but then redefined at: " <> PP.line <>
+    excerpt shadower
+ where
+  header (Tri.Span from _to _line) =
+    Tri.prettyDelta from <> ": " <>
+    PP.annotate (PP.color PP.Yellow) "warning" <> ": "
+
+excerpt :: Tri.Span -> Doc AnsiStyle
+excerpt (Tri.Span from to line) =
+  Tri.prettyRendering (Tri.addSpan from to (Tri.rendered from line))

@@ -200,7 +200,7 @@ spec =
         rWith [aesonQQ|{f: "foo"}|] "{{ f(4) }}" `shouldRaise` NotAFunction "f" "\"foo\""
 
       it "type errors" $
-        r_ "{{ bool01(\"foo\") }}" `shouldRaise` TypeError "bool01" "Bool" "\"foo\""
+        r_ "{{ bool01(\"foo\") }}" `shouldRaise` TypeError "bool01" "Bool" "string" "\"foo\""
 
       it "defined?" $
         rWith [aesonQQ|{foo: {}}|] "{{ defined?(foo.bar.baz) }}" `shouldRender` "false"
