@@ -12,7 +12,7 @@ import qualified Prettyprinter.Render.Terminal as PP (Color(..), color)
 import qualified Text.Trifecta as Tri
 import qualified Text.Trifecta.Delta as Tri
 
-import           T.Exp (Exp, (:+)(..), Name, Ann)
+import           T.Exp (Cofree((:<)), Exp, (:+)(..), Name, Ann)
 
 
 data Error
@@ -32,6 +32,14 @@ prettyError = \case
   NotInScope (ann :+ name) ->
     header ann <>
     "not in scope: " <> PP.pretty name <> PP.line <>
+    excerpt ann
+  NotIterable (ann :< _) value ->
+    header ann <>
+    "not an iterable: " <> PP.pretty value <> PP.line <>
+    excerpt ann
+  NotRenderable (ann :< _) value ->
+    header ann <>
+    "not renderable: " <> PP.pretty value <> PP.line <>
     excerpt ann
   NotAFunction (ann :+ name) value ->
     header ann <>

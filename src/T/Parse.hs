@@ -30,6 +30,7 @@ import           T.Exp
   , Literal(..)
   , Name(..)
   , (:+)(..)
+  , Ann
   , litE
   , litE_
   , varE
@@ -106,7 +107,7 @@ parser =
 parseSet :: Parser Tmpl
 parseSet =
   blockP "set" $ do
-    name <- anned nameP
+    name <- nameP
     _ <- symbol "="
     exp <- expP
     pure (Tmpl.Set name exp)
@@ -114,7 +115,7 @@ parseSet =
 parseLet :: Parser Tmpl
 parseLet = do
   (name, exp) <- blockP "let" $ do
-    name <- anned nameP
+    name <- nameP
     _ <- symbol "="
     exp <- expP
     pure (name, exp)
@@ -158,10 +159,10 @@ parseCase = do
 parseFor :: Parser Tmpl
 parseFor = do
   (name, it, exp) <- blockP "for" $ do
-    name <- anned nameP
+    name <- nameP
     it <- optional $ do
       _ <- symbol ","
-      anned nameP
+      nameP
     _ <- symbol "in"
     exp <- expP
     pure (name, it, exp)
@@ -310,7 +311,7 @@ ifP = do
 appP :: Parser Exp
 appP = do
   ann :+ (name, args) <- anned $ do
-    name <- anned nameP
+    name <- nameP
     args <-
       between (string "(" *> spaces) (spaces *> string ")") (sepByNonEmpty expP (symbol ","))
     pure (name, args)
@@ -318,12 +319,12 @@ appP = do
 
 varP :: Parser Exp
 varP = do
-  name@(ann :+ _) <- anned nameP
+  name@(ann :+ _) <- nameP
   pure (varE ann name)
 
-nameP :: Parser Name
+nameP :: Parser (Ann :+ Name)
 nameP =
-  fmap fromString (liftA2 (:) firstL (many restL)) <* spaces
+  anned (fmap fromString (liftA2 (:) firstL (many restL))) <* spaces
  where
   firstL =
     letter <|> char '_'
