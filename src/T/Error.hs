@@ -24,7 +24,7 @@ data Error
   | NotRenderable Exp Text
   | NotAFunction (Ann :+ Name) Text
   | UserError (Ann :+ Name) Text
-  | TypeError Name Text Text
+  | TypeError (Ann :+ Name) Text Text Text
     deriving (Show, Eq)
 
 prettyError :: Error -> Doc AnsiStyle
@@ -50,8 +50,13 @@ prettyError = \case
     header ann <>
     PP.pretty name <> ": " <> PP.pretty text <> PP.line <>
     excerpt ann
-  err ->
-    PP.viaShow err
+  TypeError (ann :+ name) expected actual value ->
+    header ann <>
+    "mismatched types in " <> PP.pretty name <> ": " <> PP.line <>
+      PP.indent 2 "expected: something convertable to " <> PP.pretty expected <> PP.line <>
+      PP.indent 2 " but got: " <> PP.pretty value <> PP.line <>
+      PP.indent 2 "which is: " <> PP.pretty actual <> PP.line <>
+    excerpt ann
  where
   header (Tri.Span from _to _line) =
     Tri.prettyDelta from <> ": " <>

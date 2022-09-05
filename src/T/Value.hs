@@ -3,6 +3,7 @@ module T.Value
   , truthy
   , display
   , displayWith
+  , typeOf
   ) where
 
 import           Data.Aeson ((.=))
@@ -61,7 +62,7 @@ instance Aeson.ToJSON Value where
         , "value" .= value
         ]
       Lam _f ->
-        [ "variant" .= ("<lambda>" :: Text)
+        [ "variant" .= ("lambda" :: Text)
         ]
 
 truthy :: Value -> Bool
@@ -95,3 +96,14 @@ displayWith f =
       Aeson.Object (fmap embedAeson o)
     Lam _f ->
       Aeson.String "<lambda>"
+
+typeOf :: Value -> Text
+typeOf = \case
+  Null -> "null"
+  Bool _ -> "bool"
+  Number _ -> "number"
+  String _ -> "string"
+  Regexp _ -> "regexp"
+  Array _ -> "array"
+  Object _ -> "object"
+  Lam _ -> "lambda"

@@ -18,8 +18,8 @@ import qualified Text.Regex.PCRE.Light as Pcre
 
 import           T.Embed (embed)
 import           T.Error (Error(..))
-import           T.Exp (Name)
-import           T.Exp.Ann ((:+)(..), unann)
+import           T.Exp (Name, Ann)
+import           T.Exp.Ann ((:+)(..), emptyAnn, unann)
 import           T.Value (Value(..), display, displayWith)
 
 
@@ -57,10 +57,10 @@ def =
     ]
 
   name ~> binding =
-    (name, binding name)
+    (name, binding (emptyAnn :+ name))
 
-eEq :: Name -> Value
-eNeq :: Name -> Value
+eEq :: Ann :+ Name -> Value
+eNeq :: Ann :+ Name -> Value
 (eEq, eNeq) =
   ( flip embed eq
   , flip embed neq
@@ -96,38 +96,38 @@ match :: Text -> Pcre.Regex -> Bool
 match str regexp =
   isJust (Pcre.match regexp (Text.encodeUtf8 str) [])
 
-eNull :: Name -> Value
-eNull name =
+eNull :: Ann :+ Name -> Value
+eNull (_ :+ name) =
   Lam $ \case
-    _ :+ String str ->
-      pure (embed name (Text.null str))
-    _ :+ Array xs ->
-      pure (embed name (null xs))
-    _ :+ Object o ->
-      pure (embed name (HashMap.null o))
+    ann :+ String str ->
+      pure (embed (ann :+ name) (Text.null str))
+    ann :+ Array xs ->
+      pure (embed (ann :+ name) (null xs))
+    ann :+ Object o ->
+      pure (embed (ann :+ name) (HashMap.null o))
     ann :+ value ->
       Left
         (UserError
           (ann :+ name)
           ("not applicable to " <> display value <> " (not a string, array, or object)"))
 
-eLength :: Name -> Value
-eLength name =
+eLength :: Ann :+ Name -> Value
+eLength (_ :+ name) =
   Lam $ \case
-    _ :+ String str ->
-      pure (embed name (Text.length str))
-    _ :+ Array xs ->
-      pure (embed name (length xs))
-    _ :+ Object o ->
-      pure (embed name (HashMap.size o))
+    ann :+ String str ->
+      pure (embed (ann :+ name) (Text.length str))
+    ann :+ Array xs ->
+      pure (embed (ann :+ name) (length xs))
+    ann :+ Object o ->
+      pure (embed (ann :+ name) (HashMap.size o))
     ann :+ value ->
       Left
         (UserError
           (ann :+ name)
           ("not applicable to " <> display value <> " (not a string, array, or object)"))
 
-eDie :: Name -> Value
-eDie name =
+eDie :: Ann :+ Name -> Value
+eDie (_ :+ name) =
   Lam (\(ann :+ val) -> Left (UserError (ann :+ name) (display val)))
 
 eShow :: Value
