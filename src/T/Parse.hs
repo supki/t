@@ -310,7 +310,7 @@ ifP = do
 appP :: Parser Exp
 appP = do
   ann :+ (name, args) <- anned $ do
-    name <- nameP
+    name <- anned nameP
     args <-
       between (string "(" *> spaces) (spaces *> string ")") (sepByNonEmpty expP (symbol ","))
     pure (name, args)

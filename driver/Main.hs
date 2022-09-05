@@ -8,9 +8,8 @@ import           Prelude hiding (exp)
 import           System.Exit (exitFailure)
 import           System.IO (stderr)
 import qualified Text.Trifecta as Tri
-import qualified Text.Trifecta.Delta as Tri
 import qualified Prettyprinter as PP
-import qualified Prettyprinter.Render.Terminal as PP (AnsiStyle, Color(..), color, hPutDoc)
+import qualified Prettyprinter.Render.Terminal as PP (AnsiStyle, hPutDoc)
 
 import qualified T
 
@@ -27,20 +26,9 @@ main = do
     Right exp ->
       case T.render env exp of
         Left err ->
-          ppDie (docify err)
+          ppDie (T.prettyError err)
         Right (_, res) ->
           Text.Lazy.putStr res
-
-docify :: T.Error -> PP.Doc PP.AnsiStyle
-docify = \case
-  T.NotInScope (Tri.Span from to line T.:+ name) ->
-    Tri.prettyDelta from <> ": " <>
-    PP.annotate (PP.color PP.Red) "error" <> ": " <>
-    "not in scope: " <> PP.pretty name <>
-    PP.line <>
-    Tri.prettyRendering (Tri.addSpan from to (Tri.rendered from line))
-  err ->
-    PP.viaShow err
 
 ppDie :: PP.Doc PP.AnsiStyle -> IO a
 ppDie doc = do

@@ -57,6 +57,7 @@ library
     , parsers
     , pcre-light
     , prettyprinter
+    , prettyprinter-ansi-terminal
     , scientific
     , text
     , transformers

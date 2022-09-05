@@ -125,11 +125,11 @@ ifE_ :: Exp -> Exp -> Exp -> Exp
 ifE_ =
   ifE emptyAnn
 
-appE :: Ann -> Name -> NonEmpty Exp -> Exp
+appE :: Ann -> Ann :+ Name -> NonEmpty Exp -> Exp
 appE ann name args =
-  ann :< App (ann :+ name) args
+  ann :< App name args
 
-appE_ :: Name -> NonEmpty Exp -> Exp
+appE_ :: Ann :+ Name -> NonEmpty Exp -> Exp
 appE_ =
   appE emptyAnn
 
