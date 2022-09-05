@@ -1,5 +1,6 @@
 module T.Parse
   ( parse
+  , parseFile
   ) where
 
 import           Control.Applicative ((<|>), liftA2)
@@ -16,6 +17,7 @@ import qualified Data.Text.Encoding as Text
 import qualified Data.Vector as Vector
 import           Prelude hiding (exp)
 import           Text.Trifecta
+import           Text.Trifecta.Delta (Delta(..))
 import           Text.Parser.Expression (Assoc(..), Operator(..), buildExpressionParser)
 import           Text.Parser.LookAhead (lookAhead)
 import           Text.Parser.Token.Style (emptyOps)
@@ -41,9 +43,17 @@ import qualified T.Tmpl as Tmpl
 import           T.Tmpl (Tmpl((:*:)))
 
 
+parseFile :: FilePath -> ByteString -> Either ErrInfo Tmpl
+parseFile path =
+  parseDelta (Directed (fromString path) 0 0 0 0)
+
 parse :: ByteString -> Either ErrInfo Tmpl
-parse str =
-  case parseByteString parser mempty str of
+parse =
+  parseDelta mempty
+
+parseDelta :: Delta -> ByteString -> Either ErrInfo Tmpl
+parseDelta delta str =
+  case parseByteString parser delta str of
     Failure errDoc ->
       Left errDoc
     Success tmpl ->

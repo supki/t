@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 module T.Exp
@@ -35,6 +36,7 @@ import           Data.Text (Text)
 import           Data.Vector (Vector)
 import           GHC.Generics (Generic1)
 import           Prelude hiding (exp)
+import           Prettyprinter (Pretty(..))
 import qualified Text.Regex.PCRE.Light as Pcre
 
 import           T.Exp.Ann (Ann, (:+)(..), emptyAnn)
@@ -182,6 +184,10 @@ trueL =
   
 newtype Name = Name { unName :: Text }
     deriving (Show, Eq, IsString, Hashable)
+
+instance Pretty Name where
+  pretty Name {unName} =
+    pretty unName
 
 instance Aeson.ToJSON Name where
   toJSON =

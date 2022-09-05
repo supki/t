@@ -211,10 +211,10 @@ evalApp name =
     throwError (NotAFunction name (Value.display val))
 
 lookupVar :: MonadError Error m => Env -> Ann :+ Name -> m Value
-lookupVar env aname@(_ :+ name) =
+lookupVar env (ann :+ name) =
   case lookup env name of
     Nothing ->
-      throwError (NotInScope aname)
+      throwError (NotInScope (ann :+ name))
     Just (_, value) ->
       pure value
 

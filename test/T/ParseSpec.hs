@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedLists #-}
 module T.ParseSpec (spec) where
 
+import           Data.Bifunctor (first)
 import           Data.ByteString (ByteString)
 import           Data.List (foldl')
 import           Data.List.NonEmpty (NonEmpty(..))
@@ -169,4 +170,4 @@ whenIf p thenTmpl =
 
 shouldParseTo :: HasCallStack => ByteString -> Tmpl -> Expectation
 tmpl `shouldParseTo` res =
-  parse tmpl `shouldBe` Right res
+  first show (parse tmpl) `shouldBe` Right res

@@ -30,6 +30,7 @@ library:
     - mtl
     - parsers
     - pcre-light
+    - prettyprinter
     - scientific
     - text
     - transformers
