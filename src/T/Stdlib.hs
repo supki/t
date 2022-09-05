@@ -19,6 +19,7 @@ import qualified Text.Regex.PCRE.Light as Pcre
 import           T.Embed (embed)
 import           T.Error (Error(..))
 import           T.Exp (Name)
+import           T.Exp.Ann ((:+)(..), unann)
 import           T.Value (Value(..), display, displayWith)
 
 
@@ -98,41 +99,41 @@ match str regexp =
 eNull :: Name -> Value
 eNull name =
   Lam $ \case
-    String str ->
+    _ :+ String str ->
       pure (embed name (Text.null str))
-    Array xs ->
+    _ :+ Array xs ->
       pure (embed name (null xs))
-    Object o ->
+    _ :+ Object o ->
       pure (embed name (HashMap.null o))
-    value ->
+    ann :+ value ->
       Left
         (UserError
-          name
+          (ann :+ name)
           ("not applicable to " <> display value <> " (not a string, array, or object)"))
 
 eLength :: Name -> Value
 eLength name =
   Lam $ \case
-    String str ->
+    _ :+ String str ->
       pure (embed name (Text.length str))
-    Array xs ->
+    _ :+ Array xs ->
       pure (embed name (length xs))
-    Object o ->
+    _ :+ Object o ->
       pure (embed name (HashMap.size o))
-    value ->
+    ann :+ value ->
       Left
         (UserError
-          name
+          (ann :+ name)
           ("not applicable to " <> display value <> " (not a string, array, or object)"))
 
 eDie :: Name -> Value
 eDie name =
-  Lam (Left . UserError name . display)
+  Lam (\(ann :+ val) -> Left (UserError (ann :+ name) (display val)))
 
 eShow :: Value
 eShow =
-  Lam (pure . String . display)
+  Lam (pure . String . display . unann)
 
 ePP :: Value
 ePP =
-  Lam (pure . String . displayWith Aeson.encodePretty)
+  Lam (pure . String . displayWith Aeson.encodePretty . unann)

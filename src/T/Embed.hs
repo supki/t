@@ -12,7 +12,7 @@ import qualified Data.Vector as Vector
 import qualified Text.Regex.PCRE.Light as Pcre
 
 import           T.Error (Error(..))
-import           T.Exp (Name)
+import           T.Exp ((:+)(..), Name)
 import           T.Value (Value(..), display)
 
 
@@ -53,7 +53,7 @@ instance Embed a => Embed [a] where
 
 instance (Eject a, Embed b) => Embed (a -> b) where
   embed name f =
-    Lam (\x -> fmap (embed name . f) (eject name x))
+    Lam (\(_ :+ x) -> fmap (embed name . f) (eject name x))
 
 class Eject t where
   eject :: Name -> Value -> Either Error t

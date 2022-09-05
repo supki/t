@@ -202,9 +202,9 @@ evalApp name =
   go val [] =
     pure val
   -- or we have a function to apply to the next argument
-  go (Value.Lam f) (exp0 : exps) = do
+  go (Value.Lam f) (exp0@(ann :< _) : exps) = do
     x <- evalExp exp0
-    g <- liftEither (f x)
+    g <- liftEither (f (ann :+ x))
     go g exps
   -- in every other case something went wrong :-(
   go val _ =

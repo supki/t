@@ -17,6 +17,7 @@ import           Data.Vector (Vector)
 import qualified Text.Regex.PCRE.Light as Pcre
 
 import           T.Error (Error)
+import           T.Exp ((:+)(..), Ann)
 
 
 data Value
@@ -27,7 +28,7 @@ data Value
   | Array (Vector Value)
   | Object (HashMap Text Value)
   | Regexp Pcre.Regex
-  | Lam (Value -> Either Error Value)
+  | Lam (Ann :+ Value -> Either Error Value)
 
 instance Aeson.ToJSON Value where
   toJSON =

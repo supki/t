@@ -23,7 +23,7 @@ data Error
   | NotIterable Exp Text
   | NotRenderable Exp Text
   | NotAFunction (Ann :+ Name) Text
-  | UserError Name Text
+  | UserError (Ann :+ Name) Text
   | TypeError Name Text Text
     deriving (Show, Eq)
 
@@ -45,6 +45,10 @@ prettyError = \case
     header ann <>
     "not a function: " <> PP.pretty name <> PP.line <>
       PP.indent 2 "but something else: " <> PP.pretty value <> PP.line <>
+    excerpt ann
+  UserError (ann :+ name) text ->
+    header ann <>
+    PP.pretty name <> ": " <> PP.pretty text <> PP.line <>
     excerpt ann
   err ->
     PP.viaShow err
