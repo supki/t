@@ -65,7 +65,7 @@ prettyError = \case
 
 data Warning
   = ShadowedBy ((Ann, Ann) :+ Name)
-    deriving (Show, Eq)
+    deriving (Show, Eq, Ord)
 
 prettyWarning :: Warning -> Doc AnsiStyle
 prettyWarning = \case

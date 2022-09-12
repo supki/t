@@ -96,11 +96,21 @@ spec =
         r_ "{% if true %}{% set x = 4 %}{% else %}{% set x = 7 %}{% endif %}{{ x }}" `shouldRender` "4"
         r_ "{% if false %}{% set x = 4 %}{% elif false %}{% set x = \"foo\" %}{% elif true %}{% set x = \"bar\" %}{% else %}{% set x = 7 %}{% endif %}{{ x }}" `shouldRender` "bar"
 
-    context "shadowing" $
-      it "is a warning" $ do
-        r_ "{% let x = 4 %}{% set x = 7 %}{{x}}{% endlet %}" `shouldRender` "7"
-        r_ "{% let x = 4 %}{% set x = 7 %}{{x}}{% endlet %}" `shouldWarn` [ShadowedBy "x"]
-        r_ "{% set show = \"show\" %}" `shouldWarn` [ShadowedBy "show"]
+    it "shadowing is a warning" $ do
+      r_ "{% let x = 4 %}{% set x = 7 %}{{x}}{% endlet %}" `shouldRender` "7"
+      r_ "{% let x = 4 %}{% set x = 7 %}{{x}}{% endlet %}" `shouldWarn` [ShadowedBy "x"]
+      r_ "{% set show = \"show\" %}" `shouldWarn` [ShadowedBy "show"]
+
+    it "repeated warnings merge" $ do
+      r_ "{% for x in [1, 2, 3] %}{% set x = 7 %}{% endfor %}" `shouldWarn`
+        [ShadowedBy "x"]
+      r_ "{% for x in [1, 2, 3] %}\
+            \{% for y in [4, 5, 6] %}\
+                \{% set x = 7 %}\
+                \{% set y = 42 %}\
+              \{% endfor %}\
+            \{% endfor %}" `shouldWarn`
+        [ShadowedBy "x", ShadowedBy "y"]
 
     context "functions" $ do
       it "numeric operations" $ do
@@ -181,15 +191,6 @@ spec =
         r_ "{{ \"Foo\" =~ /foo/ }}" `shouldRender` "false"
         r_ "{{ \"Foo\" =~ /foo/i }}" `shouldRender` "true"
 
-      context "lazyness" $ do
-        it "||" $ do
-          r_ "{{ true || die(\"no reason\") }}" `shouldRender` "true"
-          r_ "{{ false || die(4) }}" `shouldRaise` UserError "die" "4"
-
-        it "&&" $ do
-          r_ "{{ false && die(\"no reason\") }}" `shouldRender` "false"
-          r_ "{{ true && die(4) }}" `shouldRaise` UserError "die" "4"
-
       it "not-iterable" $
         r_ "{% for x in 4 %}{% endfor %}" `shouldRaise` NotIterable (litE_ (Number 4)) "4"
 
@@ -210,7 +211,11 @@ spec =
         r_ "{{ coalesce(foo.bar.baz, true) }}" `shouldRender` "true"
         r_ "{{ coalesce(foo.bar, foo.bar.baz, true) }}" `shouldRender` "true"
 
-      it "macros" $
+      it "macros are lazy and nestable" $ do
+        r_ "{{ true || die(\"no reason\") }}" `shouldRender` "true"
+        r_ "{{ false || die(4) }}" `shouldRaise` UserError "die" "4"
+        r_ "{{ false && die(\"no reason\") }}" `shouldRender` "false"
+        r_ "{{ true && die(4) }}" `shouldRaise` UserError "die" "4"
         r_ "{{ true && (false || true) }}" `shouldRender` "true"
 
 shouldRender

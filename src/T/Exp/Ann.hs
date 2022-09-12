@@ -28,6 +28,11 @@ instance Eq t => Eq (ann :+ t) where
   _ann0 :+ t0 == _ann1 :+ t1 =
     t0 == t1
 
+-- | This instance ignores the annotation part.
+instance Ord t => Ord (ann :+ t) where
+  (_ann0 :+ t0) `compare` (_ann1 :+ t1) =
+    t0 `compare` t1
+
 instance IsString t => IsString (Ann :+ t) where
   fromString str =
     emptyAnn :+ fromString str

@@ -20,6 +20,8 @@ import           Data.HashMap.Strict (HashMap)
 import qualified Data.List as List
 import           Data.List.NonEmpty (NonEmpty(..))
 import           Data.Scientific (floatingOrInteger)
+import           Data.Set (Set)
+import qualified Data.Set as Set
 import           Data.String (fromString)
 import           Data.Text (Text)
 import qualified Data.Text as Text
@@ -43,7 +45,7 @@ data Env = Env
   { stdlib   :: HashMap Name Value
   , scope    :: HashMap Name (Ann, Value)
   , result   :: Builder
-  , warnings :: [Warning]
+  , warnings :: Set (Ann, Warning)
   }
 
 mkDefEnv :: HashMap Name Aeson.Value -> Env
@@ -55,7 +57,7 @@ mkEnv stdlibExt vars = Env
   { stdlib = HashMap.union Stdlib.def stdlibExt
   , scope = fmap (\x -> (emptyAnn, go x)) vars
   , result = mempty
-  , warnings = []
+  , warnings = mempty
   }
  where
   go = \case
@@ -77,7 +79,9 @@ render env0 tmpl =
   fmap fromEnv (runExcept (execStateT (go tmpl) env0))
  where
   fromEnv Env {result, warnings} =
-    (reverse warnings, Builder.toLazyText result)
+    ( map snd (Set.toAscList warnings)
+    , Builder.toLazyText result
+    )
 
   go = \case
     Tmpl.Raw str ->
@@ -224,7 +228,7 @@ insertVar (_ :+ Name (Text.uncons -> Just ('_', _rest))) _ =
 insertVar (ann :+ name) value = do
   env <- get
   for_ (lookup env name) $ \(ann', _value) ->
-    warn (ShadowedBy ((ann', ann) :+ name))
+    warn ann (ShadowedBy ((ann', ann) :+ name))
   modify $ \env' -> env'
     { scope = HashMap.insert name (ann, value) (scope env')
     }
@@ -238,9 +242,9 @@ lookup Env {stdlib, scope} name =
       pure (emptyAnn, value)
     ]
 
-warn :: MonadState Env m => Warning -> m ()
-warn warning =
-  modify (\s -> s {warnings = warning : warnings s})
+warn :: MonadState Env m => Ann -> Warning -> m ()
+warn ann warning =
+  modify (\s -> s {warnings = Set.insert (ann, warning) (warnings s)})
 
 build :: MonadState Env m => Builder -> m ()
 build chunk =
