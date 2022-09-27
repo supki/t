@@ -1,0 +1,3 @@
+{% let xs = coalesce(foo.bar.xs, null) %}
+<ip>{{coalesce(foo.bar.server, foo.bar.ip, null)}}{% for x in xs %},{{x}}{% endfor %}</ip>
+{% endlet %}
