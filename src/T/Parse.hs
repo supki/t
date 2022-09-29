@@ -193,6 +193,7 @@ expP =
       ]
     , [infixrOp "&&"]
     , [infixrOp "||"]
+    , [infixlOp "|"]
     ]
    where
     dotOp name =
@@ -208,16 +209,16 @@ expP =
                   , (case b of ann' :< Var (_ :+ Name b') -> litE ann' (String b'); _ -> b)
                   ])))
         AssocLeft
+    binaryOp name =
+      Infix
+        (do ann <- anning (reserve emptyOps name)
+            pure (\a b -> appE ann (fromString name) (fromList [a, b])))
     infixOp name =
-      Infix
-        (do ann <- anning (reserve emptyOps name)
-            pure (\a b -> appE ann (fromString name) (fromList [a, b])))
-        AssocNone
+      binaryOp name AssocNone
+    infixlOp name =
+      binaryOp name AssocLeft
     infixrOp name =
-      Infix
-        (do ann <- anning (reserve emptyOps name)
-            pure (\a b -> appE ann (fromString name) (fromList [a, b])))
-        AssocRight
+      binaryOp name AssocRight
     prefixOp name =
       Prefix
         (do ann <- anning (reserve emptyOps name)
@@ -313,7 +314,7 @@ appP = do
   ann :+ (name, args) <- anned $ do
     name <- nameP
     args <-
-      between (string "(" *> spaces) (spaces *> string ")") (sepByNonEmpty expP (symbol ","))
+      between (symbol "(" *> spaces) (spaces *> symbol ")") (sepByNonEmpty expP (symbol ","))
     pure (name, args)
   pure (appE ann name args)
 

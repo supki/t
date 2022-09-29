@@ -218,6 +218,11 @@ spec =
         r_ "{{ true && die(4) }}" `shouldRaise` UserError "die" "4"
         r_ "{{ true && (false || true) }}" `shouldRender` "true"
 
+      it "|" $ do
+        r_ "{{ 4 | show }}" `shouldRender` "4"
+        r_ "{{ [\"foo\", \"bar\"] | join(\"-\") }}" `shouldRender` "foo-bar"
+        r_ "{{ \"ignored\" | const(false) | bool01 }}" `shouldRender` "0"
+
 shouldRender
   :: (HasCallStack, Show e, Eq e, Show a, Eq a)
   => Either e (ws, a)
@@ -255,6 +260,7 @@ ext =
     [ ("bool01", flip embed (bool @Int 0 1) "bool01")
     , ("join", flip embed Text.intercalate "join")
     , ("split", flip embed Text.splitOn "split")
+    , ("const", flip embed (const :: Bool -> Text -> Bool) "const")
     ]
 
 r_ :: Text -> Either Error ([Warning], Lazy.Text)

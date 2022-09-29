@@ -4,13 +4,14 @@ module T.Exp.Macro
   ( expand
   ) where
 
-import T.Exp
+import           T.Exp
   ( Cofree(..)
   , Exp
   , ExpF(..)
   , Name
   , Ann
   , (:+)
+  , appE
   , appE_
   , ifE
   , litE_
@@ -28,6 +29,13 @@ expand = \case
   -- 'or' macro
   ann :< Fun "||" expl expr ->
     expand (ifE ann expl (litE_ trueL) expr)
+
+  -- 'function application' macro ({{ arg | f }})
+  _ann :< Fun "|" expl (annf :< Var name) ->
+    expand (appE annf name [expl])
+  -- 'function application' macro ({{ arg | f(another-arg) }})
+  _ann :< Fun "|" expl (annf :< App name args) ->
+    expand (appE annf name (args <> [expl]))
 
   -- 'coalesce' macro
   ann :< App "coalesce" args ->

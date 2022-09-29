@@ -75,6 +75,10 @@ spec =
         Tmpl.If [(number 4, "4"), (number 7, "7"), (true, "foo")]
       "{{ foo(bar) }}" `shouldParseTo`
         Tmpl.Exp (appE_ "foo" [var "bar"])
+      "{{ bar | foo }}" `shouldParseTo`
+        Tmpl.Exp (appE_ "foo" [var "bar"])
+      "{{ bar | foo(baz) }}" `shouldParseTo`
+        Tmpl.Exp (appE_ "foo" [var "baz", var "bar"])
       "{{ foo(bar, baz) }}" `shouldParseTo`
         Tmpl.Exp (appE_ "foo" [var "bar", var "baz"])
       "{% if 4 && null %}foo{% endif %}" `shouldParseTo`
@@ -94,6 +98,17 @@ spec =
       it "examples" $ do
         "{{ (null) }}" `shouldParseTo` Tmpl.Exp null
         "{{ ((null)) }}" `shouldParseTo` Tmpl.Exp null
+        "{{ 1 + 2 + 3 }}" `shouldParseTo`
+          Tmpl.Exp
+            (appE_
+              "+"
+              [ number 1
+              , appE_
+                  "+"
+                  [ number 2
+                  , number 3
+                  ]
+              ])
         "{{ (1 + 2) + 3 }}" `shouldParseTo`
           Tmpl.Exp
             (appE_
