@@ -46,8 +46,12 @@ def =
     , ("<" ~> flip embed ((<) @Scientific))
     , ("<=" ~> flip embed ((<=) @Scientific))
 
-    , ("empty" ~> eNull)
+    , ("empty?" ~> eNull)
     , ("length" ~> eLength)
+
+    , ("upper-case" ~> flip embed Text.toUpper)
+    , ("lower-case" ~> flip embed Text.toLower)
+    , ("title-case" ~> flip embed Text.toTitle)
 
     , ("." ~> flip embed (flip (HashMap.lookup @Text @Value)))
     , ("die" ~> eDie)

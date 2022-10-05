@@ -131,14 +131,14 @@ spec =
         r_ "{{ bool01(true) }}" `shouldRender` "1"
 
       it "empty" $ do
-        r_ "{{ empty(\"\") }}" `shouldRender` "true"
-        r_ "{{ empty(\"hello\") }}" `shouldRender` "false"
-        r_ "{{ empty([]) }}" `shouldRender` "true"
-        r_ "{{ empty([1, 2, 3]) }}" `shouldRender` "false"
-        r_ "{{ empty({}) }}" `shouldRender` "true"
-        r_ "{{ empty({x: 4, y: 7}) }}" `shouldRender` "false"
-        r_ "{{ empty(4) }}" `shouldRaise`
-          UserError "empty" "not applicable to 4 (not a string, array, or object)"
+        r_ "{{ empty?(\"\") }}" `shouldRender` "true"
+        r_ "{{ empty?(\"hello\") }}" `shouldRender` "false"
+        r_ "{{ empty?([]) }}" `shouldRender` "true"
+        r_ "{{ empty?([1, 2, 3]) }}" `shouldRender` "false"
+        r_ "{{ empty?({}) }}" `shouldRender` "true"
+        r_ "{{ empty?({x: 4, y: 7}) }}" `shouldRender` "false"
+        r_ "{{ empty?(4) }}" `shouldRaise`
+          UserError "empty?" "not applicable to 4 (not a string, array, or object)"
 
       it "length" $ do
         r_ "{{ length(\"hello\") }}" `shouldRender` "5"
@@ -222,6 +222,21 @@ spec =
         r_ "{{ 4 | show }}" `shouldRender` "4"
         r_ "{{ [\"foo\", \"bar\"] | join(\"-\") }}" `shouldRender` "foo-bar"
         r_ "{{ \"ignored\" | const(false) | bool01 }}" `shouldRender` "0"
+
+      it "upper-case" $ do
+        r_ "{{ upper-case(\"hello\") }}" `shouldRender` "HELLO"
+        r_ "{{ upper-case(\"HELLO\") }}" `shouldRender` "HELLO"
+        r_ "{{ upper-case(\"123\") }}" `shouldRender` "123"
+
+      it "lower-case" $ do
+        r_ "{{ lower-case(\"hello\") }}" `shouldRender` "hello"
+        r_ "{{ lower-case(\"HELLO\") }}" `shouldRender` "hello"
+        r_ "{{ lower-case(\"123\") }}" `shouldRender` "123"
+
+      it "title-case" $ do
+        r_ "{{ title-case(\"hello\") }}" `shouldRender` "Hello"
+        r_ "{{ title-case(\"HELLO\") }}" `shouldRender` "Hello"
+        r_ "{{ title-case(\"123\") }}" `shouldRender` "123"
 
 shouldRender
   :: (HasCallStack, Show e, Eq e, Show a, Eq a)
