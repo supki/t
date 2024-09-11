@@ -1,22 +1,22 @@
 {-# LANGUAGE OverloadedLists #-}
 module T.ParseSpec (spec) where
 
-import           Data.Bifunctor (first)
-import           Data.ByteString (ByteString)
-import           Data.List (foldl')
-import           Data.List.NonEmpty (NonEmpty(..))
-import qualified Data.HashMap.Strict as HashMap
-import           Data.Scientific (Scientific)
-import           Data.Text (Text)
-import qualified Data.Vector as Vector
-import           Prelude hiding (null)
-import           Test.Hspec
+import Data.Bifunctor (first)
+import Data.ByteString (ByteString)
+import Data.List (foldl')
+import Data.List.NonEmpty (NonEmpty(..))
+import Data.HashMap.Strict qualified as HashMap
+import Data.Scientific (Scientific)
+import Data.Text (Text)
+import Data.Vector qualified as Vector
+import Prelude hiding (null)
+import Test.Hspec
 
-import           T.Parse (parse)
-import           T.Exp (Exp, Literal(..), Name(..), litE_, varE_, ifE_, appE_)
-import           T.Exp.Ann (noann)
-import           T.Tmpl (Tmpl((:*:)))
-import qualified T.Tmpl as Tmpl
+import T.Parse (parse)
+import T.Exp (Exp, Literal(..), Name(..), litE_, varE_, ifE_, appE_)
+import T.Exp.Ann (noann)
+import T.Tmpl (Tmpl((:*:)))
+import T.Tmpl qualified as Tmpl
 
 
 spec :: Spec

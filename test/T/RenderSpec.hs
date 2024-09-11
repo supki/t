@@ -3,23 +3,24 @@
 {-# LANGUAGE TypeApplications #-}
 module T.RenderSpec (spec) where
 
-import qualified Data.Aeson as Aeson
-import           Data.Aeson.QQ (aesonQQ)
-import           Data.Bool (bool)
-import           Data.HashMap.Strict (HashMap)
-import qualified Data.HashMap.Strict as HashMap
-import           Data.Text (Text)
-import qualified Data.Text as Text
-import qualified Data.Text.Encoding as Text
-import qualified Data.Text.Lazy as Lazy (Text)
-import           Test.Hspec
+import Data.Aeson qualified as Aeson
+import Data.Aeson.KeyMap qualified as Aeson (toHashMapText)
+import Data.Aeson.QQ (aesonQQ)
+import Data.Bool (bool)
+import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict qualified as HashMap
+import Data.Text (Text)
+import Data.Text qualified as Text
+import Data.Text.Encoding qualified as Text
+import Data.Text.Lazy qualified as Lazy (Text)
+import Test.Hspec
 
-import           T.Exp (Literal(..), Name(..), litE_)
-import           T.Embed (embed)
-import           T.Error (Error(..), Warning(..))
-import           T.Parse (parse)
-import           T.Render (render, mkEnv)
-import           T.Value (Value)
+import T.Exp (Literal(..), Name(..), litE_)
+import T.Embed (embed)
+import T.Error (Error(..), Warning(..))
+import T.Parse (parse)
+import T.Render (render, mkEnv)
+import T.Value (Value)
 
 
 spec :: Spec
@@ -265,7 +266,7 @@ tmpl `shouldRaise` res =
 rWith :: Aeson.Value -> Text -> Either Error ([Warning], Lazy.Text)
 rWith json tmplStr = do
   let Aeson.Object o = json
-      env = mkEnv ext (HashMap.mapKeys Name o)
+      env = mkEnv ext (HashMap.mapKeys Name (Aeson.toHashMapText o))
       Right tmpl = parse (Text.encodeUtf8 tmplStr)
   render env tmpl
 

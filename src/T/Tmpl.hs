@@ -5,15 +5,15 @@ module T.Tmpl
   , Ann
   ) where
 
-import           Data.Aeson ((.=))
-import qualified Data.Aeson as Aeson
-import           Data.List.NonEmpty (NonEmpty)
-import           Data.String (IsString(..))
-import           Data.Text (Text)
-import           Prelude hiding (exp)
+import Data.Aeson ((.=))
+import Data.Aeson qualified as Aeson
+import Data.List.NonEmpty (NonEmpty)
+import Data.String (IsString(..))
+import Data.Text (Text)
+import Prelude hiding (exp)
 
-import           T.Exp.Ann (Ann, (:+)(..))
-import           T.Exp (Exp, Name)
+import T.Exp.Ann (Ann, (:+)(..))
+import T.Exp (Exp, Name)
 
 
 infixr 1 :*:

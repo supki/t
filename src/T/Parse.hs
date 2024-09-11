@@ -3,25 +3,25 @@ module T.Parse
   , parseFile
   ) where
 
-import           Control.Applicative ((<|>), liftA2)
-import           Data.Bifunctor (second)
-import           Data.Bool (bool)
-import           Data.ByteString (ByteString)
-import qualified Data.Char as Char
-import           Data.Foldable (asum)
-import qualified Data.HashMap.Strict as HashMap
-import           Data.List.NonEmpty (NonEmpty(..), fromList)
-import qualified Data.Scientific as Scientific
-import           Data.String (fromString)
-import qualified Data.Text.Encoding as Text
-import qualified Data.Vector as Vector
-import           Prelude hiding (exp)
-import           Text.Trifecta
-import           Text.Trifecta.Delta (Delta(..))
-import           Text.Parser.Expression (Assoc(..), Operator(..), buildExpressionParser)
-import           Text.Parser.LookAhead (lookAhead)
-import           Text.Parser.Token.Style (emptyOps)
-import qualified Text.Regex.PCRE.Light as Pcre
+import Control.Applicative ((<|>))
+import Data.Bifunctor (second)
+import Data.Bool (bool)
+import Data.ByteString (ByteString)
+import Data.Char qualified as Char
+import Data.Foldable (asum)
+import Data.HashMap.Strict qualified as HashMap
+import Data.List.NonEmpty (NonEmpty(..), fromList)
+import Data.Scientific qualified as Scientific
+import Data.String (fromString)
+import Data.Text.Encoding qualified as Text
+import Data.Vector qualified as Vector
+import Prelude hiding (exp)
+import Text.Trifecta
+import Text.Trifecta.Delta (Delta(..))
+import Text.Parser.Expression (Assoc(..), Operator(..), buildExpressionParser)
+import Text.Parser.LookAhead (lookAhead)
+import Text.Parser.Token.Style (emptyOps)
+import Text.Regex.PCRE.Light qualified as Pcre
 
 import           T.Exp
   ( Cofree(..)

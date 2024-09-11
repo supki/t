@@ -4,7 +4,7 @@ module T.Exp.Macro
   ( expand
   ) where
 
-import           T.Exp
+import T.Exp
   ( Cofree(..)
   , Exp
   , ExpF(..)

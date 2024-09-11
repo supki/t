@@ -23,23 +23,23 @@ module T.Exp
   , trueL
   ) where
 
-import           Data.Aeson ((.=))
-import qualified Data.Aeson as Aeson
-import           Data.Functor.Classes (Eq1(..), eq1)
-import           Data.List.NonEmpty (NonEmpty)
-import qualified Data.List.NonEmpty as NonEmpty
-import           Data.Hashable (Hashable)
-import           Data.HashMap.Strict (HashMap)
-import           Data.Scientific (Scientific)
-import           Data.String (IsString(..))
-import           Data.Text (Text)
-import           Data.Vector (Vector)
-import           GHC.Generics (Generic1)
-import           Prelude hiding (exp)
-import           Prettyprinter (Pretty(..))
-import qualified Text.Regex.PCRE.Light as Pcre
+import Data.Aeson ((.=))
+import Data.Aeson qualified as Aeson
+import Data.Functor.Classes (Eq1(..), eq1)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty
+import Data.Hashable (Hashable)
+import Data.HashMap.Strict (HashMap)
+import Data.Scientific (Scientific)
+import Data.String (IsString(..))
+import Data.Text (Text)
+import Data.Vector (Vector)
+import GHC.Generics (Generic1)
+import Prelude hiding (exp)
+import Prettyprinter (Pretty(..))
+import Text.Regex.PCRE.Light qualified as Pcre
 
-import           T.Exp.Ann (Ann, (:+)(..), emptyAnn)
+import T.Exp.Ann (Ann, (:+)(..), emptyAnn)
 
 
 data Cofree f a = a :< f (Cofree f a)

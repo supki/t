@@ -1,5 +1,6 @@
 :set -isrc -itest -idriver
 :set -Wall
+:set -XImportQualifiedPost
 :set -XOverloadedStrings
 :set -XLambdaCase
 :set -XTypeOperators

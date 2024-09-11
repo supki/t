@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.7.
+-- This file has been generated from package.yaml by hpack version 0.36.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -41,10 +41,11 @@ library
   hs-source-dirs:
       src
   default-extensions:
+      ImportQualifiedPost
       LambdaCase
       OverloadedStrings
       TypeOperators
-  ghc-options: -funbox-strict-fields -Wall
+  ghc-options: -funbox-strict-fields -Wall -Wno-incomplete-uni-patterns
   build-depends:
       aeson
     , aeson-pretty
@@ -74,6 +75,7 @@ executable t
   hs-source-dirs:
       driver
   default-extensions:
+      ImportQualifiedPost
       LambdaCase
       OverloadedStrings
       TypeOperators
@@ -100,10 +102,11 @@ test-suite spec
   hs-source-dirs:
       test
   default-extensions:
+      ImportQualifiedPost
       LambdaCase
       OverloadedStrings
       TypeOperators
-  ghc-options: -Wall -threaded -with-rtsopts=-N
+  ghc-options: -Wall -Wno-incomplete-uni-patterns -threaded -with-rtsopts=-N
   build-depends:
       aeson
     , aeson-qq

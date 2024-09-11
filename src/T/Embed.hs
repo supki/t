@@ -4,16 +4,16 @@ module T.Embed
   , Eject(..)
   ) where
 
-import           Data.Foldable (toList)
-import           Data.HashMap.Strict (HashMap)
-import           Data.Scientific (Scientific)
-import           Data.Text (Text)
-import qualified Data.Vector as Vector
-import qualified Text.Regex.PCRE.Light as Pcre
+import Data.Foldable (toList)
+import Data.HashMap.Strict (HashMap)
+import Data.Scientific (Scientific)
+import Data.Text (Text)
+import Data.Vector qualified as Vector
+import Text.Regex.PCRE.Light qualified as Pcre
 
-import           T.Error (Error(..))
-import           T.Exp ((:+)(..), Ann, Name)
-import           T.Value (Value(..), display, typeOf)
+import T.Error (Error(..))
+import T.Exp ((:+)(..), Ann, Name)
+import T.Value (Value(..), display, typeOf)
 
 
 class Embed t where

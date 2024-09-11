@@ -10,10 +10,10 @@ module T.Exp.Ann
   , emptyAnn
   ) where
 
-import qualified Data.Aeson as Aeson
-import           Data.String (IsString(..))
-import           Prelude hiding (span)
-import           Text.Trifecta (DeltaParsing, Span(..), Spanned(..), spanning, spanned)
+import Data.Aeson qualified as Aeson
+import Data.String (IsString(..))
+import Prelude hiding (span)
+import Text.Trifecta (DeltaParsing, Span(..), Spanned(..), spanning, spanned)
 
 
 type Ann = Span

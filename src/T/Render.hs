@@ -10,35 +10,36 @@ module T.Render
   , render
   ) where
 
-import           Control.Monad.Except (MonadError(..), runExcept, liftEither)
-import           Control.Monad.State (MonadState(..), execStateT, evalStateT, modify)
-import qualified Data.Aeson as Aeson
-import           Data.Bool (bool)
-import           Data.Either (isRight)
-import           Data.Foldable (asum, for_, toList)
-import           Data.HashMap.Strict (HashMap)
-import qualified Data.List as List
-import           Data.List.NonEmpty (NonEmpty(..))
-import           Data.Scientific (floatingOrInteger)
-import           Data.Set (Set)
-import qualified Data.Set as Set
-import           Data.String (fromString)
-import           Data.Text (Text)
-import qualified Data.Text as Text
-import qualified Data.Text.Lazy as Lazy (Text)
-import           Data.Text.Lazy.Builder (Builder)
-import qualified Data.Text.Lazy.Builder as Builder
-import qualified Data.HashMap.Strict as HashMap
-import           Prelude hiding (exp, lookup)
+import Control.Monad.Except (MonadError(..), runExcept, liftEither)
+import Control.Monad.State (MonadState(..), execStateT, evalStateT, modify)
+import Data.Aeson qualified as Aeson
+import Data.Aeson.KeyMap qualified as Aeson (toHashMapText)
+import Data.Bool (bool)
+import Data.Either (isRight)
+import Data.Foldable (asum, for_, toList)
+import Data.HashMap.Strict (HashMap)
+import Data.List qualified as List
+import Data.List.NonEmpty (NonEmpty(..))
+import Data.Scientific (floatingOrInteger)
+import Data.Set (Set)
+import Data.Set qualified as Set
+import Data.String (fromString)
+import Data.Text (Text)
+import Data.Text qualified as Text
+import Data.Text.Lazy qualified as Lazy (Text)
+import Data.Text.Lazy.Builder (Builder)
+import Data.Text.Lazy.Builder qualified as Builder
+import Data.HashMap.Strict qualified as HashMap
+import Prelude hiding (exp, lookup)
 
-import           T.Exp (Cofree(..), Exp, ExpF(..), Literal(..), Name(..), (:+)(..), Ann)
-import           T.Exp.Ann (emptyAnn)
-import           T.Error (Error(..), Warning(..))
-import qualified T.Stdlib as Stdlib
-import           T.Value (Value)
-import qualified T.Value as Value
-import           T.Tmpl (Tmpl((:*:)))
-import qualified T.Tmpl as Tmpl
+import T.Exp (Cofree(..), Exp, ExpF(..), Literal(..), Name(..), (:+)(..), Ann)
+import T.Exp.Ann (emptyAnn)
+import T.Error (Error(..), Warning(..))
+import T.Stdlib qualified as Stdlib
+import T.Value (Value)
+import T.Value qualified as Value
+import T.Tmpl (Tmpl((:*:)))
+import T.Tmpl qualified as Tmpl
 
 
 data Env = Env
@@ -72,7 +73,7 @@ mkEnv stdlibExt vars = Env
     Aeson.Array xs ->
       Value.Array (fmap go xs)
     Aeson.Object xs ->
-      Value.Object (fmap go xs)
+      Value.Object (Aeson.toHashMapText (fmap go xs))
 
 render :: Env -> Tmpl -> Either Error ([Warning], Lazy.Text)
 render env0 tmpl =

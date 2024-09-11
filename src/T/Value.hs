@@ -6,19 +6,20 @@ module T.Value
   , typeOf
   ) where
 
-import           Data.Aeson ((.=))
-import qualified Data.Aeson as Aeson
-import qualified Data.ByteString.Lazy as Lazy (ByteString)
-import           Data.HashMap.Strict (HashMap)
-import           Data.Scientific (Scientific)
-import           Data.Text (Text)
-import qualified Data.Text.Lazy as Text.Lazy
-import qualified Data.Text.Lazy.Encoding as Text.Lazy
-import           Data.Vector (Vector)
-import qualified Text.Regex.PCRE.Light as Pcre
+import Data.Aeson ((.=))
+import Data.Aeson qualified as Aeson
+import Data.Aeson.KeyMap qualified as Aeson (fromHashMapText)
+import Data.ByteString.Lazy qualified as Lazy (ByteString)
+import Data.HashMap.Strict (HashMap)
+import Data.Scientific (Scientific)
+import Data.Text (Text)
+import Data.Text.Lazy qualified as Text.Lazy
+import Data.Text.Lazy.Encoding qualified as Text.Lazy
+import Data.Vector (Vector)
+import Text.Regex.PCRE.Light qualified as Pcre
 
-import           T.Error (Error)
-import           T.Exp ((:+)(..), Ann)
+import T.Error (Error)
+import T.Exp ((:+)(..), Ann)
 
 
 data Value
@@ -93,7 +94,7 @@ displayWith f =
     Array xs ->
       Aeson.Array (fmap embedAeson xs)
     Object o ->
-      Aeson.Object (fmap embedAeson o)
+      Aeson.Object (Aeson.fromHashMapText (fmap embedAeson o))
     Lam _f ->
       Aeson.String "<lambda>"
 

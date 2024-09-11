@@ -5,22 +5,22 @@ module T.Stdlib
   , def
   ) where
 
-import qualified Data.Aeson.Encode.Pretty as Aeson (encodePretty)
-import           Data.HashMap.Strict (HashMap)
-import qualified Data.HashMap.Strict as HashMap
-import           Data.Maybe (isJust)
-import           Data.Scientific (Scientific)
-import           Data.Text (Text)
-import qualified Data.Text as Text
-import qualified Data.Text.Encoding as Text
-import qualified Data.Vector as Vector
-import qualified Text.Regex.PCRE.Light as Pcre
+import Data.Aeson.Encode.Pretty qualified as Aeson (encodePretty)
+import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict qualified as HashMap
+import Data.Maybe (isJust)
+import Data.Scientific (Scientific)
+import Data.Text (Text)
+import Data.Text qualified as Text
+import Data.Text.Encoding qualified as Text
+import Data.Vector qualified as Vector
+import Text.Regex.PCRE.Light qualified as Pcre
 
-import           T.Embed (embed)
-import           T.Error (Error(..))
-import           T.Exp (Name, Ann)
-import           T.Exp.Ann ((:+)(..), emptyAnn, unann)
-import           T.Value (Value(..), display, displayWith)
+import T.Embed (embed)
+import T.Error (Error(..))
+import T.Exp (Name, Ann)
+import T.Exp.Ann ((:+)(..), emptyAnn, unann)
+import T.Value (Value(..), display, displayWith)
 
 
 type Stdlib = HashMap Name Value

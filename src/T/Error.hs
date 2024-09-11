@@ -5,15 +5,15 @@ module T.Error
   , prettyWarning
   ) where
 
-import           Data.Text (Text)
-import           Prettyprinter (Doc)
-import qualified Prettyprinter as PP
-import           Prettyprinter.Render.Terminal (AnsiStyle)
-import qualified Prettyprinter.Render.Terminal as PP (Color(..), color)
-import qualified Text.Trifecta as Tri
-import qualified Text.Trifecta.Delta as Tri
+import Data.Text (Text)
+import Prettyprinter (Doc)
+import Prettyprinter qualified as PP
+import Prettyprinter.Render.Terminal (AnsiStyle)
+import Prettyprinter.Render.Terminal qualified as PP (Color(..), color)
+import Text.Trifecta qualified as Tri
+import Text.Trifecta.Delta qualified as Tri
 
-import           T.Exp (Cofree((:<)), Exp, (:+)(..), Name, Ann)
+import T.Exp (Cofree((:<)), Exp, (:+)(..), Name, Ann)
 
 
 data Error
