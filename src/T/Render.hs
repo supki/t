@@ -143,7 +143,7 @@ render env0 tmpl =
     tmpl0 :*: tmpl1 -> do
       go tmpl0
       go tmpl1
-  
+
 renderExp :: (MonadState Env m, MonadError Error m) => Exp -> m Text
 renderExp exp = do
   value <- evalExp exp

@@ -187,10 +187,17 @@ expP =
   fmap Macro.expand (buildExpressionParser table expP')
  where
   table =
-    [ [dotOp "."]
-    , [prefixOp "!"]
-    , [infixrOp "*", infixrOp "/"]
-    , [infixrOp "+", infixrOp "-"]
+    [ [ dotOp "."
+      ]
+    , [ prefixOp "!"
+      ]
+    , [ infixrOp "*"
+      , infixlOp "/"
+      ]
+    , [ infixrOp "+"
+      , infixlOp "-"
+      , infixrOp "<>"
+      ]
     , [ infixOp "=="
       , infixOp "=~"
       , infixOp ">"
@@ -198,9 +205,12 @@ expP =
       , infixOp "<"
       , infixOp "<="
       ]
-    , [infixrOp "&&"]
-    , [infixrOp "||"]
-    , [infixlOp "|"]
+    , [ infixrOp "&&"
+      ]
+    , [ infixrOp "||"
+      ]
+    , [ infixlOp "|"
+      ]
     ]
    where
     dotOp name =

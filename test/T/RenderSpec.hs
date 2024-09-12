@@ -10,7 +10,6 @@ import Data.Bool (bool)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Text (Text)
-import Data.Text qualified as Text
 import Data.Text.Encoding qualified as Text
 import Data.Text.Lazy qualified as Lazy (Text)
 import Test.Hspec
@@ -118,14 +117,20 @@ spec =
         r_ "{{ 1 + 2 }}" `shouldRender` "3"
         r_ "{{ 0.1 + 0.2 }}" `shouldRender` "0.3"
         r_ "{{ 1 - 2 }}" `shouldRender` "-1"
+        r_ "{{ 1 - 2 - 3 }}" `shouldRender` "-4"
         r_ "{{ 4 * 7 }}" `shouldRender` "28"
         r_ "{{ 4 / 8 }}" `shouldRender` "0.5"
+        r_ "{{ 4 / 8 / 2 }}" `shouldRender` "0.25"
 
       it "numeric comparisons" $ do
         r_ "{{ 1 > 2 }}" `shouldRender` "false"
         r_ "{{ 1 >= 2 }}" `shouldRender` "false"
         r_ "{{ 1 < 2 }}" `shouldRender` "true"
         r_ "{{ 1 <= 2 }}" `shouldRender` "true"
+
+      it "string concatenation" $ do
+        r_ "{{ \"foo\" <> \"bar\" }}" `shouldRender` "foobar"
+        r_ "{{ concat([\"foo\", \"bar\", \"baz\"]) }}" `shouldRender` "foobarbaz"
 
       it "bool01" $ do
         r_ "{{ bool01(false) }}" `shouldRender` "0"
@@ -148,13 +153,13 @@ spec =
         r_ "{{ length(4) }}" `shouldRaise`
           UserError "length" "not applicable to 4 (not a string, array, or object)"
 
-      it "join" $
-        r_ "{{ join(\",\", [\"foo\", \"bar\", \"baz\"]) }}" `shouldRender`
-          "foo,bar,baz"
-
       it "split" $
         r_ "{% for x in split(\",\", \"foo,bar,baz\") %}{{ x }}{% endfor %}" `shouldRender`
           "foobarbaz"
+
+      it "join" $
+        r_ "{{ join(\",\", [\"foo\", \"bar\", \"baz\"]) }}" `shouldRender`
+          "foo,bar,baz"
 
       it "die" $ do
         r_ "{{ die(\"reason\") }}" `shouldRaise` UserError "die" "\"reason\""
@@ -278,8 +283,6 @@ ext :: HashMap Name Value
 ext =
   HashMap.fromList
     [ ("bool01", flip embed (bool @Int 0 1) "bool01")
-    , ("join", flip embed Text.intercalate "join")
-    , ("split", flip embed Text.splitOn "split")
     , ("const", flip embed (const :: Bool -> Text -> Bool) "const")
     ]
 

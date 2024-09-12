@@ -46,12 +46,18 @@ def =
     , ("<" ~> flip embed ((<) @Scientific))
     , ("<=" ~> flip embed ((<=) @Scientific))
 
+    , ("<>" ~> flip embed ((<>) @Text))
+
     , ("empty?" ~> eNull)
     , ("length" ~> eLength)
 
     , ("upper-case" ~> flip embed Text.toUpper)
     , ("lower-case" ~> flip embed Text.toLower)
     , ("title-case" ~> flip embed Text.toTitle)
+
+    , ("split" ~> flip embed Text.splitOn)
+    , ("join" ~> flip embed Text.intercalate)
+    , ("concat" ~> flip embed Text.concat)
 
     , ("." ~> flip embed (flip (HashMap.lookup @Text @Value)))
     , ("die" ~> eDie)
