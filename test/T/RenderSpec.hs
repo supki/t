@@ -239,6 +239,10 @@ spec =
         r_ "{{ title-case(\"HELLO\") }}" `shouldRender` "Hello"
         r_ "{{ title-case(\"123\") }}" `shouldRender` "123"
 
+    context "comments" $
+      it "examples" $ do
+        r_ "{% for x in [1,2,3] %}{# this is x: #}{{ x }}{% else %}foo{% endfor %}" `shouldRender` "123"
+
 shouldRender
   :: (HasCallStack, Show e, Eq e, Show a, Eq a)
   => Either e (ws, a)

@@ -1,16 +1,16 @@
 {-# LANGUAGE NamedFieldPuns #-}
 module Main (main) where
 
-import           Data.Foldable (traverse_)
-import qualified Data.Text.IO as Text
-import qualified Data.Text.Encoding as Text
-import qualified Data.Text.Lazy.IO as Text.Lazy
-import           Prelude hiding (exp)
-import           System.Exit (exitFailure)
-import           System.IO (stderr)
-import qualified Text.Trifecta as Tri
-import qualified Prettyprinter as PP
-import qualified Prettyprinter.Render.Terminal as PP (AnsiStyle, hPutDoc)
+import Data.Foldable (traverse_)
+import Data.Text.IO qualified as Text
+import Data.Text.Encoding qualified as Text
+import Data.Text.Lazy.IO qualified as Text.Lazy
+import Prelude hiding (exp)
+import System.Exit (exitFailure)
+import System.IO (stderr)
+import Text.Trifecta qualified as Tri
+import Prettyprinter qualified as PP
+import Prettyprinter.Render.Terminal qualified as PP (AnsiStyle, hPutDoc)
 
 import qualified T
 

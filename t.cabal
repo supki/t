@@ -79,7 +79,7 @@ executable t
       LambdaCase
       OverloadedStrings
       TypeOperators
-  ghc-options: -Wall -threaded -with-rtsopts=-N
+  ghc-options: -Wall -Wno-incomplete-uni-patterns -threaded -with-rtsopts=-N
   build-depends:
       aeson
     , base >=4.14 && <5

@@ -3,12 +3,12 @@ module Opts
   ( parse
   ) where
 
-import qualified Data.Aeson as Aeson
-import qualified Data.HashMap.Strict as HashMap
-import           Data.String (fromString)
-import           Options.Applicative
+import Data.Aeson qualified as Aeson
+import Data.HashMap.Strict qualified as HashMap
+import Data.String (fromString)
+import Options.Applicative
 
-import qualified T
+import T qualified
 
 
 parse :: IO (FilePath, T.Env)

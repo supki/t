@@ -13,6 +13,7 @@ import Data.HashMap.Strict qualified as HashMap
 import Data.List.NonEmpty (NonEmpty(..), fromList)
 import Data.Scientific qualified as Scientific
 import Data.String (fromString)
+import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
 import Data.Vector qualified as Vector
 import Prelude hiding (exp)
@@ -23,7 +24,7 @@ import Text.Parser.LookAhead (lookAhead)
 import Text.Parser.Token.Style (emptyOps)
 import Text.Regex.PCRE.Light qualified as Pcre
 
-import           T.Exp
+import T.Exp
   ( Cofree(..)
   , Exp
   , ExpF(..)
@@ -38,10 +39,10 @@ import           T.Exp
   , appE
   , appE_
   )
-import           T.Exp.Ann (anning, anned)
-import qualified T.Exp.Macro as Macro
-import qualified T.Tmpl as Tmpl
-import           T.Tmpl (Tmpl((:*:)))
+import T.Exp.Ann (anning, anned)
+import T.Exp.Macro qualified as Macro
+import T.Tmpl qualified as Tmpl
+import T.Tmpl (Tmpl((:*:)))
 
 
 parseFile :: FilePath -> ByteString -> Either ErrInfo Tmpl
@@ -83,7 +84,9 @@ parser =
  where
   go acc =
     asum
-      [ do set <- parseSet
+      [ do comment <- parseComment
+           go (acc . (:*:) comment)
+      , do set <- parseSet
            go (acc . (:*:) set)
       , do let_ <- parseLet
            go (acc . (:*:) let_)
@@ -103,6 +106,10 @@ parser =
            pos1 <- position
            bool (go (acc . (:*:) raw)) (pure (acc raw)) (pos0 == pos1)
       ]
+
+parseComment :: Parser Tmpl
+parseComment =
+  fmap Tmpl.Comment commentP
 
 parseSet :: Parser Tmpl
 parseSet =
@@ -350,24 +357,49 @@ parseRaw =
            go (x : acc)
       ]
 
+-- | Line blocks "remove" all the whitespace around the block
+-- including the newline; inline blocks do not touch it.
+--
+-- this is a line block: ^{% set foo = 4 %}\n$
+-- this is an inline block: ^foo{% set foo = 4 %}bar$
 blockP :: String -> Parser a -> Parser a
 blockP name p =
-  -- The whitespace is either significant or not, depending on
-  -- what kind of a block we can parse. Line blocks "remove" all
-  -- the whitespace from the result; inline blocks preserve all of it.
   try lineP <|> inlineP
  where
+  -- the weird `"{%" <> " " <> name` construction avoids *a lot* of `try`ing,
+  -- because all statements start with `{%`
   lineP =
     between
-      (spaces *> string ("{% " <> name) *> spaces)
-      (spaces <* string "%}" <* spacesExceptNewline <* newline)
+      (spaces *> string (beginWith <> " " <> name) *> spaces)
+      (spaces <* string endWith <* spacesExceptNewline <* newline)
       p
   inlineP =
-    between (string ("{% " <> name) *> spaces) (spaces <* string "%}") p
+    between (string (beginWith <> " " <> name) *> spaces) (spaces <* string endWith) p
+  (beginWith, endWith) =
+    ("{%", "%}")
 
+-- parse name-only blocks such as {% endlet %}
 blockP_ :: String -> Parser ()
 blockP_ name =
   blockP name (pure ())
+
+commentP :: Parser Text
+commentP =
+  try lineP <|> inlineP
+ where
+  lineP = do
+    -- unfortunately, this `between` isn't /symmetrical/, because
+    -- `p` eats the ending "#}"
+    between
+      (spaces *> string beginWith *> spaces)
+      (spacesExceptNewline <* newline)
+      p
+  inlineP =
+    string beginWith *> spaces *> p
+  (beginWith, endWith) =
+    ("{#", "#}")
+  p =
+    fmap fromString (manyTill anyChar (try (spaces *> string endWith)))
 
 spacesExceptNewline :: Parser String
 spacesExceptNewline =

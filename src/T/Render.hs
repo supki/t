@@ -87,6 +87,8 @@ render env0 tmpl =
   go = \case
     Tmpl.Raw str ->
       build (Builder.fromText str)
+    Tmpl.Comment _str ->
+      pure ()
     Tmpl.Set name exp -> do
       value <- evalExp exp
       insertVar name value
