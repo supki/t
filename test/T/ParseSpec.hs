@@ -93,6 +93,10 @@ spec =
         Tmpl.For "x" Nothing (array []) (Tmpl.Exp (var "x")) (pure "foo")
       "{% for x, it in [1, 2, 3] %}{{ x }}{% endfor %}" `shouldParseTo`
         Tmpl.For "x" (Just "it") (array [number 1, number 2, number 3]) (Tmpl.Exp (var "x")) Nothing
+      "{# yo #}foo" `shouldParseTo`
+        (Tmpl.Comment "yo" :*: Tmpl.Raw "foo")
+      "{# yo #}\nfoo" `shouldParseTo`
+        (Tmpl.Comment "yo" :*: Tmpl.Raw "foo")
 
     context "nesting" $
       it "examples" $ do
@@ -138,6 +142,13 @@ spec =
           simpleIf (var "x")
             (simpleIf (var "y") "tt" "tf")
             (simpleIf (var "z") "ft" "ff")
+
+    context "layout" $
+      it "layouts" $ do
+        "{% set\n\
+        \     foo =\n\
+        \       4\n\
+        \%}" `shouldParseTo` Tmpl.Set "foo" (number 4)
 
 vars :: NonEmpty Name -> Exp
 vars (chunk :| chunks) =

@@ -64,6 +64,7 @@ executables:
       Main.hs
     ghc-options:
       - -Wall
+      - -Wno-incomplete-uni-patterns
       # - -Werror
       - -threaded
       - -with-rtsopts=-N

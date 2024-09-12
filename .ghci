@@ -1,5 +1,8 @@
-:set -isrc -itest -idriver
 :set -Wall
+:set -Wno-incomplete-uni-patterns
+:set -isrc
+:set -itest
+:set -idriver
 :set -XImportQualifiedPost
 :set -XOverloadedStrings
 :set -XLambdaCase

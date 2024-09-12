@@ -19,19 +19,21 @@ import T.Exp (Exp, Name)
 infixr 1 :*:
 
 data Tmpl
-    -- ^ Raw template text
+    -- | Raw template text
   = Raw Text
-    -- ^ {{ exp }} context
+    -- | Comments
+  | Comment Text
+    -- | {{ exp }} context
   | Exp Exp
-    -- ^ {% set _ = _ %}
+    -- | {% set _ = _ %}
   | Set (Ann :+ Name) Exp
-    -- ^ {% let _ = _ %} _ {% endlet %}
+    -- | {% let _ = _ %} _ {% endlet %}
   | Let (Ann :+ Name) Exp Tmpl
-    -- ^ {% if _ %} _ {% elif _ %} _ {% else %} _ {% endif %}
+    -- | {% if _ %} _ {% elif _ %} _ {% else %} _ {% endif %}
   | If (NonEmpty (Exp, Tmpl))
-    -- ^ {% for _, _ in _ %} _ {% else %} _ {% endfor %}
+    -- | {% for _, _ in _ %} _ {% else %} _ {% endfor %}
   | For (Ann :+ Name) (Maybe (Ann :+ Name)) Exp Tmpl (Maybe Tmpl)
-    -- ^ Glue two `Tmpl`s together
+    -- | Glue two `Tmpl`s together
   | Tmpl :*: Tmpl
     deriving (Show, Eq)
 
@@ -44,6 +46,10 @@ instance Aeson.ToJSON Tmpl where
     Aeson.object . \case
       Raw str ->
         [ "variant" .= ("raw" :: Text)
+        , "str" .= str
+        ]
+      Comment str ->
+        [ "variant" .= ("comment" :: Text)
         , "str" .= str
         ]
       Exp exp ->
