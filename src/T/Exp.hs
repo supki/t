@@ -183,12 +183,8 @@ trueL =
   Bool True
   
 newtype Name = Name { unName :: Text }
-    deriving (Show, Eq, Ord, IsString, Hashable)
+    deriving (Show, Eq, Ord, IsString, Hashable, Aeson.ToJSON, Aeson.ToJSONKey)
 
 instance Pretty Name where
   pretty Name {unName} =
     pretty unName
-
-instance Aeson.ToJSON Name where
-  toJSON =
-    Aeson.toJSON . unName

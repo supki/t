@@ -26,6 +26,10 @@ source-repository head
 library
   exposed-modules:
       T
+      T.App.Init
+      T.App.Init.IO
+      T.App.Init.Parse
+      T.App.Render
       T.Embed
       T.Error
       T.Exp
@@ -52,7 +56,9 @@ library
     , base >=4.14 && <5
     , bytestring
     , containers
+    , directory
     , either
+    , filepath
     , hashable
     , mtl
     , parsers
@@ -60,6 +66,7 @@ library
     , prettyprinter
     , prettyprinter-ansi-terminal
     , scientific
+    , temporary
     , text
     , transformers
     , trifecta
@@ -84,11 +91,7 @@ executable t
       aeson
     , base >=4.14 && <5
     , optparse-applicative
-    , prettyprinter
-    , prettyprinter-ansi-terminal
     , t
-    , text
-    , trifecta
     , unordered-containers
   default-language: Haskell2010
 

@@ -4,16 +4,15 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
 module T.Render
-  ( Env
+  ( Env(..)
   , mkDefEnv
   , mkEnv
   , render
+  , exec
   ) where
 
-import Control.Monad.Except (MonadError(..), runExcept, liftEither)
-import Control.Monad.State (MonadState(..), execStateT, evalStateT, modify)
-import Data.Aeson qualified as Aeson
-import Data.Aeson.KeyMap qualified as Aeson (toHashMapText)
+import Control.Monad.Except (MonadError(..), ExceptT, runExcept, liftEither)
+import Control.Monad.State (MonadState(..), StateT, execStateT, evalStateT, modify)
 import Data.Bool (bool)
 import Data.Either (isRight)
 import Data.Foldable (asum, for_, toList)
@@ -49,41 +48,43 @@ data Env = Env
   , warnings :: Set (Ann, Warning)
   }
 
-mkDefEnv :: HashMap Name Aeson.Value -> Env
+mkDefEnv :: HashMap Name Value -> Env
 mkDefEnv =
-  mkEnv Stdlib.def
+  mkEnv mempty
 
-mkEnv :: HashMap Name Value -> HashMap Name Aeson.Value -> Env
+mkEnv :: HashMap Name Value -> HashMap Name Value -> Env
 mkEnv stdlibExt vars = Env
   { stdlib = HashMap.union Stdlib.def stdlibExt
-  , scope = fmap (\x -> (emptyAnn, go x)) vars
+  , scope = fmap (\x -> (emptyAnn, x)) vars
   , result = mempty
   , warnings = mempty
   }
- where
-  go = \case
-    Aeson.Null ->
-      Value.Null
-    Aeson.Bool b ->
-      Value.Bool b
-    Aeson.Number n ->
-      Value.Number n
-    Aeson.String str ->
-      Value.String str
-    Aeson.Array xs ->
-      Value.Array (fmap go xs)
-    Aeson.Object xs ->
-      Value.Object (Aeson.toHashMapText (fmap go xs))
 
+-- | Convert a template to text using the provided environment.
 render :: Env -> Tmpl -> Either Error ([Warning], Lazy.Text)
 render env0 tmpl =
-  fmap fromEnv (runExcept (execStateT (go tmpl) env0))
+  fmap fromEnv (run env0 tmpl)
  where
   fromEnv Env {result, warnings} =
     ( map snd (Set.toAscList warnings)
     , Builder.toLazyText result
     )
 
+-- | Collect the environment-changing side-effects.
+exec :: Env -> Tmpl -> Either Error ([Warning], HashMap Name Value)
+exec env0 tmpl =
+  fmap fromEnv (run env0 tmpl)
+ where
+  fromEnv Env {scope, warnings} =
+    ( map snd (Set.toAscList warnings)
+    , fmap snd scope
+    )
+
+run :: Env -> Tmpl -> Either Error Env
+run env0 tmpl =
+  runExcept (execStateT (go tmpl) env0)
+ where
+  go :: Monad m => Tmpl -> StateT Env (ExceptT Error m) ()
   go = \case
     Tmpl.Raw str ->
       build (Builder.fromText str)

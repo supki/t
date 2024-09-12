@@ -4,11 +4,12 @@ module T.Value
   , display
   , displayWith
   , typeOf
+  , reifyAeson
   ) where
 
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
-import Data.Aeson.KeyMap qualified as Aeson (fromHashMapText)
+import Data.Aeson.KeyMap qualified as Aeson (fromHashMapText, toHashMapText)
 import Data.ByteString.Lazy qualified as Lazy (ByteString)
 import Data.HashMap.Strict (HashMap)
 import Data.Scientific (Scientific)
@@ -108,3 +109,18 @@ typeOf = \case
   Array _ -> "array"
   Object _ -> "object"
   Lam _ -> "lambda"
+
+reifyAeson :: Aeson.Value -> Value
+reifyAeson = \case
+  Aeson.Null ->
+    Null
+  Aeson.Bool b ->
+    Bool b
+  Aeson.Number n ->
+    Number n
+  Aeson.String str ->
+    String str
+  Aeson.Array xs ->
+    Array (fmap reifyAeson xs)
+  Aeson.Object xs ->
+    Object (Aeson.toHashMapText (fmap reifyAeson xs))
