@@ -19,7 +19,7 @@ import T.Embed (embed)
 import T.Error (Error(..), Warning(..))
 import T.Parse (parse)
 import T.Render (render, mkEnv)
-import T.Value (Value)
+import T.Value (Value, reifyAeson)
 
 
 spec :: Spec
@@ -275,7 +275,7 @@ tmpl `shouldRaise` res =
 rWith :: Aeson.Value -> Text -> Either Error ([Warning], Lazy.Text)
 rWith json tmplStr = do
   let Aeson.Object o = json
-      env = mkEnv ext (HashMap.mapKeys Name (Aeson.toHashMapText o))
+      env = mkEnv ext (fmap reifyAeson (HashMap.mapKeys Name (Aeson.toHashMapText o)))
       Right tmpl = parse (Text.encodeUtf8 tmplStr)
   render env tmpl
 

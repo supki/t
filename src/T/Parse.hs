@@ -1,6 +1,7 @@
 module T.Parse
   ( parse
   , parseFile
+  , parser
   ) where
 
 import Control.Applicative ((<|>))

@@ -12,6 +12,7 @@ module T
   , render
   , mkDefEnv
   , mkEnv
+  , reifyAeson
 
   , Stdlib
   , stdlib
@@ -27,6 +28,7 @@ import T.Tmpl (Tmpl)
 import T.Parse (parse, parseFile)
 import T.Render (Env, render, mkDefEnv, mkEnv)
 import T.Stdlib (Stdlib, def)
+import T.Value (reifyAeson)
 
 
 stdlib :: Stdlib

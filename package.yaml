@@ -26,7 +26,9 @@ library:
     - aeson-pretty
     - bytestring
     - containers
+    - directory
     - either
+    - filepath
     - hashable
     - mtl
     - parsers
@@ -34,6 +36,7 @@ library:
     - prettyprinter
     - prettyprinter-ansi-terminal
     - scientific
+    - temporary
     - text
     - transformers
     - trifecta
@@ -53,10 +56,6 @@ executables:
       - t
       - aeson
       - optparse-applicative
-      - prettyprinter
-      - prettyprinter-ansi-terminal
-      - text
-      - trifecta
       - unordered-containers
     source-dirs:
       driver
