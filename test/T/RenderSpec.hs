@@ -244,6 +244,31 @@ spec =
         r_ "{{ title-case(\"HELLO\") }}" `shouldRender` "Hello"
         r_ "{{ title-case(\"123\") }}" `shouldRender` "123"
 
+    context "milti-set" $
+      it "examples" $ do
+        r_ "{% set %}look ma no assignments" `shouldRender` "look ma no assignments"
+        r_ "{% set x = 4 y = 7 %}{{x + y}}" `shouldRender` "11"
+        r_
+          "{% set\
+          \     author-name = \"John Smith\"\n\
+          \     email-domain = \"example.com\"\n\
+          \     author-email =\n\
+          \       concat([join(\".\", split(\" \", lower-case(author-name))), \"@\", email-domain])\
+          \%}{{ author-email }}" `shouldRender` "john.smith@example.com"
+
+    context "milti-let" $
+      it "examples" $ do
+        r_ "{% let %}look ma no assignments{% endlet %}" `shouldRender` "look ma no assignments"
+        r_ "{% let x = 4 y = 7 %}{{x + y}}{% endlet %}" `shouldRender` "11"
+        r_ "{% let x = 4 y = 7 %}{% let x = 40 %}{{x + y}}{% endlet %}{% endlet %}" `shouldRender` "47"
+        r_
+          "{% let\
+          \     author-name = \"John Smith\"\n\
+          \     email-domain = \"example.com\"\n\
+          \     author-email =\n\
+          \       concat([join(\".\", split(\" \", lower-case(author-name))), \"@\", email-domain])\
+          \%}{{ author-email }}{% endlet %}" `shouldRender` "john.smith@example.com"
+
     context "comments" $
       it "examples" $ do
         r_ "{% for x in [1,2,3] %}{# this is x: #}{{ x }}{% else %}foo{% endfor %}" `shouldRender` "123"

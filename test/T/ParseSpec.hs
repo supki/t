@@ -63,8 +63,8 @@ spec =
             ])
       "{{ if 4 then \"foo\" else 7 }}" `shouldParseTo`
         Tmpl.Exp (ifE_ (number 4) (string "foo") (number 7))
-      "{% set x = 4 %}" `shouldParseTo` Tmpl.Set "x" (number 4)
-      "{% let x = 4 %}foo{% endlet %}" `shouldParseTo` Tmpl.Let "x" (number 4) "foo"
+      "{% set x = 4 %}" `shouldParseTo` Tmpl.Set [Tmpl.Assign "x" (number 4)]
+      "{% let x = 4 %}foo{% endlet %}" `shouldParseTo` Tmpl.Let [Tmpl.Assign "x" (number 4)] "foo"
       "{% if x %}t{% endif %}" `shouldParseTo`
         whenIf (var "x") "t"
       "{% if x %}t{% else %}f{% endif %}" `shouldParseTo`
@@ -148,7 +148,38 @@ spec =
         "{% set\n\
         \     foo =\n\
         \       4\n\
-        \%}" `shouldParseTo` Tmpl.Set "foo" (number 4)
+        \%}" `shouldParseTo` Tmpl.Set [Tmpl.Assign "foo" (number 4)]
+
+    context "multi-*" $ do
+      it "multi-sets" $ do
+        "{% set\n\
+        \     foo =\n\
+        \       4\n\
+        \     bar =\n\
+        \       7\n\
+        \     baz =\n\
+        \       \"foo\"\n\
+        \%}" `shouldParseTo` Tmpl.Set
+          [ Tmpl.Assign "foo" (number 4)
+          , Tmpl.Assign "bar" (number 7)
+          , Tmpl.Assign "baz" (string "foo")
+          ]
+
+      it "multi-lets" $ do
+        "{% let\n\
+        \     foo =\n\
+        \       4\n\
+        \     bar =\n\
+        \       7\n\
+        \     baz =\n\
+        \       \"foo\"\n\
+        \%}{% endlet %}" `shouldParseTo`
+          (Tmpl.Let
+            [ Tmpl.Assign "foo" (number 4)
+            , Tmpl.Assign "bar" (number 7)
+            , Tmpl.Assign "baz" (string "foo")
+            ]
+            "")
 
 vars :: NonEmpty Name -> Exp
 vars (chunk :| chunks) =

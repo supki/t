@@ -72,8 +72,8 @@ cleanup = \case
     Tmpl.If (fmap (second cleanup) clauses)
   Tmpl.For name it exp x y ->
     Tmpl.For name it exp (cleanup x) (fmap cleanup y)
-  Tmpl.Let name exp x ->
-    Tmpl.Let name exp (cleanup x)
+  Tmpl.Let assignments x ->
+    Tmpl.Let assignments (cleanup x)
   x :*: y ->
     cleanup x :*: cleanup y
   x ->
@@ -113,23 +113,24 @@ parseComment =
   fmap Tmpl.Comment commentP
 
 parseSet :: Parser Tmpl
-parseSet =
-  blockP "set" $ do
+parseSet = do
+  assignments <- blockP "set" . many $ do
     name <- nameP
     _ <- symbol "="
     exp <- expP
-    pure (Tmpl.Set name exp)
+    pure (Tmpl.Assign name exp)
+  pure (Tmpl.Set assignments)
 
 parseLet :: Parser Tmpl
 parseLet = do
-  (name, exp) <- blockP "let" $ do
+  assignments <- blockP "let" . many $ do
     name <- nameP
     _ <- symbol "="
     exp <- expP
-    pure (name, exp)
+    pure (Tmpl.Assign name exp)
   tmpl <- parser
   _ <- blockP_ "endlet"
-  pure (Tmpl.Let name exp tmpl)
+  pure (Tmpl.Let assignments tmpl)
 
 parseIf :: Parser Tmpl
 parseIf = do
