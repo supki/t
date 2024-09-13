@@ -90,14 +90,15 @@ run env0 tmpl =
       build (Builder.fromText str)
     Tmpl.Comment _str ->
       pure ()
-    Tmpl.Set name exp -> do
-      value <- evalExp exp
-      insertVar name value
-      pure ()
-    Tmpl.Let name exp tmpl0 -> do
-      value <- evalExp exp
+    Tmpl.Set assignments -> do
+      for_ assignments $ \(Tmpl.Assign name exp) -> do
+        value <- evalExp exp
+        insertVar name value
+    Tmpl.Let assignments tmpl0 -> do
       oldEnv <- get
-      insertVar name value
+      for_ assignments $ \(Tmpl.Assign name exp) -> do
+        value <- evalExp exp
+        insertVar name value
       go tmpl0
       modify (\env -> env {scope = scope oldEnv})
     Tmpl.If clauses -> do

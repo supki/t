@@ -1,6 +1,7 @@
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 module T.Tmpl
   ( Tmpl(..)
+  , Assign(..)
   , (:+)(..)
   , Ann
   ) where
@@ -21,14 +22,14 @@ infixr 1 :*:
 data Tmpl
     -- | Raw template text
   = Raw Text
-    -- | Comments
+    -- | {# this is a comment #}
   | Comment Text
     -- | {{ exp }} context
   | Exp Exp
     -- | {% set _ = _ %}
-  | Set (Ann :+ Name) Exp
+  | Set [Assign]
     -- | {% let _ = _ %} _ {% endlet %}
-  | Let (Ann :+ Name) Exp Tmpl
+  | Let [Assign] Tmpl
     -- | {% if _ %} _ {% elif _ %} _ {% else %} _ {% endif %}
   | If (NonEmpty (Exp, Tmpl))
     -- | {% for _, _ in _ %} _ {% else %} _ {% endfor %}
@@ -56,15 +57,13 @@ instance Aeson.ToJSON Tmpl where
         [ "variant" .= ("exp" :: Text)
         , "exp" .= exp
         ]
-      Set name exp ->
+      Set assignments ->
         [ "variant" .= ("set" :: Text)
-        , "name" .= name
-        , "exp" .= exp
+        , "assignments" .= assignments
         ]
-      Let name exp tmpl ->
+      Let assignments tmpl ->
         [ "variant" .= ("let" :: Text)
-        , "name" .= name
-        , "exp" .= exp
+        , "assignments" .= assignments
         , "tmpl" .= tmpl
         ]
       If clauses ->
@@ -84,3 +83,13 @@ instance Aeson.ToJSON Tmpl where
         , "tmpl0" .= tmpl0
         , "tmpl1" .= tmpl1
         ]
+
+data Assign = Assign (Ann :+ Name) Exp
+    deriving (Show, Eq)
+
+instance Aeson.ToJSON Assign where
+  toJSON (Assign name exp) =
+    Aeson.object
+      [ "name" .= name
+      , "exp" .= exp
+      ]
