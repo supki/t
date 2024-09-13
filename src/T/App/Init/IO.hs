@@ -1,6 +1,7 @@
 module T.App.Init.IO
   ( isDirectoryNonEmpty
   , writeFile
+  , isRelativeTo
   , userConfirm
   , die
   , warn
@@ -14,9 +15,9 @@ import Data.Text (Text)
 import Prelude hiding (writeFile)
 import Prettyprinter qualified as PP
 import Prettyprinter.Render.Terminal qualified as PP (AnsiStyle, hPutDoc)
-import System.Directory (createDirectoryIfMissing, listDirectory)
+import System.Directory (canonicalizePath, createDirectoryIfMissing, listDirectory)
 import System.Exit (exitFailure)
-import System.FilePath (takeDirectory)
+import System.FilePath (splitDirectories, takeDirectory)
 import System.IO (hFlush, stderr, stdout)
 import System.IO.Error (isDoesNotExistError)
 
@@ -34,6 +35,21 @@ writeFile path str = do
     Text.Lazy.writeFile path str
   else
     throwIO exc
+
+isRelativeTo :: FilePath -> FilePath -> IO Bool
+isRelativeTo long0 short0 = do
+  long <- canonicalizePath long0
+  short <- canonicalizePath short0
+  pure (go (splitDirectories long) (splitDirectories short))
+ where
+  go (x : xs) (y : ys)
+    | x == y =
+      go xs ys
+    | otherwise = False
+  go (_ : _) [] =
+    True
+  go _ _ =
+    False
 
 userConfirm :: Text -> IO Bool
 userConfirm msg = do

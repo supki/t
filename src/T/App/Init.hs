@@ -8,6 +8,7 @@ import Data.Foldable (traverse_)
 import Data.String (fromString)
 import Data.Text.IO qualified as Text
 import Prelude hiding (init, lines, writeFile)
+import System.Exit qualified as Exit (die)
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 
@@ -19,6 +20,7 @@ import T.App.Init.Parse
 import T.App.Init.IO
   ( isDirectoryNonEmpty
   , writeFile
+  , isRelativeTo
   , userConfirm
   , warn
   , die
@@ -80,7 +82,7 @@ runStmt dir env0 stmt =
           die (T.prettyError err)
         Right (warnings, scope) -> do
           traverse_ (warn . T.prettyWarning) warnings
-          pure (T.Render.mkDefEnv scope)
+          pure (T.mkDefEnv scope)
     File path tmpl ->
       case T.render env0 tmpl of
         Left err ->
@@ -90,6 +92,10 @@ runStmt dir env0 stmt =
           let
             filepath =
               dir </> path
-          Text.putStrLn (fromString filepath)
-          writeFile filepath str
-          pure env0
+          relative <- filepath `isRelativeTo` dir
+          if relative then do
+            Text.putStrLn (fromString filepath)
+            writeFile filepath str
+            pure env0
+          else
+            Exit.die (filepath <> " is not relative to " <> dir <> ", aborting")
