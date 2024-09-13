@@ -7,11 +7,11 @@ import Control.Monad (foldM_, when)
 import Data.Foldable (traverse_)
 import Data.String (fromString)
 import Data.Text.IO qualified as Text
-import Prelude hiding (lines, writeFile)
-import System.Directory (getCurrentDirectory)
+import Prelude hiding (init, lines, writeFile)
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 
+import T.App.Init.Cfg (Cfg(..))
 import T.App.Init.Parse
   ( Stmt(..)
   , parseText
@@ -27,11 +27,10 @@ import T qualified
 import T.Render qualified
 
 
-run :: FilePath -> IO ()
-run path = do
-  dir <- getCurrentDirectory
-  stmts <- parseFile path
-  exec dir stmts
+run :: Cfg -> IO ()
+run cfg = do
+  stmts <- parseFile cfg.init
+  exec cfg stmts
 
 parseFile :: FilePath -> IO [Stmt]
 parseFile path = do
@@ -42,23 +41,29 @@ parseFile path = do
     Right stmts ->
       pure stmts
 
-exec :: FilePath -> [Stmt] -> IO ()
-exec dir stmts0 = do
-  doRealRun <- withSystemTempDirectory "t" $ \tmpDir -> do
-    Text.putStrLn ("Test run in: " <> fromString tmpDir)
-    runStmts tmpDir (T.mkDefEnv mempty) stmts0
-    Text.putStrLn "Test run finished, type 'yes' to continue: "
-    userConfirm
-  when doRealRun $ do
-    Text.putStrLn ("Test run in: " <> fromString dir)
-    filesExist <- isDirectoryNonEmpty dir
-    continue <- if filesExist then do
-      Text.putStrLn "The directory is not empty, type 'yes' to continue: "
-      userConfirm
+exec :: Cfg -> [Stmt] -> IO ()
+exec cfg stmts = do
+  testRunSuccess <-
+    if cfg.skipTestRun then
+      pure True
+    else
+      testRun stmts
+  when testRunSuccess $ do
+    Text.putStrLn (">> Initializing: " <> fromString cfg.rootDir)
+    directoryNonEmpty <- isDirectoryNonEmpty cfg.rootDir
+    continue <- if directoryNonEmpty then
+      userConfirm "The directory is not empty, type 'yes' to continue: "
     else
       pure True
     when continue $
-      runStmts dir (T.mkDefEnv mempty) stmts0
+      runStmts cfg.rootDir (T.mkDefEnv mempty) stmts
+
+testRun :: [Stmt] -> IO Bool
+testRun stmts =
+  withSystemTempDirectory "t" $ \tmpDir -> do
+    Text.putStrLn (">> Initializing: " <> fromString tmpDir <> " (test run)")
+    runStmts tmpDir (T.mkDefEnv mempty) stmts
+    userConfirm "Init finished, take a look, and then type 'yes' to continue: "
 
 runStmts :: FilePath -> T.Env -> [Stmt] -> IO ()
 runStmts dir =
@@ -82,5 +87,9 @@ runStmt dir env0 stmt =
           die (T.prettyError err)
         Right (warnings, str) -> do
           traverse_ (warn . T.prettyWarning) warnings
-          writeFile (dir </> path) str
+          let
+            filepath =
+              dir </> path
+          Text.putStrLn (fromString filepath)
+          writeFile filepath str
           pure env0

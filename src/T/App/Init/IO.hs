@@ -7,17 +7,17 @@ module T.App.Init.IO
   ) where
 
 import Control.Exception (catch, throwIO)
-import Data.String (fromString)
 import Data.Text.IO qualified as Text
 import Data.Text.Lazy qualified as Lazy (Text)
 import Data.Text.Lazy.IO qualified as Text.Lazy
+import Data.Text (Text)
 import Prelude hiding (writeFile)
 import Prettyprinter qualified as PP
 import Prettyprinter.Render.Terminal qualified as PP (AnsiStyle, hPutDoc)
 import System.Directory (createDirectoryIfMissing, listDirectory)
 import System.Exit (exitFailure)
 import System.FilePath (takeDirectory)
-import System.IO (stderr)
+import System.IO (hFlush, stderr, stdout)
 import System.IO.Error (isDoesNotExistError)
 
 
@@ -27,7 +27,6 @@ isDirectoryNonEmpty =
 
 writeFile :: FilePath -> Lazy.Text -> IO ()
 writeFile path str = do
-  Text.putStrLn ("Creating: " <> fromString path)
   Text.Lazy.writeFile path str
  `catch` \exc ->
   if isDoesNotExistError exc then do
@@ -36,8 +35,10 @@ writeFile path str = do
   else
     throwIO exc
 
-userConfirm :: IO Bool
-userConfirm = do
+userConfirm :: Text -> IO Bool
+userConfirm msg = do
+  Text.putStr msg
+  hFlush stdout
   reply <- Text.getLine
   pure (reply == "yes")
 
