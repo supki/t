@@ -15,5 +15,5 @@ main = do
   case cmd of
     Opts.Render path env ->
       T.App.Render.run path env
-    Opts.Init path _env ->
-      T.App.Init.run path
+    Opts.Init cfg ->
+      T.App.Init.run cfg

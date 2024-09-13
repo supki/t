@@ -1,4 +1,5 @@
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE RecordWildCards #-}
 module Opts
   ( Cmd(..)
   , parse
@@ -8,13 +9,17 @@ import Data.Aeson qualified as Aeson
 import Data.HashMap.Strict qualified as HashMap
 import Data.String (fromString)
 import Options.Applicative
+import Prelude hiding (init)
+import System.Directory (getCurrentDirectory)
+import System.IO.Unsafe (unsafePerformIO)
 
 import T qualified
+import T.App.Init.Cfg qualified as Init (Cfg(..))
 
 
 data Cmd
   = Render FilePath T.Env
-  | Init FilePath T.Env
+  | Init Init.Cfg
 
 parse :: IO Cmd
 parse =
@@ -34,16 +39,54 @@ parser =
 
 renderP :: Parser Cmd
 renderP = do
-  path <- argument str (metavar "PATH" <> help "Template file path")
-  env <- option envR (long "env" <> metavar "JSON" <> help "Environment")
+  path <-
+    argument str
+      ( metavar "PATH"
+     <> help "Template file path"
+      )
+  env <-
+    option json
+      ( long "override"
+     <> metavar "JSON"
+     <> help "Environment"
+     <> value (T.mkDefEnv mempty)
+      )
   pure (Render path env)
 
 initP :: Parser Cmd
 initP = do
-  path <- argument str (metavar "PATH" <> help "Template file path")
-  env <- option envR (long "env" <> metavar "JSON" <> help "Environment")
-  pure (Init path env)
+  init <-
+    argument str
+      ( metavar "PATH"
+     <> help "ini.t file path"
+      )
+  env <-
+    option json
+      ( long "override"
+     <> metavar "JSON"
+     <> help "Environment"
+     <> value (T.mkDefEnv mempty)
+      )
+  rootDir <-
+    option str
+      ( long "directory"
+     <> short 'c'
+     <> metavar "DIR"
+     <> help "Use this directory as the base directory for paths in the .ini.t file"
+     <> value currentDirectory
+      )
+  skipTestRun <-
+    switch
+      ( long "skip-test-run"
+     <> help "Skip using ini.t file to populate TMPDIR first"
+      )
+  pure (Init Init.Cfg {..})
 
-envR :: ReadM T.Env
-envR =
+json :: ReadM T.Env
+json =
   eitherReader (fmap (T.mkDefEnv . fmap T.reifyAeson . HashMap.mapKeys fromString) . Aeson.eitherDecode . fromString)
+
+currentDirectory :: FilePath
+currentDirectory =
+  unsafePerformIO getCurrentDirectory
+{-# NOINLINE currentDirectory #-}

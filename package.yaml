@@ -55,6 +55,7 @@ executables:
     dependencies:
       - t
       - aeson
+      - directory
       - optparse-applicative
       - unordered-containers
     source-dirs:
