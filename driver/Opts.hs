@@ -10,7 +10,11 @@ import Data.HashMap.Strict qualified as HashMap
 import Data.String (fromString)
 import Options.Applicative
 import Prelude hiding (init)
-import System.Directory (getCurrentDirectory)
+import System.Directory
+  ( getCurrentDirectory
+  , getXdgDirectory
+  , XdgDirectory(..)
+  )
 import System.IO.Unsafe (unsafePerformIO)
 
 import T qualified
@@ -55,7 +59,7 @@ renderP = do
 
 initP :: Parser Cmd
 initP = do
-  init <-
+  tmpl <-
     argument str
       ( metavar "PATH"
      <> help "ini.t file path"
@@ -80,7 +84,9 @@ initP = do
       ( long "skip-test-run"
      <> help "Skip using ini.t file to populate TMPDIR first"
       )
-  pure (Init Init.Cfg {..})
+  pure (Init Init.Cfg
+    { tmplDir = tmplDirectory
+    , ..})
 
 json :: ReadM T.Env
 json =
@@ -90,3 +96,8 @@ currentDirectory :: FilePath
 currentDirectory =
   unsafePerformIO getCurrentDirectory
 {-# NOINLINE currentDirectory #-}
+
+tmplDirectory :: FilePath
+tmplDirectory =
+  unsafePerformIO (getXdgDirectory XdgConfig "t/init")
+{-# NOINLINE tmplDirectory #-}

@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 module T.App.Init
   ( run
@@ -8,6 +9,7 @@ import Data.Foldable (traverse_)
 import Data.String (fromString)
 import Data.Text.IO qualified as Text
 import Prelude hiding (init, lines, writeFile)
+import System.Directory (doesFileExist)
 import System.Exit qualified as Exit (die)
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
@@ -31,11 +33,38 @@ import T.Render qualified
 
 run :: Cfg -> IO ()
 run cfg = do
-  stmts <- parseFile cfg.init
+  tmpl <- findTmpl cfg
+  stmts <- parseTmpl tmpl
   exec cfg stmts
 
-parseFile :: FilePath -> IO [Stmt]
-parseFile path = do
+findTmpl :: Cfg -> IO FilePath
+findTmpl cfg = do
+  let
+    userTemplatePath =
+      cfg.tmplDir </> cfg.tmpl
+    localTemplatePath =
+      cfg.rootDir </> cfg.tmpl
+  userTemplateExists <-
+    doesFileExist userTemplatePath
+  localTemplateExists <-
+    doesFileExist localTemplatePath
+  if | localTemplateExists -> do
+         when userTemplateExists $
+           warn $
+             "Preferring local template at " <> fromString localTemplatePath <> "\n\
+             \over existing user template at " <> fromString userTemplatePath
+         pure localTemplatePath
+     | userTemplateExists ->
+         pure userTemplatePath
+     | otherwise ->
+         die $
+           "Couldn't find the template.\n\
+           \Expected the file to be in one of the following locations:\n\
+           \  - " <> fromString localTemplatePath <> "\n\
+           \  - " <> fromString userTemplatePath <> "\n"
+
+parseTmpl :: FilePath -> IO [Stmt]
+parseTmpl path = do
   str <- Text.readFile path
   case parseText str of
     Left err ->
@@ -49,7 +78,7 @@ exec cfg stmts = do
     if cfg.skipTestRun then
       pure True
     else
-      testRun stmts
+      testRun cfg stmts
   when testRunSuccess $ do
     Text.putStrLn (">> Initializing: " <> fromString cfg.rootDir)
     directoryNonEmpty <- isDirectoryNonEmpty cfg.rootDir
@@ -57,14 +86,14 @@ exec cfg stmts = do
       userConfirm "The directory is not empty, type 'yes' to continue: "
     else
       pure True
-    when continue $
-      runStmts cfg.rootDir (T.mkDefEnv mempty) stmts
+    when continue $ do
+      runStmts cfg.rootDir cfg.env stmts
 
-testRun :: [Stmt] -> IO Bool
-testRun stmts =
+testRun :: Cfg -> [Stmt] -> IO Bool
+testRun cfg stmts =
   withSystemTempDirectory "t" $ \tmpDir -> do
     Text.putStrLn (">> Initializing: " <> fromString tmpDir <> " (test run)")
-    runStmts tmpDir (T.mkDefEnv mempty) stmts
+    runStmts tmpDir cfg.env stmts
     userConfirm "Init finished, take a look, and then type 'yes' to continue: "
 
 runStmts :: FilePath -> T.Env -> [Stmt] -> IO ()
