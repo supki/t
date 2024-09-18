@@ -15,10 +15,14 @@ import System.Directory
   , getXdgDirectory
   , XdgDirectory(..)
   )
+import System.FilePath (takeExtension)
 import System.IO.Unsafe (unsafePerformIO)
 
 import T qualified
-import T.App.Init.Cfg qualified as Init (Cfg(..))
+import T.App.Init.Cfg qualified as Init
+  ( Cfg(..)
+  , InitTmpl(..)
+  )
 
 
 data Cmd
@@ -49,7 +53,7 @@ renderP = do
      <> help "Template file path"
       )
   env <-
-    option json
+    option jsonR
       ( long "override"
      <> metavar "JSON"
      <> help "Environment"
@@ -60,12 +64,12 @@ renderP = do
 initP :: Parser Cmd
 initP = do
   tmpl <-
-    argument str
+    argument initTmplR
       ( metavar "PATH"
-     <> help "ini.t file path"
+     <> help "init template name or path"
       )
   env <-
-    option json
+    option jsonR
       ( long "override"
      <> metavar "JSON"
      <> help "Environment"
@@ -88,9 +92,20 @@ initP = do
     { tmplDir = tmplDirectory
     , ..})
 
-json :: ReadM T.Env
-json =
-  eitherReader (fmap (T.mkDefEnv . fmap T.reifyAeson . HashMap.mapKeys fromString) . Aeson.eitherDecode . fromString)
+initTmplR :: ReadM Init.InitTmpl
+initTmplR =
+  eitherReader (pure . r)
+ where
+  r val
+    | takeExtension val == ".t" = Init.Path val
+    | otherwise = Init.Name val
+
+jsonR :: ReadM T.Env
+jsonR =
+  eitherReader r
+ where
+  r =
+    fmap (T.mkDefEnv . fmap T.reifyAeson . HashMap.mapKeys fromString) . Aeson.eitherDecode . fromString
 
 currentDirectory :: FilePath
 currentDirectory =

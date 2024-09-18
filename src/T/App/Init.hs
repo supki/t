@@ -4,17 +4,20 @@ module T.App.Init
   ( run
   ) where
 
-import Control.Monad (foldM_, when)
+import Control.Monad (foldM_, when, unless)
 import Data.Foldable (traverse_)
 import Data.String (fromString)
 import Data.Text.IO qualified as Text
 import Prelude hiding (init, lines, writeFile)
 import System.Directory (doesFileExist)
 import System.Exit qualified as Exit (die)
-import System.FilePath ((</>))
+import System.FilePath ((</>), (<.>))
 import System.IO.Temp (withSystemTempDirectory)
 
-import T.App.Init.Cfg (Cfg(..))
+import T.App.Init.Cfg
+  ( Cfg(..)
+  , InitTmpl(..)
+  )
 import T.App.Init.Parse
   ( Stmt(..)
   , parseText
@@ -40,28 +43,15 @@ run cfg = do
 findTmpl :: Cfg -> IO FilePath
 findTmpl cfg = do
   let
-    userTemplatePath =
-      cfg.tmplDir </> cfg.tmpl
-    localTemplatePath =
-      cfg.rootDir </> cfg.tmpl
-  userTemplateExists <-
-    doesFileExist userTemplatePath
-  localTemplateExists <-
-    doesFileExist localTemplatePath
-  if | localTemplateExists -> do
-         when userTemplateExists $
-           warn $
-             "Preferring local template at " <> fromString localTemplatePath <> "\n\
-             \over existing user template at " <> fromString userTemplatePath
-         pure localTemplatePath
-     | userTemplateExists ->
-         pure userTemplatePath
-     | otherwise ->
-         die $
-           "Couldn't find the template.\n\
-           \Expected the file to be in one of the following locations:\n\
-           \  - " <> fromString localTemplatePath <> "\n\
-           \  - " <> fromString userTemplatePath <> "\n"
+    path = case cfg.tmpl of
+      Name name ->
+        cfg.tmplDir </> name <.> "t"
+      Path path0 ->
+        path0
+  exists <- doesFileExist path
+  unless exists . die $
+    "Couldn't find the template at " <> fromString path
+  pure path
 
 parseTmpl :: FilePath -> IO [Stmt]
 parseTmpl path = do

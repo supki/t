@@ -55,6 +55,7 @@ executables:
     dependencies:
       - t
       - aeson
+      - filepath
       - directory
       - optparse-applicative
       - unordered-containers
