@@ -58,7 +58,6 @@ executables:
       - filepath
       - directory
       - optparse-applicative
-      - unordered-containers
     source-dirs:
       driver
     main:

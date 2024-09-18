@@ -15,24 +15,38 @@ import Data.Text (Text)
 import Prelude hiding (writeFile)
 import Prettyprinter qualified as PP
 import Prettyprinter.Render.Terminal qualified as PP (AnsiStyle, hPutDoc)
-import System.Directory (canonicalizePath, createDirectoryIfMissing, listDirectory)
+import System.Directory
+  ( canonicalizePath
+  , createDirectoryIfMissing
+  , listDirectory
+  , renameFile
+  )
 import System.Exit (exitFailure)
 import System.FilePath (splitDirectories, takeDirectory)
 import System.IO (hFlush, stderr, stdout)
 import System.IO.Error (isDoesNotExistError)
+import System.IO.Temp (emptySystemTempFile)
 
 
 isDirectoryNonEmpty :: FilePath -> IO Bool
 isDirectoryNonEmpty =
   fmap (not . null . filter (`notElem` [".", ".."])) . listDirectory
 
+-- | Write to a temporary file first and then move it to the desired location.
 writeFile :: FilePath -> Lazy.Text -> IO ()
-writeFile path str = do
-  Text.Lazy.writeFile path str
+writeFile dst str = do
+  tmpSrc <- emptySystemTempFile "t"
+  Text.Lazy.writeFile tmpSrc str
+  moveFile tmpSrc dst
+
+-- | Move file from A to B, creating any missing directories in the process.
+moveFile :: FilePath -> FilePath -> IO ()
+moveFile src dst =
+  renameFile src dst
  `catch` \exc ->
   if isDoesNotExistError exc then do
-    createDirectoryIfMissing True (takeDirectory path)
-    Text.Lazy.writeFile path str
+    createDirectoryIfMissing True (takeDirectory dst)
+    renameFile src dst
   else
     throwIO exc
 

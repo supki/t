@@ -6,7 +6,6 @@ module Opts
   ) where
 
 import Data.Aeson qualified as Aeson
-import Data.HashMap.Strict qualified as HashMap
 import Data.String (fromString)
 import Options.Applicative
 import Prelude hiding (init)
@@ -83,11 +82,6 @@ initP = do
      <> help "Use this directory as the base directory for paths in the .ini.t file"
      <> value currentDirectory
       )
-  skipTestRun <-
-    switch
-      ( long "skip-test-run"
-     <> help "Skip using ini.t file to populate TMPDIR first"
-      )
   pure (Init Init.Cfg
     { tmplDir = tmplDirectory
     , ..})
@@ -105,7 +99,7 @@ jsonR =
   eitherReader r
  where
   r =
-    fmap (T.mkDefEnv . fmap T.reifyAeson . HashMap.mapKeys fromString) . Aeson.eitherDecode . fromString
+    fmap (T.mkDefEnv . fmap T.reifyAeson) . Aeson.eitherDecode . fromString
 
 currentDirectory :: FilePath
 currentDirectory =

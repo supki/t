@@ -13,7 +13,6 @@ data Cfg = Cfg
   , env         :: T.Env
   , rootDir     :: FilePath
   , tmplDir     :: FilePath
-  , skipTestRun :: Bool
   }
 
 data InitTmpl

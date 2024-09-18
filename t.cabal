@@ -95,7 +95,6 @@ executable t
     , filepath
     , optparse-applicative
     , t
-    , unordered-containers
   default-language: Haskell2010
 
 test-suite spec

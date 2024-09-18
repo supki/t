@@ -12,7 +12,6 @@ import Prelude hiding (init, lines, writeFile)
 import System.Directory (doesFileExist)
 import System.Exit qualified as Exit (die)
 import System.FilePath ((</>), (<.>))
-import System.IO.Temp (withSystemTempDirectory)
 
 import T.App.Init.Cfg
   ( Cfg(..)
@@ -64,27 +63,14 @@ parseTmpl path = do
 
 exec :: Cfg -> [Stmt] -> IO ()
 exec cfg stmts = do
-  testRunSuccess <-
-    if cfg.skipTestRun then
-      pure True
-    else
-      testRun cfg stmts
-  when testRunSuccess $ do
-    Text.putStrLn (">> Initializing: " <> fromString cfg.rootDir)
-    directoryNonEmpty <- isDirectoryNonEmpty cfg.rootDir
-    continue <- if directoryNonEmpty then
-      userConfirm "The directory is not empty, type 'yes' to continue: "
-    else
-      pure True
-    when continue $ do
-      runStmts cfg.rootDir cfg.env stmts
-
-testRun :: Cfg -> [Stmt] -> IO Bool
-testRun cfg stmts =
-  withSystemTempDirectory "t" $ \tmpDir -> do
-    Text.putStrLn (">> Initializing: " <> fromString tmpDir <> " (test run)")
-    runStmts tmpDir cfg.env stmts
-    userConfirm "Init finished, take a look, and then type 'yes' to continue: "
+  Text.putStrLn (">> Initializing: " <> fromString cfg.rootDir)
+  directoryNonEmpty <- isDirectoryNonEmpty cfg.rootDir
+  continue <- if directoryNonEmpty then
+    userConfirm "The directory is not empty, type 'yes' to continue: "
+  else
+    pure True
+  when continue $ do
+    runStmts cfg.rootDir cfg.env stmts
 
 runStmts :: FilePath -> T.Env -> [Stmt] -> IO ()
 runStmts dir =
