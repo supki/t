@@ -10,7 +10,7 @@ import T qualified
 
 data Cfg = Cfg
   { tmpl        :: InitTmpl
-  , env         :: T.Env
+  , env         :: T.Scope
   , rootDir     :: FilePath
   , tmplDir     :: FilePath
   }

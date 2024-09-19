@@ -13,8 +13,10 @@ import Prelude hiding (null)
 import Test.Hspec
 
 import T.Parse (parse)
-import T.Exp (Exp, Literal(..), Name(..), litE_, varE_, ifE_, appE_)
+import T.Exp (Exp, Literal(..), litE_, varE_, ifE_, appE_)
 import T.Exp.Ann (noann)
+import T.Name (Name(..))
+import T.Stdlib qualified as Stdlib
 import T.Tmpl (Tmpl((:*:)))
 import T.Tmpl qualified as Tmpl
 
@@ -227,4 +229,4 @@ whenIf p thenTmpl =
 
 shouldParseTo :: HasCallStack => ByteString -> Tmpl -> Expectation
 tmpl `shouldParseTo` res =
-  first show (parse tmpl) `shouldBe` Right res
+  first show (parse Stdlib.def tmpl) `shouldBe` Right res

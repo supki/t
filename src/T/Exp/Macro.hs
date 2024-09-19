@@ -8,7 +8,6 @@ import T.Exp
   ( Cofree(..)
   , Exp
   , ExpF(..)
-  , Name
   , Ann
   , (:+)
   , appE
@@ -18,6 +17,7 @@ import T.Exp
   , falseL
   , trueL
   )
+import T.Name (Name)
 
 
 expand :: Exp -> Exp

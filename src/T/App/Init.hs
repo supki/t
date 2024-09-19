@@ -72,24 +72,24 @@ exec cfg stmts = do
   when continue $ do
     runStmts cfg.rootDir cfg.env stmts
 
-runStmts :: FilePath -> T.Env -> [Stmt] -> IO ()
+runStmts :: FilePath -> T.Scope -> [Stmt] -> IO ()
 runStmts dir =
   foldM_ (runStmt dir)
 
-runStmt :: FilePath -> T.Env -> Stmt -> IO T.Env
-runStmt dir env0 stmt =
+runStmt :: FilePath -> T.Scope -> Stmt -> IO T.Scope
+runStmt dir scope0 stmt =
   case stmt of
     Noop ->
-      pure env0
+      pure scope0
     Setup tmpl ->
-      case T.Render.exec env0 tmpl of
+      case T.Render.exec (T.stdlib, scope0) tmpl of
         Left err ->
           die (T.prettyError err)
         Right (warnings, scope) -> do
           traverse_ (warn . T.prettyWarning) warnings
-          pure (T.mkDefEnv scope)
+          pure scope
     File path tmpl ->
-      case T.render env0 tmpl of
+      case T.render (T.stdlib, scope0) tmpl of
         Left err ->
           die (T.prettyError err)
         Right (warnings, str) -> do
@@ -101,6 +101,6 @@ runStmt dir env0 stmt =
           if relative then do
             Text.putStrLn (fromString filepath)
             writeFile filepath str
-            pure env0
+            pure scope0
           else
             Exit.die (filepath <> " is not relative to " <> dir <> ", aborting")

@@ -13,8 +13,9 @@ import Data.String (IsString(..))
 import Data.Text (Text)
 import Prelude hiding (exp)
 
+import T.Exp (Exp)
 import T.Exp.Ann (Ann, (:+)(..))
-import T.Exp (Exp, Name)
+import T.Name (Name)
 
 
 infixr 1 :*:

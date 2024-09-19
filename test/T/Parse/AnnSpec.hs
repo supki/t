@@ -1,4 +1,4 @@
-module Parse.AnnSpec (spec) where
+module T.Parse.AnnSpec (spec) where
 
 import Data.ByteString (ByteString)
 import Test.Hspec
@@ -69,6 +69,6 @@ spec =
 errorOf :: ByteString -> String
 errorOf str =
   let
-    Right parsed = parse str
+    Right parsed = parse stdlib str
   in
-    either (show . prettyError) (error "not-supposed-to-render") (render (mkDefEnv mempty) parsed)
+    either (show . prettyError) (error "not-supposed-to-render") (render (stdlib, mempty) parsed)

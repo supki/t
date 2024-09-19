@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeFamilies #-}
 module T.Embed
   ( Embed(..)
+  , embed0
   , Eject(..)
   ) where
 
@@ -12,7 +13,9 @@ import Data.Vector qualified as Vector
 import Text.Regex.PCRE.Light qualified as Pcre
 
 import T.Error (Error(..))
-import T.Exp ((:+)(..), Ann, Name)
+import T.Exp ((:+)(..), Ann)
+import T.Exp.Ann (emptyAnn)
+import T.Name (Name)
 import T.Value (Value(..), display, typeOf)
 
 
@@ -54,6 +57,12 @@ instance Embed a => Embed [a] where
 instance (Eject a, Embed b) => Embed (a -> b) where
   embed (_ :+ name) f =
     Lam (\(ann :+ x) -> fmap (embed (ann :+ name) . f) (eject (ann :+ name) x))
+
+-- Some embeddings do not have a useful annotation to attach to, such as
+-- stdlib definitions. This is a helper for them.
+embed0 :: Embed t => Name -> t -> Value
+embed0 name t =
+  embed (emptyAnn :+ name) t
 
 class Eject t where
   eject :: Ann :+ Name -> Value -> Either Error t

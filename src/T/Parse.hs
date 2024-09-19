@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedRecordDot #-}
 module T.Parse
   ( parse
   , parseFile
@@ -5,6 +6,7 @@ module T.Parse
   ) where
 
 import Control.Applicative ((<|>))
+import Control.Monad.Reader (MonadReader, runReaderT, ask)
 import Data.Bifunctor (second)
 import Data.Bool (bool)
 import Data.ByteString (ByteString)
@@ -12,6 +14,7 @@ import Data.Char qualified as Char
 import Data.Foldable (asum)
 import Data.HashMap.Strict qualified as HashMap
 import Data.List.NonEmpty (NonEmpty(..), fromList)
+import Data.Map.Strict qualified as Map
 import Data.Scientific qualified as Scientific
 import Data.String (fromString)
 import Data.Text (Text)
@@ -21,7 +24,7 @@ import Prelude hiding (exp)
 import Text.Trifecta
 import Text.Trifecta.Delta (Delta(..))
 import Text.Parser.Expression (Assoc(..), Operator(..), buildExpressionParser)
-import Text.Parser.LookAhead (lookAhead)
+import Text.Parser.LookAhead (LookAheadParsing, lookAhead)
 import Text.Parser.Token.Style (emptyOps)
 import Text.Regex.PCRE.Light qualified as Pcre
 
@@ -30,7 +33,6 @@ import T.Exp
   , Exp
   , ExpF(..)
   , Literal(..)
-  , Name(..)
   , (:+)(..)
   , Ann
   , litE
@@ -42,21 +44,25 @@ import T.Exp
   )
 import T.Exp.Ann (anning, anned)
 import T.Exp.Macro qualified as Macro
+import T.Name (Name(..))
+import T.Name qualified as Name
 import T.Tmpl qualified as Tmpl
 import T.Tmpl (Tmpl((:*:)))
+import T.Stdlib (Stdlib(..), Op)
+import T.Stdlib.Op qualified as Op
 
 
-parseFile :: FilePath -> ByteString -> Either ErrInfo Tmpl
-parseFile path =
-  parseDelta (Directed (fromString path) 0 0 0 0)
+parseFile :: Stdlib -> FilePath -> ByteString -> Either ErrInfo Tmpl
+parseFile stdlib path =
+  parseDelta stdlib (Directed (fromString path) 0 0 0 0)
 
-parse :: ByteString -> Either ErrInfo Tmpl
-parse =
-  parseDelta mempty
+parse :: Stdlib -> ByteString -> Either ErrInfo Tmpl
+parse stdlib =
+  parseDelta stdlib mempty
 
-parseDelta :: Delta -> ByteString -> Either ErrInfo Tmpl
-parseDelta delta str =
-  case parseByteString parser delta str of
+parseDelta :: Stdlib -> Delta -> ByteString -> Either ErrInfo Tmpl
+parseDelta stdlib delta str =
+  case parseByteString (runReaderT parser stdlib.ops) delta str of
     Failure errDoc ->
       Left errDoc
     Success tmpl ->
@@ -79,10 +85,11 @@ cleanup = \case
   x ->
     x
 
-parser :: Parser Tmpl
+parser :: (MonadFail m, e ~ [Op], MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
 parser =
   go (\t -> t)
  where
+  go :: (MonadFail m, e ~ [Op], MonadReader e m, DeltaParsing m, LookAheadParsing m) => (Tmpl -> r) -> m r
   go acc =
     asum
       [ do comment <- parseComment
@@ -108,11 +115,11 @@ parser =
            bool (go (acc . (:*:) raw)) (pure (acc raw)) (pos0 == pos1)
       ]
 
-parseComment :: Parser Tmpl
+parseComment :: CharParsing m => m Tmpl
 parseComment =
   fmap Tmpl.Comment commentP
 
-parseSet :: Parser Tmpl
+parseSet :: (e ~ [Op], MonadReader e m, DeltaParsing m) => m Tmpl
 parseSet = do
   assignments <- blockP "set" . many $ do
     name <- nameP
@@ -121,7 +128,7 @@ parseSet = do
     pure (Tmpl.Assign name exp)
   pure (Tmpl.Set assignments)
 
-parseLet :: Parser Tmpl
+parseLet :: (MonadFail m, e ~ [Op], MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
 parseLet = do
   assignments <- blockP "let" . many $ do
     name <- nameP
@@ -132,7 +139,7 @@ parseLet = do
   _ <- blockP_ "endlet"
   pure (Tmpl.Let assignments tmpl)
 
-parseIf :: Parser Tmpl
+parseIf :: (MonadFail m, e ~ [Op], MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
 parseIf = do
   exp <- blockP "if" expP
   ifTmpl <- parser
@@ -149,7 +156,7 @@ parseIf = do
     Just elseClause ->
       pure (Tmpl.If ((ifClause :| thenClauses) <> (elseClause :| [])))
 
-parseCase :: Parser Tmpl
+parseCase :: (MonadFail m, e ~ [Op], MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
 parseCase = do
   exp0 <- blockP "case" expP
   when : whens <- some (liftA2 (,) (blockP "when" expP) parser)
@@ -165,7 +172,7 @@ parseCase = do
     Just elseClause ->
       pure (Tmpl.If (clauses <> (elseClause :| [])))
 
-parseFor :: Parser Tmpl
+parseFor :: (MonadFail m, e ~ [Op], MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
 parseFor = do
   (name, it, exp) <- blockP "for" $ do
     name <- nameP
@@ -180,69 +187,29 @@ parseFor = do
   _ <- blockP_ "endfor"
   pure (Tmpl.For name it exp forTmpl elseTmpl)
 
-parseExp :: Parser Tmpl
+parseExp :: (e ~ [Op], MonadReader e m, DeltaParsing m) => m Tmpl
 parseExp =
   between (string "{{" *> spaces) (spaces <* string "}}") (fmap Tmpl.Exp expP)
 
-expP :: Parser Exp
-expP =
-  fmap Macro.expand (buildExpressionParser table expP')
+expP :: (e ~ [Op], MonadReader e m, DeltaParsing m) => m Exp
+expP = do
+  operators <- ask
+  fmap Macro.expand (buildExpressionParser (table operators) goP)
  where
-  table =
-    [ [ dotOp "."
+  table operators =
+    [dotOp "."] : fromMap (macros <> Op.priorities operators)
+
+  fromMap =
+    map (\(_k, v) -> map fromFixity v) . Map.toDescList
+
+  macros =
+    Map.fromList
+      [ (3, [("&&", Op.Infixr)])
+      , (2, [("||", Op.Infixr)])
+      , (1, [("|", Op.Infixl)])
       ]
-    , [ prefixOp "!"
-      ]
-    , [ infixrOp "*"
-      , infixlOp "/"
-      ]
-    , [ infixrOp "+"
-      , infixlOp "-"
-      , infixrOp "<>"
-      ]
-    , [ infixOp "=="
-      , infixOp "=~"
-      , infixOp ">"
-      , infixOp ">="
-      , infixOp "<"
-      , infixOp "<="
-      ]
-    , [ infixrOp "&&"
-      ]
-    , [ infixrOp "||"
-      ]
-    , [ infixlOp "|"
-      ]
-    ]
-   where
-    dotOp name =
-      Infix
-        (do ann <- anning (reserve emptyOps name)
-            pure (\a b ->
-              appE ann
-                (fromString name)
-                (fromList
-                  [ a
-                  -- Property lookups have the syntax of variables, but
-                  -- we actually want them as strings.
-                  , (case b of ann' :< Var (_ :+ Name b') -> litE ann' (String b'); _ -> b)
-                  ])))
-        AssocLeft
-    binaryOp name =
-      Infix
-        (do ann <- anning (reserve emptyOps name)
-            pure (\a b -> appE ann (fromString name) (fromList [a, b])))
-    infixOp name =
-      binaryOp name AssocNone
-    infixlOp name =
-      binaryOp name AssocLeft
-    infixrOp name =
-      binaryOp name AssocRight
-    prefixOp name =
-      Prefix
-        (do ann <- anning (reserve emptyOps name)
-            pure (\a -> appE ann (fromString name) (fromList [a])))
-  expP' =
+
+  goP =
     asum
       [ parens expP
       , litP
@@ -254,7 +221,54 @@ expP =
       , varP
       ]
 
-litP :: Parser Exp
+fromFixity :: DeltaParsing m => (Name, Op.Fixity) -> Operator m Exp
+fromFixity (name, fixity) =
+  case fixity of
+    Op.Prefix -> prefixOp (Name.toString name)
+    Op.Infix -> infixOp (Name.toString name)
+    Op.Infixl -> infixlOp (Name.toString name)
+    Op.Infixr -> infixrOp (Name.toString name)
+
+dotOp :: DeltaParsing m => String -> Operator m Exp
+dotOp name =
+  Infix
+    (do ann <- anning (reserve emptyOps name)
+        pure (\a b ->
+          appE ann
+            (fromString name)
+            (fromList
+              [ a
+              -- Property lookups have the syntax of variables, but
+              -- we actually want them as strings.
+              , (case b of ann' :< Var (_ :+ Name b') -> litE ann' (String b'); _ -> b)
+              ])))
+    AssocLeft
+
+infixOp :: DeltaParsing m => String -> Operator m Exp
+infixOp name =
+  binaryOp name AssocNone
+
+infixlOp :: DeltaParsing m => String -> Operator m Exp
+infixlOp name =
+  binaryOp name AssocLeft
+
+infixrOp :: DeltaParsing m => String -> Operator m Exp
+infixrOp name =
+  binaryOp name AssocRight
+
+binaryOp :: DeltaParsing m => String -> Assoc -> Operator m Exp
+binaryOp name =
+  Infix
+    (do ann <- anning (reserve emptyOps name)
+        pure (\a b -> appE ann (fromString name) (fromList [a, b])))
+
+prefixOp :: DeltaParsing m => String -> Operator m Exp
+prefixOp name =
+  Prefix
+    (do ann <- anning (reserve emptyOps name)
+        pure (\a -> appE ann (fromString name) (fromList [a])))
+
+litP :: (e ~ [Op], MonadReader e m, DeltaParsing m) => m Exp
 litP = do
   ann :+ lit <- anned . runUnspaced $ asum
     [ nullP
@@ -317,7 +331,7 @@ regexpP = do
     _ <- char 'i'
     pure Pcre.caseless
 
-ifP :: Parser Exp
+ifP :: (e ~ [Op], MonadReader e m, DeltaParsing m) => m Exp
 ifP = do
   ann :+ (p, t, f) <- anned $ do
     _ <- symbol "if"
@@ -329,7 +343,7 @@ ifP = do
     pure (p, t, f)
   pure (ifE ann p t f)
 
-appP :: Parser Exp
+appP :: (e ~ [Op], MonadReader e m, DeltaParsing m) => m Exp
 appP = do
   ann :+ (name, args) <- anned $ do
     name <- nameP
@@ -338,12 +352,12 @@ appP = do
     pure (name, args)
   pure (appE ann name args)
 
-varP :: Parser Exp
+varP :: DeltaParsing m => m Exp
 varP = do
   name@(ann :+ _) <- nameP
   pure (varE ann name)
 
-nameP :: Parser (Ann :+ Name)
+nameP :: DeltaParsing m => m (Ann :+ Name)
 nameP =
   anned (fmap fromString (liftA2 (:) firstL (many restL))) <* spaces
  where
@@ -352,7 +366,7 @@ nameP =
   restL =
     letter <|> digit <|> oneOf "_-?!"
 
-parseRaw :: Parser Tmpl
+parseRaw :: (Monad m, CharParsing m, LookAheadParsing m) => m Tmpl
 parseRaw =
   fmap (Tmpl.Raw . fromString . reverse) (go [])
  where
@@ -375,7 +389,7 @@ parseRaw =
 --
 -- this is a line block: ^{% set foo = 4 %}\n$
 -- this is an inline block: ^foo{% set foo = 4 %}bar$
-blockP :: String -> Parser a -> Parser a
+blockP :: CharParsing m => String -> m a -> m a
 blockP name p =
   try lineP <|> inlineP
  where
@@ -392,11 +406,11 @@ blockP name p =
     ("{%", "%}")
 
 -- parse name-only blocks such as {% endlet %}
-blockP_ :: String -> Parser ()
+blockP_ :: CharParsing m => String -> m ()
 blockP_ name =
   blockP name (pure ())
 
-commentP :: Parser Text
+commentP :: CharParsing m => m Text
 commentP =
   try lineP <|> inlineP
  where
@@ -414,10 +428,10 @@ commentP =
   p =
     fmap fromString (manyTill anyChar (try (spaces *> string endWith)))
 
-spacesExceptNewline :: Parser String
+spacesExceptNewline :: CharParsing m => m String
 spacesExceptNewline =
   many spaceExceptNewline
 
-spaceExceptNewline :: Parser Char
+spaceExceptNewline :: CharParsing m => m Char
 spaceExceptNewline =
   satisfy (\c -> Char.isSpace c && (c /= '\n'))

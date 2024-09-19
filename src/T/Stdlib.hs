@@ -1,149 +1,41 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 module T.Stdlib
-  ( Stdlib
+  ( Stdlib(..)
+  , Fun(..)
+  , Op(..)
+  , Op.Fixity(..)
+  , with
   , def
+  , bindings
   ) where
 
-import Data.Aeson.Encode.Pretty qualified as Aeson (encodePretty)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
-import Data.Maybe (isJust)
-import Data.Scientific (Scientific)
-import Data.Text (Text)
-import Data.Text qualified as Text
-import Data.Text.Encoding qualified as Text
-import Data.Vector qualified as Vector
-import Text.Regex.PCRE.Light qualified as Pcre
 
-import T.Embed (embed)
-import T.Error (Error(..))
-import T.Exp (Name, Ann)
-import T.Exp.Ann ((:+)(..), emptyAnn, unann)
-import T.Value (Value(..), display, displayWith)
+import T.Name (Name)
+import T.Stdlib.Fun (Fun(..))
+import T.Stdlib.Fun qualified as Fun
+import T.Stdlib.Op (Op(..))
+import T.Stdlib.Op qualified as Op
+import T.Value (Value)
 
 
-type Stdlib = HashMap Name Value
+data Stdlib = Stdlib
+  { ops  :: [Op]
+  , funs :: [Fun]
+  }
 
-def :: HashMap Name Value
+def :: Stdlib
 def =
-  HashMap.fromList bindings
- where
-  bindings =
-    [ ("!" ~> flip embed not)
+  with Op.operators Fun.functions
 
-    , ("==" ~> eEq)
-    , ("=~" ~> flip embed match)
-    , ("!=" ~> eNeq)
+with :: [Op] -> [Fun] -> Stdlib
+with ops funs = Stdlib {..}
 
-    , ("+" ~> flip embed ((+) @Scientific))
-    , ("-" ~> flip embed ((-) @Scientific))
-    , ("*" ~> flip embed ((*) @Scientific))
-    , ("/" ~> flip embed ((/) @Scientific))
-
-    , (">" ~> flip embed ((>) @Scientific))
-    , (">=" ~> flip embed ((>=) @Scientific))
-    , ("<" ~> flip embed ((<) @Scientific))
-    , ("<=" ~> flip embed ((<=) @Scientific))
-
-    , ("<>" ~> flip embed ((<>) @Text))
-
-    , ("empty?" ~> eNull)
-    , ("length" ~> eLength)
-
-    , ("upper-case" ~> flip embed Text.toUpper)
-    , ("lower-case" ~> flip embed Text.toLower)
-    , ("title-case" ~> flip embed Text.toTitle)
-
-    , ("split" ~> flip embed Text.splitOn)
-    , ("join" ~> flip embed Text.intercalate)
-    , ("concat" ~> flip embed Text.concat)
-
-    , ("." ~> flip embed (flip (HashMap.lookup @Text @Value)))
-    , ("die" ~> eDie)
-
-    , ("show", eShow)
-    , ("pp", ePP)
-    ]
-
-  name ~> binding =
-    (name, binding (emptyAnn :+ name))
-
-eEq :: Ann :+ Name -> Value
-eNeq :: Ann :+ Name -> Value
-(eEq, eNeq) =
-  ( flip embed eq
-  , flip embed neq
-  )
- where
-  eq x y =
-    case (x, y) of
-      (Null, Null) ->
-        True
-      (Bool b0, Bool b1) ->
-        b0 == b1
-      (Number n0, Number n1) ->
-        n0 == n1
-      (String s0, String s1) ->
-        s0 == s1
-      (Array arr0, Array arr1)
-        | Vector.length arr0 == Vector.length arr1 -> do
-            Vector.and (Vector.zipWith eq arr0 arr1)
-        | otherwise ->
-            False
-      (Object o0, Object o1)
-        | HashMap.null (HashMap.difference o0 o1) &&
-          HashMap.null (HashMap.difference o1 o0) ->
-            HashMap.foldl' (&&) True (HashMap.intersectionWith eq o0 o1)
-        | otherwise ->
-            False
-      (_, _) ->
-        False
-  neq x y =
-    not (eq x y)
-
-match :: Text -> Pcre.Regex -> Bool
-match str regexp =
-  isJust (Pcre.match regexp (Text.encodeUtf8 str) [])
-
-eNull :: Ann :+ Name -> Value
-eNull (_ :+ name) =
-  Lam $ \case
-    ann :+ String str ->
-      pure (embed (ann :+ name) (Text.null str))
-    ann :+ Array xs ->
-      pure (embed (ann :+ name) (null xs))
-    ann :+ Object o ->
-      pure (embed (ann :+ name) (HashMap.null o))
-    ann :+ value ->
-      Left
-        (UserError
-          (ann :+ name)
-          ("not applicable to " <> display value <> " (not a string, array, or object)"))
-
-eLength :: Ann :+ Name -> Value
-eLength (_ :+ name) =
-  Lam $ \case
-    ann :+ String str ->
-      pure (embed (ann :+ name) (Text.length str))
-    ann :+ Array xs ->
-      pure (embed (ann :+ name) (length xs))
-    ann :+ Object o ->
-      pure (embed (ann :+ name) (HashMap.size o))
-    ann :+ value ->
-      Left
-        (UserError
-          (ann :+ name)
-          ("not applicable to " <> display value <> " (not a string, array, or object)"))
-
-eDie :: Ann :+ Name -> Value
-eDie (_ :+ name) =
-  Lam (\(ann :+ val) -> Left (UserError (ann :+ name) (display val)))
-
-eShow :: Value
-eShow =
-  Lam (pure . String . display . unann)
-
-ePP :: Value
-ePP =
-  Lam (pure . String . displayWith Aeson.encodePretty . unann)
+bindings :: Stdlib -> HashMap Name Value
+bindings stdlib =
+  HashMap.fromList (Op.bindings stdlib.ops <> Fun.bindings stdlib.funs)

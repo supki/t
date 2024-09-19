@@ -8,7 +8,6 @@ module T.Exp
   , Cofree(..)
   , ExpF(..)
   , Literal(..)
-  , Name(..)
   , (:+)(..)
   , Ann
   , litE
@@ -28,18 +27,16 @@ import Data.Aeson qualified as Aeson
 import Data.Functor.Classes (Eq1(..), eq1)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
 import Data.Scientific (Scientific)
-import Data.String (IsString(..))
 import Data.Text (Text)
 import Data.Vector (Vector)
 import GHC.Generics (Generic1)
 import Prelude hiding (exp)
-import Prettyprinter (Pretty(..))
 import Text.Regex.PCRE.Light qualified as Pcre
 
 import T.Exp.Ann (Ann, (:+)(..), emptyAnn)
+import T.Name (Name)
 
 
 data Cofree f a = a :< f (Cofree f a)
@@ -181,19 +178,3 @@ falseL =
 trueL :: Literal
 trueL =
   Bool True
-  
-newtype Name = Name { unName :: Text }
-    deriving
-      ( Show
-      , Eq
-      , Ord
-      , IsString
-      , Hashable
-      , Aeson.FromJSONKey
-      , Aeson.ToJSON
-      , Aeson.ToJSONKey
-      )
-
-instance Pretty Name where
-  pretty Name {unName} =
-    pretty unName
