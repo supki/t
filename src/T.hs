@@ -1,6 +1,8 @@
 module T
   ( Tmpl
   , Env
+  , Scope(..)
+  , Value
   , Name(..)
   , Error(..)
   , prettyError
@@ -10,8 +12,6 @@ module T
   , parse
   , parseFile
   , render
-  , mkDefEnv
-  , mkEnv
   , reifyAeson
 
   , Stdlib
@@ -23,12 +23,12 @@ module T
 
 import T.Embed (Embed(..), Eject(..))
 import T.Error (Error(..), Warning(..), prettyError, prettyWarning)
-import T.Exp (Name(..))
+import T.Name (Name(..))
 import T.Tmpl (Tmpl)
 import T.Parse (parse, parseFile)
-import T.Render (Env, render, mkDefEnv, mkEnv)
+import T.Render (Env, Scope(..), render)
 import T.Stdlib (Stdlib, def)
-import T.Value (reifyAeson)
+import T.Value (Value, reifyAeson)
 
 
 stdlib :: Stdlib

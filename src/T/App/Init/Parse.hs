@@ -1,9 +1,11 @@
+{-# LANGUAGE OverloadedRecordDot #-}
 module T.App.Init.Parse
   ( Stmt(..)
   , Parser
   , parseText
   ) where
 
+import Control.Monad.Reader (runReaderT)
 import Data.List qualified as List
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -22,6 +24,7 @@ import Text.Trifecta
 
 import T.Tmpl (Tmpl)
 import T.Parse qualified as T (parser)
+import T.Stdlib qualified as Stdlib
 
 
 data Stmt
@@ -74,7 +77,7 @@ noop _str =
 
 setup :: Parser Stmt
 setup str =
-  fmap Setup (fromResult (parseByteString p mempty (Text.encodeUtf8 str)))
+  fmap Setup (fromResult (parseByteString (runReaderT p Stdlib.def.ops) mempty (Text.encodeUtf8 str)))
  where
   p = do
     _ <- string "{# SETUP #}\n"
@@ -82,7 +85,7 @@ setup str =
 
 file :: Parser Stmt
 file str =
-  fmap (uncurry File) (fromResult (parseByteString p mempty (Text.encodeUtf8 str)))
+  fmap (uncurry File) (fromResult (parseByteString (runReaderT p Stdlib.def.ops) mempty (Text.encodeUtf8 str)))
  where
   p = do
    _ <- string "{# FILE"

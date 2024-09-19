@@ -1,12 +1,13 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
 module T.Render
   ( Env(..)
-  , mkDefEnv
-  , mkEnv
+  , Scope(..)
   , render
   , exec
   ) where
@@ -31,9 +32,11 @@ import Data.Text.Lazy.Builder qualified as Builder
 import Data.HashMap.Strict qualified as HashMap
 import Prelude hiding (exp, lookup)
 
-import T.Exp (Cofree(..), Exp, ExpF(..), Literal(..), Name(..), (:+)(..), Ann)
+import T.Exp (Cofree(..), Exp, ExpF(..), Literal(..), (:+)(..), Ann)
 import T.Exp.Ann (emptyAnn)
 import T.Error (Error(..), Warning(..))
+import T.Name (Name(..))
+import T.Stdlib (Stdlib)
 import T.Stdlib qualified as Stdlib
 import T.Value (Value)
 import T.Value qualified as Value
@@ -48,37 +51,36 @@ data Env = Env
   , warnings :: Set (Ann, Warning)
   }
 
-mkDefEnv :: HashMap Name Value -> Env
-mkDefEnv =
-  mkEnv mempty
+newtype Scope = Scope (HashMap Name Value)
+    deriving (Semigroup, Monoid)
 
-mkEnv :: HashMap Name Value -> HashMap Name Value -> Env
-mkEnv stdlibExt vars = Env
-  { stdlib = HashMap.union Stdlib.def stdlibExt
+-- | Convert a template to text using the provided environment.
+render :: (Stdlib, Scope) -> Tmpl -> Either Error ([Warning], Lazy.Text)
+render (uncurry mkEnv -> env0) tmpl =
+  fmap fromEnv (run env0 tmpl)
+ where
+  fromEnv env =
+    ( map snd (Set.toAscList env.warnings)
+    , Builder.toLazyText env.result
+    )
+
+-- | Collect the environment-changing side-effects.
+exec :: (Stdlib, Scope) -> Tmpl -> Either Error ([Warning], Scope)
+exec (uncurry mkEnv -> env0) tmpl =
+  fmap fromEnv (run env0 tmpl)
+ where
+  fromEnv env =
+    ( map snd (Set.toAscList env.warnings)
+    , Scope (fmap snd env.scope)
+    )
+
+mkEnv :: Stdlib -> Scope -> Env
+mkEnv stdlib (Scope vars) = Env
+  { stdlib = Stdlib.bindings stdlib
   , scope = fmap (\x -> (emptyAnn, x)) vars
   , result = mempty
   , warnings = mempty
   }
-
--- | Convert a template to text using the provided environment.
-render :: Env -> Tmpl -> Either Error ([Warning], Lazy.Text)
-render env0 tmpl =
-  fmap fromEnv (run env0 tmpl)
- where
-  fromEnv Env {result, warnings} =
-    ( map snd (Set.toAscList warnings)
-    , Builder.toLazyText result
-    )
-
--- | Collect the environment-changing side-effects.
-exec :: Env -> Tmpl -> Either Error ([Warning], HashMap Name Value)
-exec env0 tmpl =
-  fmap fromEnv (run env0 tmpl)
- where
-  fromEnv Env {scope, warnings} =
-    ( map snd (Set.toAscList warnings)
-    , fmap snd scope
-    )
 
 run :: Env -> Tmpl -> Either Error Env
 run env0 tmpl =
@@ -239,11 +241,11 @@ insertVar (ann :+ name) value = do
     }
 
 lookup :: Env -> Name -> Maybe (Ann, Value)
-lookup Env {stdlib, scope} name =
+lookup env name =
   asum
-    [ HashMap.lookup name scope
+    [ HashMap.lookup name env.scope
     , do
-      value <- HashMap.lookup name stdlib
+      value <- HashMap.lookup name env.stdlib
       pure (emptyAnn, value)
     ]
 

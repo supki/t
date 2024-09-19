@@ -36,9 +36,12 @@ library
       T.Exp
       T.Exp.Ann
       T.Exp.Macro
+      T.Name
       T.Parse
       T.Render
       T.Stdlib
+      T.Stdlib.Fun
+      T.Stdlib.Op
       T.Tmpl
       T.Value
   other-modules:
@@ -101,7 +104,7 @@ test-suite spec
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Parse.AnnSpec
+      T.Parse.AnnSpec
       T.ParseSpec
       T.RenderSpec
       Paths_t

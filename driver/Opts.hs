@@ -25,7 +25,7 @@ import T.App.Init.Cfg qualified as Init
 
 
 data Cmd
-  = Render FilePath T.Env
+  = Render FilePath T.Scope
   | Init Init.Cfg
 
 parse :: IO Cmd
@@ -56,7 +56,7 @@ renderP = do
       ( long "override"
      <> metavar "JSON"
      <> help "Environment"
-     <> value (T.mkDefEnv mempty)
+     <> value mempty
       )
   pure (Render path env)
 
@@ -72,7 +72,7 @@ initP = do
       ( long "override"
      <> metavar "JSON"
      <> help "Environment"
-     <> value (T.mkDefEnv mempty)
+     <> value mempty
       )
   rootDir <-
     option str
@@ -94,12 +94,12 @@ initTmplR =
     | takeExtension val == ".t" = Init.Path val
     | otherwise = Init.Name val
 
-jsonR :: ReadM T.Env
+jsonR :: ReadM T.Scope
 jsonR =
   eitherReader r
  where
   r =
-    fmap (T.mkDefEnv . fmap T.reifyAeson) . Aeson.eitherDecode . fromString
+    fmap (T.Scope . fmap T.reifyAeson) . Aeson.eitherDecode . fromString
 
 currentDirectory :: FilePath
 currentDirectory =

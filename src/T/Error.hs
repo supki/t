@@ -13,7 +13,8 @@ import Prettyprinter.Render.Terminal qualified as PP (Color(..), color)
 import Text.Trifecta qualified as Tri
 import Text.Trifecta.Delta qualified as Tri
 
-import T.Exp (Cofree((:<)), Exp, (:+)(..), Name, Ann)
+import T.Exp (Cofree((:<)), Exp, (:+)(..), Ann)
+import T.Name (Name)
 
 
 data Error

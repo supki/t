@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TypeApplications #-}
 module T.RenderSpec (spec) where
@@ -7,19 +8,21 @@ import Data.Aeson qualified as Aeson
 import Data.Aeson.KeyMap qualified as Aeson (toHashMapText)
 import Data.Aeson.QQ (aesonQQ)
 import Data.Bool (bool)
-import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
 import Data.Text.Lazy qualified as Lazy (Text)
 import Test.Hspec
 
-import T.Exp (Literal(..), Name(..), litE_)
-import T.Embed (embed)
+import T.Exp (Literal(..), litE_)
+import T.Embed (embed0)
 import T.Error (Error(..), Warning(..))
+import T.Name (Name(..))
 import T.Parse (parse)
-import T.Render (render, mkEnv)
-import T.Value (Value, reifyAeson)
+import T.Render (Scope(..), render)
+import T.Stdlib (def)
+import T.Stdlib qualified as Stdlib
+import T.Value (reifyAeson)
 
 
 spec :: Spec
@@ -136,6 +139,9 @@ spec =
         r_ "{{ bool01(false) }}" `shouldRender` "0"
         r_ "{{ bool01(true) }}" `shouldRender` "1"
 
+      it "<+>" $ do
+        r_ "{{ \"foo\" <+> \"bar\" }}" `shouldRender` "foo+bar"
+
       it "empty" $ do
         r_ "{{ empty?(\"\") }}" `shouldRender` "true"
         r_ "{{ empty?(\"hello\") }}" `shouldRender` "false"
@@ -191,6 +197,10 @@ spec =
         r_ "{{ {a: 4, b: \"foo\"} == {a: 4, b: \"bar\"} }}" `shouldRender` "false"
         r_ "{{ 4 == \"foo\" }}" `shouldRender` "false"
         r_ "{{ {a: 4} == length }}" `shouldRender` "false"
+
+      it "!=" $ do
+        r_ "{{ null != null }}" `shouldRender` "false"
+        r_ "{{ true != false }}" `shouldRender` "true"
 
       it "=~" $ do
         r_ "{{ \"foo\" =~ /foo/ }}" `shouldRender` "true"
@@ -300,16 +310,21 @@ tmpl `shouldRaise` res =
 rWith :: Aeson.Value -> Text -> Either Error ([Warning], Lazy.Text)
 rWith json tmplStr = do
   let Aeson.Object o = json
-      env = mkEnv ext (fmap reifyAeson (HashMap.mapKeys Name (Aeson.toHashMapText o)))
-      Right tmpl = parse (Text.encodeUtf8 tmplStr)
-  render env tmpl
+      scope = Scope (fmap reifyAeson (HashMap.mapKeys Name (Aeson.toHashMapText o)))
+      stdlib = Stdlib.with (def.ops <> opExt) (def.funs <> funExt)
+      Right tmpl = parse stdlib (Text.encodeUtf8 tmplStr)
+  render (stdlib, scope) tmpl
 
-ext :: HashMap Name Value
-ext =
-  HashMap.fromList
-    [ ("bool01", flip embed (bool @Int 0 1) "bool01")
-    , ("const", flip embed (const :: Bool -> Text -> Bool) "const")
-    ]
+opExt :: [Stdlib.Op]
+opExt =
+  [ Stdlib.Op "<+>" (flip embed0 (\str0 str1 -> str0 <> "+" <> str1 :: Text)) Stdlib.Infixr 6
+  ]
+
+funExt :: [Stdlib.Fun]
+funExt =
+  [ Stdlib.Fun "bool01" (flip embed0 (bool @Int 0 1))
+  , Stdlib.Fun "const" (flip embed0 (const @Bool @Text))
+  ]
 
 r_ :: Text -> Either Error ([Warning], Lazy.Text)
 r_ =

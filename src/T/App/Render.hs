@@ -15,14 +15,14 @@ import Prettyprinter.Render.Terminal qualified as PP (AnsiStyle, hPutDoc)
 import qualified T
 
 
-run :: FilePath -> T.Env -> IO ()
-run path env = do
+run :: FilePath -> T.Scope -> IO ()
+run path vars = do
   str <- Text.readFile path
-  case T.parseFile path (Text.encodeUtf8 str) of
+  case T.parseFile T.stdlib path (Text.encodeUtf8 str) of
     Left Tri.ErrInfo {Tri._errDoc} ->
       ppDie _errDoc
     Right exp ->
-      case T.render env exp of
+      case T.render (T.stdlib, vars) exp of
         Left err ->
           ppDie (T.prettyError err)
         Right (warnings, res) -> do
