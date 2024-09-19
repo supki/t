@@ -55,8 +55,7 @@ prettyError = \case
     header ann <>
     "mismatched types in " <> PP.pretty name <> ": " <> PP.line <>
       PP.indent 2 "expected: something convertable to " <> PP.pretty expected <> PP.line <>
-      PP.indent 2 " but got: " <> PP.pretty value <> PP.line <>
-      PP.indent 2 "which is: " <> PP.pretty actual <> PP.line <>
+      PP.indent 2 " but got: " <> PP.pretty value <> " : " <> PP.pretty actual <> PP.line <>
     excerpt ann
  where
   header (Tri.Span from _to _line) =

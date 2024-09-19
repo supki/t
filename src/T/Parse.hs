@@ -256,7 +256,7 @@ expP =
 
 litP :: Parser Exp
 litP = do
-  ann :+ lit <- anned $ asum
+  ann :+ lit <- anned . runUnspaced $ asum
     [ nullP
     , boolP
     , numberP
@@ -265,6 +265,7 @@ litP = do
     , arrayP
     , objectP
     ]
+  _ <- spaces
   pure (litE ann lit)
  where
   nullP =
@@ -280,10 +281,10 @@ litP = do
     fmap String stringLiteral
   arrayP =
     fmap (Array . Vector.fromList)
-      (brackets (sepBy expP (symbol ",")))
+      (brackets (Unspaced (sepBy expP (symbol ","))))
   objectP =
     fmap (Object . HashMap.fromList)
-      (braces (sepBy kv (symbol ",")))
+      (braces (Unspaced (sepBy kv (symbol ","))))
    where
     kv = do
       k <- fmap fromString (some letter)
@@ -291,12 +292,12 @@ litP = do
       v <- expP
       pure (k, v)
 
-regexpP :: Parser Literal
+regexpP :: (Monad m, TokenParsing m) => m Literal
 regexpP = do
   str <- between (char '/') (char '/') (normalChar [])
   modifiers <- many modifier
-  spaces
-  either fail (pure . Regexp) (Pcre.compileM (Text.encodeUtf8 str) (Pcre.utf8 : modifiers))
+  whiteSpace
+  either unexpected (pure . Regexp) (Pcre.compileM (Text.encodeUtf8 str) (Pcre.utf8 : modifiers))
  where
   normalChar acc = do
     c <- noneOf ['/']
@@ -313,7 +314,7 @@ regexpP = do
       _ ->
         normalChar (c : '\\' : acc)
   modifier = do
-    'i' <- char 'i'
+    _ <- char 'i'
     pure Pcre.caseless
 
 ifP :: Parser Exp
