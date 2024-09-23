@@ -58,9 +58,9 @@ operators =
   , Op "!=" (flip embed0 neq) Infix 4
   , Op "=~" (flip embed0 match) Infix 4
 
-  , Op "+" (flip embed0 ((+) @Scientific)) Infixr 6
+  , Op "+" (flip embed0 ((+) @Scientific)) Infixl 6
   , Op "-" (flip embed0 ((-) @Scientific)) Infixl 6
-  , Op "*" (flip embed0 ((*) @Scientific)) Infixr 7
+  , Op "*" (flip embed0 ((*) @Scientific)) Infixl 7
   , Op "/" (flip embed0 ((/) @Scientific)) Infixl 7
 
   , Op ">" (flip embed0 ((>) @Scientific)) Infix 4

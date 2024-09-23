@@ -43,12 +43,13 @@ import T.Exp
   , appE_
   )
 import T.Exp.Ann (anning, anned)
-import T.Exp.Macro qualified as Macro
 import T.Name (Name(..))
 import T.Name qualified as Name
+import T.Parse.Macro qualified as Macro
 import T.Tmpl qualified as Tmpl
 import T.Tmpl (Tmpl((:*:)))
-import T.Stdlib (Stdlib(..), Op)
+import T.Stdlib (Stdlib(..))
+import T.Stdlib.Macro qualified as Macro
 import T.Stdlib.Op qualified as Op
 
 
@@ -62,7 +63,7 @@ parse stdlib =
 
 parseDelta :: Stdlib -> Delta -> ByteString -> Either ErrInfo Tmpl
 parseDelta stdlib delta str =
-  case parseByteString (runReaderT parser stdlib.ops) delta str of
+  case parseByteString (runReaderT parser stdlib) delta str of
     Failure errDoc ->
       Left errDoc
     Success tmpl ->
@@ -85,11 +86,11 @@ cleanup = \case
   x ->
     x
 
-parser :: (MonadFail m, e ~ [Op], MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
+parser :: (MonadFail m, e ~ Stdlib, MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
 parser =
   go (\t -> t)
  where
-  go :: (MonadFail m, e ~ [Op], MonadReader e m, DeltaParsing m, LookAheadParsing m) => (Tmpl -> r) -> m r
+  go :: (MonadFail m, e ~ Stdlib, MonadReader e m, DeltaParsing m, LookAheadParsing m) => (Tmpl -> r) -> m r
   go acc =
     asum
       [ do comment <- parseComment
@@ -119,7 +120,7 @@ parseComment :: CharParsing m => m Tmpl
 parseComment =
   fmap Tmpl.Comment commentP
 
-parseSet :: (e ~ [Op], MonadReader e m, DeltaParsing m) => m Tmpl
+parseSet :: (e ~ Stdlib, MonadReader e m, DeltaParsing m) => m Tmpl
 parseSet = do
   assignments <- blockP "set" . many $ do
     name <- nameP
@@ -128,7 +129,7 @@ parseSet = do
     pure (Tmpl.Assign name exp)
   pure (Tmpl.Set assignments)
 
-parseLet :: (MonadFail m, e ~ [Op], MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
+parseLet :: (MonadFail m, e ~ Stdlib, MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
 parseLet = do
   assignments <- blockP "let" . many $ do
     name <- nameP
@@ -139,7 +140,7 @@ parseLet = do
   _ <- blockP_ "endlet"
   pure (Tmpl.Let assignments tmpl)
 
-parseIf :: (MonadFail m, e ~ [Op], MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
+parseIf :: (MonadFail m, e ~ Stdlib, MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
 parseIf = do
   exp <- blockP "if" expP
   ifTmpl <- parser
@@ -156,7 +157,7 @@ parseIf = do
     Just elseClause ->
       pure (Tmpl.If ((ifClause :| thenClauses) <> (elseClause :| [])))
 
-parseCase :: (MonadFail m, e ~ [Op], MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
+parseCase :: (MonadFail m, e ~ Stdlib, MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
 parseCase = do
   exp0 <- blockP "case" expP
   when : whens <- some (liftA2 (,) (blockP "when" expP) parser)
@@ -172,7 +173,7 @@ parseCase = do
     Just elseClause ->
       pure (Tmpl.If (clauses <> (elseClause :| [])))
 
-parseFor :: (MonadFail m, e ~ [Op], MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
+parseFor :: (MonadFail m, e ~ Stdlib, MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
 parseFor = do
   (name, it, exp) <- blockP "for" $ do
     name <- nameP
@@ -187,27 +188,26 @@ parseFor = do
   _ <- blockP_ "endfor"
   pure (Tmpl.For name it exp forTmpl elseTmpl)
 
-parseExp :: (e ~ [Op], MonadReader e m, DeltaParsing m) => m Tmpl
+parseExp :: (e ~ Stdlib, MonadReader e m, DeltaParsing m) => m Tmpl
 parseExp =
   between (string "{{" *> spaces) (spaces <* string "}}") (fmap Tmpl.Exp expP)
 
-expP :: (e ~ [Op], MonadReader e m, DeltaParsing m) => m Exp
+expP :: (e ~ Stdlib, MonadReader e m, DeltaParsing m) => m Exp
 expP = do
-  operators <- ask
-  fmap Macro.expand (buildExpressionParser (table operators) goP)
+  stdlib <- ask
+  exp0 <- buildExpressionParser (table stdlib.macros stdlib.ops) goP
+  case Macro.expand (Macro.expansions stdlib.macros) exp0 of
+    Left expansionErr ->
+      unexpected ("expansion error: " <> Macro.displayError expansionErr)
+    Right exp ->
+      pure exp
+
  where
-  table operators =
-    [dotOp "."] : fromMap (macros <> Op.priorities operators)
+  table macros operators =
+    [dotOp "."] : fromMap (Macro.priorities macros <> Op.priorities operators)
 
   fromMap =
     map (\(_k, v) -> map fromFixity v) . Map.toDescList
-
-  macros =
-    Map.fromList
-      [ (3, [("&&", Op.Infixr)])
-      , (2, [("||", Op.Infixr)])
-      , (1, [("|", Op.Infixl)])
-      ]
 
   goP =
     asum
@@ -268,7 +268,7 @@ prefixOp name =
     (do ann <- anning (reserve emptyOps name)
         pure (\a -> appE ann (fromString name) (fromList [a])))
 
-litP :: (e ~ [Op], MonadReader e m, DeltaParsing m) => m Exp
+litP :: (e ~ Stdlib, MonadReader e m, DeltaParsing m) => m Exp
 litP = do
   ann :+ lit <- anned . runUnspaced $ asum
     [ nullP
@@ -331,7 +331,7 @@ regexpP = do
     _ <- char 'i'
     pure Pcre.caseless
 
-ifP :: (e ~ [Op], MonadReader e m, DeltaParsing m) => m Exp
+ifP :: (e ~ Stdlib, MonadReader e m, DeltaParsing m) => m Exp
 ifP = do
   ann :+ (p, t, f) <- anned $ do
     _ <- symbol "if"
@@ -343,7 +343,7 @@ ifP = do
     pure (p, t, f)
   pure (ifE ann p t f)
 
-appP :: (e ~ [Op], MonadReader e m, DeltaParsing m) => m Exp
+appP :: (e ~ Stdlib, MonadReader e m, DeltaParsing m) => m Exp
 appP = do
   ann :+ (name, args) <- anned $ do
     name <- nameP

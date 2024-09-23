@@ -108,12 +108,12 @@ spec =
           Tmpl.Exp
             (appE_
               "+"
-              [ number 1
-              , appE_
+              [ appE_
                   "+"
-                  [ number 2
-                  , number 3
+                  [ number 1
+                  , number 2
                   ]
+              , number 3
               ])
         "{{ (1 + 2) + 3 }}" `shouldParseTo`
           Tmpl.Exp
