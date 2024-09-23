@@ -35,12 +35,13 @@ library
       T.Error
       T.Exp
       T.Exp.Ann
-      T.Exp.Macro
       T.Name
       T.Parse
+      T.Parse.Macro
       T.Render
       T.Stdlib
       T.Stdlib.Fun
+      T.Stdlib.Macro
       T.Stdlib.Op
       T.Tmpl
       T.Value

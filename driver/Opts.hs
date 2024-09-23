@@ -51,13 +51,7 @@ renderP = do
       ( metavar "PATH"
      <> help "Template file path"
       )
-  env <-
-    option jsonR
-      ( long "override"
-     <> metavar "JSON"
-     <> help "Environment"
-     <> value mempty
-      )
+  env <- envP
   pure (Render path env)
 
 initP :: Parser Cmd
@@ -67,13 +61,7 @@ initP = do
       ( metavar "PATH"
      <> help "init template name or path"
       )
-  env <-
-    option jsonR
-      ( long "override"
-     <> metavar "JSON"
-     <> help "Environment"
-     <> value mempty
-      )
+  env <- envP
   rootDir <-
     option str
       ( long "directory"
@@ -82,9 +70,19 @@ initP = do
      <> help "Use this directory as the base directory for paths in the .ini.t file"
      <> value currentDirectory
       )
-  pure (Init Init.Cfg
+  pure $ Init Init.Cfg
     { tmplDir = tmplDirectory
-    , ..})
+    , ..
+    }
+
+envP :: Parser T.Scope
+envP =
+  option jsonR
+    ( long "override"
+   <> metavar "JSON"
+   <> help "Environment"
+   <> value mempty
+    )
 
 initTmplR :: ReadM Init.InitTmpl
 initTmplR =

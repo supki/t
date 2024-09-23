@@ -14,14 +14,16 @@ import Data.Text.Encoding qualified as Text
 import Data.Text.Lazy qualified as Lazy (Text)
 import Test.Hspec
 
-import T.Exp (Literal(..), litE_)
+import T.Exp (Literal(..), litE_, appE)
 import T.Embed (embed0)
 import T.Error (Error(..), Warning(..))
 import T.Name (Name(..))
 import T.Parse (parse)
+import T.Parse.Macro (badArity)
 import T.Render (Scope(..), render)
 import T.Stdlib (def)
 import T.Stdlib qualified as Stdlib
+import T.Stdlib.Op qualified as Op
 import T.Value (reifyAeson)
 
 
@@ -227,6 +229,11 @@ spec =
         r_ "{{ coalesce(foo.bar.baz, true) }}" `shouldRender` "true"
         r_ "{{ coalesce(foo.bar, foo.bar.baz, true) }}" `shouldRender` "true"
 
+      it "?||" $ do
+        r_ "{{ false ?|| true }}" `shouldRender` "false"
+        r_ "{{ foo.bar.baz ?|| true }}" `shouldRender` "true"
+        r_ "{{ foo.bar ?|| foo.bar.baz ?|| true }}" `shouldRender` "true"
+
       it "macros are lazy and nestable" $ do
         r_ "{{ true || die(\"no reason\") }}" `shouldRender` "true"
         r_ "{{ false || die(4) }}" `shouldRaise` UserError "die" "4"
@@ -309,10 +316,14 @@ tmpl `shouldRaise` res =
 
 rWith :: Aeson.Value -> Text -> Either Error ([Warning], Lazy.Text)
 rWith json tmplStr = do
-  let Aeson.Object o = json
-      scope = Scope (fmap reifyAeson (HashMap.mapKeys Name (Aeson.toHashMapText o)))
-      stdlib = Stdlib.with (def.ops <> opExt) (def.funs <> funExt)
-      Right tmpl = parse stdlib (Text.encodeUtf8 tmplStr)
+  let
+    Aeson.Object o = json
+    scope =
+      Scope (fmap reifyAeson (HashMap.mapKeys Name (Aeson.toHashMapText o)))
+    stdlib =
+      Stdlib.with (def.ops <> opExt) (def.funs <> funExt) (def.macros <> macroExt)
+    Right tmpl =
+      parse stdlib (Text.encodeUtf8 tmplStr)
   render (stdlib, scope) tmpl
 
 opExt :: [Stdlib.Op]
@@ -325,6 +336,17 @@ funExt =
   [ Stdlib.Fun "bool01" (flip embed0 (bool @Int 0 1))
   , Stdlib.Fun "const" (flip embed0 (const @Bool @Text))
   ]
+
+macroExt :: [Stdlib.Macro]
+macroExt =
+  [ Stdlib.macroOp "?||" coalesceOp Op.Infixl 1
+  ]
+ where
+  coalesceOp ann = \case
+    [expl, expr] ->
+      Right (appE ann "coalesce" [expl, expr])
+    args ->
+      badArity 2 (length args)
 
 r_ :: Text -> Either Error ([Warning], Lazy.Text)
 r_ =
