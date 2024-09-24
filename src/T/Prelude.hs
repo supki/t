@@ -34,6 +34,7 @@ module T.Prelude
   , Vector
 
   , (.)
+  , (<=<)
   , ($)
   , (<$)
   , (&&)
@@ -75,7 +76,7 @@ module T.Prelude
   ) where
 
 import Control.Applicative (Alternative(..))
-import Control.Monad (foldM_, when, unless)
+import Control.Monad ((<=<), foldM_, when, unless)
 import Data.Bool (bool)
 import Data.Bifunctor (first, second)
 import Data.ByteString (ByteString)

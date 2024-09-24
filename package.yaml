@@ -17,6 +17,7 @@ dependencies:
 default-extensions:
   - ImportQualifiedPost
   - LambdaCase
+  - NoFieldSelectors
   - NoImplicitPrelude
   - OverloadedStrings
   - TypeOperators

@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 module T.ParseSpec (spec) where
 
 import Data.HashMap.Strict qualified as HashMap
@@ -181,7 +182,7 @@ spec =
 
 vars :: NonEmpty Name -> Exp
 vars (chunk :| chunks) =
-  foldl' (\acc chunk' -> appE_ "." [acc, string (unName chunk')]) (var chunk) chunks
+  foldl' (\acc chunk' -> appE_ "." [acc, string chunk'.unName]) (var chunk) chunks
 
 var :: Name -> Exp
 var =

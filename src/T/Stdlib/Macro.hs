@@ -1,4 +1,3 @@
-{-# LANGUAGE NoFieldSelectors #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE StrictData #-}
