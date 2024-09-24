@@ -17,10 +17,10 @@ module T.Stdlib
   , Macro.macroOp
   ) where
 
-import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 
 import T.Name (Name)
+import T.Prelude
 import T.Stdlib.Fun (Fun(..))
 import T.Stdlib.Fun qualified as Fun
 import T.Stdlib.Macro (Macro(..))

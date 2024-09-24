@@ -4,6 +4,7 @@
 :set -itest
 :set -idriver
 :set -XImportQualifiedPost
+:set -XNoImplicitPrelude
 :set -XOverloadedStrings
 :set -XLambdaCase
 :set -XTypeOperators

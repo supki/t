@@ -4,11 +4,7 @@ module T.App.Init
   ( run
   ) where
 
-import Control.Monad (foldM_, when, unless)
-import Data.Foldable (traverse_)
-import Data.String (fromString)
 import Data.Text.IO qualified as Text
-import Prelude hiding (init, lines, writeFile)
 import System.Directory (doesFileExist)
 import System.Exit qualified as Exit (die)
 import System.FilePath ((</>), (<.>))
@@ -30,6 +26,7 @@ import T.App.Init.IO
   , die
   )
 import T qualified
+import T.Prelude
 import T.Render qualified
 
 

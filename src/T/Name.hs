@@ -7,12 +7,10 @@ module T.Name
 
 
 import Data.Aeson qualified as Aeson
-import Data.Hashable (Hashable)
-import Data.String (IsString(..))
-import Data.Text (Text)
 import Data.Text qualified as Text
-import Prelude hiding (exp)
 import Prettyprinter (Pretty(..))
+
+import T.Prelude
 
 
 newtype Name = Name { unName :: Text }

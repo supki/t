@@ -11,17 +11,14 @@ import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.Aeson.KeyMap qualified as Aeson (fromHashMapText, toHashMapText)
 import Data.ByteString.Lazy qualified as Lazy (ByteString)
-import Data.HashMap.Strict (HashMap)
-import Data.Int (Int64)
 import Data.Scientific qualified as Scientific
-import Data.Text (Text)
 import Data.Text.Lazy qualified as Text.Lazy
 import Data.Text.Lazy.Encoding qualified as Text.Lazy
-import Data.Vector (Vector)
 import Text.Regex.PCRE.Light qualified as Pcre
 
 import T.Error (Error)
 import T.Exp ((:+)(..), Ann)
+import T.Prelude
 
 
 data Value
@@ -101,9 +98,9 @@ displayWith f =
     Regexp _regexp ->
       Aeson.String "<regexp>"
     Array xs ->
-      Aeson.Array (fmap embedAeson xs)
+      Aeson.Array (map embedAeson xs)
     Object o ->
-      Aeson.Object (Aeson.fromHashMapText (fmap embedAeson o))
+      Aeson.Object (Aeson.fromHashMapText (map embedAeson o))
     Lam _f ->
       Aeson.String "<lambda>"
 
@@ -130,6 +127,6 @@ reifyAeson = \case
   Aeson.String str ->
     String str
   Aeson.Array xs ->
-    Array (fmap reifyAeson xs)
+    Array (map reifyAeson xs)
   Aeson.Object xs ->
-    Object (Aeson.toHashMapText (fmap reifyAeson xs))
+    Object (Aeson.toHashMapText (map reifyAeson xs))

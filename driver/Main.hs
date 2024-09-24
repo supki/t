@@ -1,10 +1,8 @@
-{-# LANGUAGE NamedFieldPuns #-}
 module Main (main) where
 
-import Prelude hiding (exp)
-
-import qualified T.App.Init
-import qualified T.App.Render
+import T.App.Init qualified
+import T.App.Render qualified
+import T.Prelude
 
 import qualified Opts
 

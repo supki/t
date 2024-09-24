@@ -1,18 +1,17 @@
 {-# LANGUAGE NamedFieldPuns #-}
 module T.App.Render (run) where
 
-import Data.Foldable (traverse_)
 import Data.Text.IO qualified as Text
 import Data.Text.Encoding qualified as Text
 import Data.Text.Lazy.IO qualified as Text.Lazy
-import Prelude hiding (exp)
 import System.Exit (exitFailure)
 import System.IO (stderr)
 import Text.Trifecta qualified as Tri
 import Prettyprinter qualified as PP
 import Prettyprinter.Render.Terminal qualified as PP (AnsiStyle, hPutDoc)
 
-import qualified T
+import T qualified
+import T.Prelude
 
 
 run :: FilePath -> T.Scope -> IO ()

@@ -1,9 +1,9 @@
 module T.Parse.AnnSpec (spec) where
 
-import Data.ByteString (ByteString)
 import Test.Hspec
 
 import T
+import T.Prelude
 
 
 spec :: Spec

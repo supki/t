@@ -5,10 +5,6 @@ module T.Embed
   , Eject(..)
   ) where
 
-import Data.Foldable (toList)
-import Data.HashMap.Strict (HashMap)
-import Data.Int (Int64)
-import Data.Text (Text)
 import Data.Vector qualified as Vector
 import Text.Regex.PCRE.Light qualified as Pcre
 
@@ -16,6 +12,7 @@ import T.Error (Error(..))
 import T.Exp ((:+)(..), Ann)
 import T.Exp.Ann (emptyAnn)
 import T.Name (Name)
+import T.Prelude
 import T.Value (Value(..), display, typeOf)
 
 
@@ -59,7 +56,7 @@ instance Embed a => Embed [a] where
 
 instance (Eject a, Embed b) => Embed (a -> b) where
   embed (_ :+ name) f =
-    Lam (\(ann :+ x) -> fmap (embed (ann :+ name) . f) (eject (ann :+ name) x))
+    Lam (\(ann :+ x) -> map (embed (ann :+ name) . f) (eject (ann :+ name) x))
 
 -- Some embeddings do not have a useful annotation to attach to, such as
 -- stdlib definitions. This is a helper for them.
@@ -118,6 +115,6 @@ instance (k ~ Text, v ~ Value) => Eject (HashMap k v) where
 instance Eject a => Eject [a] where
   eject name = \case
     Array xs ->
-      fmap toList (traverse (eject name) xs)
+      map toList (traverse (eject name) xs)
     value ->
       Left (TypeError name "[a]" (typeOf value) (display value))

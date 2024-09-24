@@ -11,9 +11,9 @@ module T.Exp.Ann
   ) where
 
 import Data.Aeson qualified as Aeson
-import Data.String (IsString(..))
-import Prelude hiding (span)
 import Text.Trifecta (DeltaParsing, Span(..), Spanned(..), spanning, spanned)
+
+import T.Prelude
 
 
 type Ann = Span

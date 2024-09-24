@@ -8,11 +8,10 @@ module T.App.Init.IO
   ) where
 
 import Control.Exception (catch, throwIO)
+import Data.List qualified as List
 import Data.Text.IO qualified as Text
 import Data.Text.Lazy qualified as Lazy (Text)
 import Data.Text.Lazy.IO qualified as Text.Lazy
-import Data.Text (Text)
-import Prelude hiding (writeFile)
 import Prettyprinter qualified as PP
 import Prettyprinter.Render.Terminal qualified as PP (AnsiStyle, hPutDoc)
 import System.Directory
@@ -27,10 +26,12 @@ import System.IO (hFlush, stderr, stdout)
 import System.IO.Error (isDoesNotExistError)
 import System.IO.Temp (emptySystemTempFile)
 
+import T.Prelude
+
 
 isDirectoryNonEmpty :: FilePath -> IO Bool
 isDirectoryNonEmpty =
-  fmap (not . null . filter (`notElem` [".", ".."])) . listDirectory
+  map (not . List.null . filter (`notElem` [".", ".."])) . listDirectory
 
 -- | Write to a temporary file first and then move it to the desired location.
 writeFile :: FilePath -> Lazy.Text -> IO ()

@@ -6,9 +6,7 @@ module Opts
   ) where
 
 import Data.Aeson qualified as Aeson
-import Data.String (fromString)
 import Options.Applicative
-import Prelude hiding (init)
 import System.Directory
   ( getCurrentDirectory
   , getXdgDirectory
@@ -22,6 +20,7 @@ import T.App.Init.Cfg qualified as Init
   ( Cfg(..)
   , InitTmpl(..)
   )
+import T.Prelude
 
 
 data Cmd
@@ -97,7 +96,7 @@ jsonR =
   eitherReader r
  where
   r =
-    fmap (T.Scope . fmap T.reifyAeson) . Aeson.eitherDecode . fromString
+    map (T.Scope . map T.reifyAeson) . Aeson.eitherDecode . fromString
 
 currentDirectory :: FilePath
 currentDirectory =

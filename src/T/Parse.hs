@@ -5,21 +5,13 @@ module T.Parse
   , parser
   ) where
 
-import Control.Applicative ((<|>))
 import Control.Monad.Reader (MonadReader, runReaderT, ask)
-import Data.Bifunctor (second)
-import Data.Bool (bool)
-import Data.ByteString (ByteString)
 import Data.Char qualified as Char
-import Data.Foldable (asum)
 import Data.HashMap.Strict qualified as HashMap
-import Data.List.NonEmpty (NonEmpty(..), fromList)
+import Data.List.NonEmpty (fromList)
 import Data.Map.Strict qualified as Map
-import Data.String (fromString)
-import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
 import Data.Vector qualified as Vector
-import Prelude hiding (exp)
 import Text.Trifecta
 import Text.Trifecta.Delta (Delta(..))
 import Text.Parser.Expression (Assoc(..), Operator(..), buildExpressionParser)
@@ -45,6 +37,7 @@ import T.Exp.Ann (anning, anned)
 import T.Name (Name(..))
 import T.Name qualified as Name
 import T.Parse.Macro qualified as Macro
+import T.Prelude
 import T.Tmpl qualified as Tmpl
 import T.Tmpl (Tmpl((:*:)))
 import T.Stdlib (Stdlib(..))
@@ -75,9 +68,9 @@ cleanup = \case
   x :*: Tmpl.Raw "" ->
     cleanup x
   Tmpl.If clauses ->
-    Tmpl.If (fmap (second cleanup) clauses)
+    Tmpl.If (map (second cleanup) clauses)
   Tmpl.For name it exp x y ->
-    Tmpl.For name it exp (cleanup x) (fmap cleanup y)
+    Tmpl.For name it exp (cleanup x) (map cleanup y)
   Tmpl.Let assignments x ->
     Tmpl.Let assignments (cleanup x)
   x :*: y ->
@@ -117,7 +110,7 @@ parser =
 
 parseComment :: CharParsing m => m Tmpl
 parseComment =
-  fmap Tmpl.Comment commentP
+  map Tmpl.Comment commentP
 
 parseSet :: (e ~ Stdlib, MonadReader e m, DeltaParsing m) => m Tmpl
 parseSet = do
@@ -149,7 +142,7 @@ parseIf = do
   let ifClause =
         (exp, ifTmpl)
       elseClauseQ =
-        fmap (\tmpl -> (litE_ (Bool True), tmpl)) elseTmplQ
+        map (\tmpl -> (litE_ (Bool True), tmpl)) elseTmplQ
   case elseClauseQ of
     Nothing ->
       pure (Tmpl.If (ifClause :| thenClauses))
@@ -159,13 +152,13 @@ parseIf = do
 parseCase :: (MonadFail m, e ~ Stdlib, MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
 parseCase = do
   exp0 <- blockP "case" expP
-  when : whens <- some (liftA2 (,) (blockP "when" expP) parser)
+  branch : branches <- some (liftA2 (,) (blockP "when" expP) parser)
   elseTmplQ <- optional (blockP_ "else" *> parser)
   _ <- blockP_ "endcase"
   let clauses =
-        fmap (\(exp1, tmpl) -> (appE_ "==" (fromList [exp0, exp1]), tmpl)) (when :| whens)
+        map (\(exp1, tmpl) -> (appE_ "==" (fromList [exp0, exp1]), tmpl)) (branch :| branches)
       elseClauseQ =
-        fmap (\tmpl -> (litE_ (Bool True), tmpl)) elseTmplQ
+        map (\tmpl -> (litE_ (Bool True), tmpl)) elseTmplQ
   case elseClauseQ of
     Nothing ->
       pure (Tmpl.If clauses)
@@ -189,7 +182,7 @@ parseFor = do
 
 parseExp :: (e ~ Stdlib, MonadReader e m, DeltaParsing m) => m Tmpl
 parseExp =
-  between (string "{{" *> spaces) (spaces <* string "}}") (fmap Tmpl.Exp expP)
+  between (string "{{" *> spaces) (spaces <* string "}}") (map Tmpl.Exp expP)
 
 expP :: (e ~ Stdlib, MonadReader e m, DeltaParsing m) => m Exp
 expP = do
@@ -289,18 +282,18 @@ litP = do
       , Bool True <$ symbol "true"
       ]
   numberP =
-    fmap (either (Int . fromIntegral) Double) integerOrDouble
+    map (either (Int . fromIntegral) Double) integerOrDouble
   stringP =
-    fmap String stringLiteral
+    map String stringLiteral
   arrayP =
-    fmap (Array . Vector.fromList)
+    map (Array . Vector.fromList)
       (brackets (Unspaced (sepBy expP (symbol ","))))
   objectP =
-    fmap (Object . HashMap.fromList)
+    map (Object . HashMap.fromList)
       (braces (Unspaced (sepBy kv (symbol ","))))
    where
     kv = do
-      k <- fmap fromString (some letter)
+      k <- map fromString (some letter)
       _ <- symbol ":"
       v <- expP
       pure (k, v)
@@ -358,7 +351,7 @@ varP = do
 
 nameP :: DeltaParsing m => m (Ann :+ Name)
 nameP =
-  anned (fmap fromString (liftA2 (:) firstL (many restL))) <* spaces
+  anned (map fromString (liftA2 (:) firstL (many restL))) <* spaces
  where
   firstL =
     letter <|> char '_'
@@ -367,7 +360,7 @@ nameP =
 
 parseRaw :: (Monad m, CharParsing m, LookAheadParsing m) => m Tmpl
 parseRaw =
-  fmap (Tmpl.Raw . fromString . reverse) (go [])
+  map (Tmpl.Raw . fromString . reverse) (go [])
  where
   go acc =
     asum
@@ -425,7 +418,7 @@ commentP =
   (beginWith, endWith) =
     ("{#", "#}")
   p =
-    fmap fromString (manyTill anyChar (try (spaces *> string endWith)))
+    map fromString (manyTill anyChar (try (spaces *> string endWith)))
 
 spacesExceptNewline :: CharParsing m => m String
 spacesExceptNewline =

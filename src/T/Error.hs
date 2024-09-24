@@ -5,7 +5,6 @@ module T.Error
   , prettyWarning
   ) where
 
-import Data.Text (Text)
 import Prettyprinter (Doc)
 import Prettyprinter qualified as PP
 import Prettyprinter.Render.Terminal (AnsiStyle)
@@ -15,6 +14,7 @@ import Text.Trifecta.Delta qualified as Tri
 
 import T.Exp (Cofree((:<)), Exp, (:+)(..), Ann)
 import T.Name (Name)
+import T.Prelude
 
 
 data Error

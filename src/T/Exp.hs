@@ -24,19 +24,13 @@ module T.Exp
 
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
-import Data.Functor.Classes (Eq1(..), eq1)
-import Data.Int (Int64)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List qualified as List
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.HashMap.Strict (HashMap)
-import Data.Text (Text)
-import Data.Vector (Vector)
-import GHC.Generics (Generic1)
-import Prelude hiding (exp)
 import Text.Regex.PCRE.Light qualified as Pcre
 
 import T.Exp.Ann (Ann, (:+)(..), emptyAnn)
 import T.Name (Name)
+import T.Prelude
 
 
 data Cofree f a = a :< f (Cofree f a)
@@ -68,7 +62,7 @@ instance Eq1 ExpF where
   liftEq (==?) (If p0 t0 f0) (If p1 t1 f1) =
     (p0 ==? p1) && (t0 ==? t1) && (f0 ==? f1)
   liftEq (==?) (App n0 as0) (App n1 as1) =
-    (n0 == n1) && and (NonEmpty.zipWith (==?) as0 as1)
+    (n0 == n1) && List.and (NonEmpty.zipWith (==?) as0 as1)
   liftEq _ _ _ =
     False
 
@@ -92,7 +86,7 @@ instance Aeson.ToJSON1 ExpF where
       App name args ->
         [ "variant" .= ("app" :: Text)
         , "name" .= name
-        , "args" .= fmap f args
+        , "args" .= map f args
         ]
 
 instance Aeson.ToJSON a => Aeson.ToJSON (ExpF a) where

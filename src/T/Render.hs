@@ -14,27 +14,21 @@ module T.Render
 
 import Control.Monad.Except (MonadError(..), ExceptT, runExcept, liftEither)
 import Control.Monad.State (MonadState(..), StateT, execStateT, evalStateT, modify)
-import Data.Bool (bool)
 import Data.Either (isRight)
-import Data.Foldable (asum, for_, toList)
-import Data.HashMap.Strict (HashMap)
 import Data.List qualified as List
-import Data.List.NonEmpty (NonEmpty(..))
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.String (fromString)
-import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as Lazy (Text)
 import Data.Text.Lazy.Builder (Builder)
 import Data.Text.Lazy.Builder qualified as Builder
 import Data.HashMap.Strict qualified as HashMap
-import Prelude hiding (exp, lookup)
 
 import T.Exp (Cofree(..), Exp, ExpF(..), Literal(..), (:+)(..), Ann)
 import T.Exp.Ann (emptyAnn)
 import T.Error (Error(..), Warning(..))
 import T.Name (Name(..))
+import T.Prelude
 import T.Stdlib (Stdlib)
 import T.Stdlib qualified as Stdlib
 import T.Value (Value)
@@ -56,27 +50,27 @@ newtype Scope = Scope (HashMap Name Value)
 -- | Convert a template to text using the provided environment.
 render :: (Stdlib, Scope) -> Tmpl -> Either Error ([Warning], Lazy.Text)
 render (uncurry mkEnv -> env0) tmpl =
-  fmap fromEnv (run env0 tmpl)
+  map fromEnv (run env0 tmpl)
  where
   fromEnv env =
-    ( map snd (Set.toAscList env.warnings)
+    ( map (\(_, w) -> w) (Set.toAscList env.warnings)
     , Builder.toLazyText env.result
     )
 
 -- | Collect the environment-changing side-effects.
 exec :: (Stdlib, Scope) -> Tmpl -> Either Error ([Warning], Scope)
 exec (uncurry mkEnv -> env0) tmpl =
-  fmap fromEnv (run env0 tmpl)
+  map fromEnv (run env0 tmpl)
  where
   fromEnv env =
-    ( map snd (Set.toAscList env.warnings)
-    , Scope (fmap snd env.scope)
+    ( map (\(_, w) -> w) (Set.toAscList env.warnings)
+    , Scope (map (\(_, x) -> x) env.scope)
     )
 
 mkEnv :: Stdlib -> Scope -> Env
 mkEnv stdlib (Scope vars) = Env
   { stdlib = Stdlib.bindings stdlib
-  , scope = fmap (\x -> (emptyAnn, x)) vars
+  , scope = map (\x -> (emptyAnn, x)) vars
   , result = mempty
   , warnings = mempty
   }
@@ -113,21 +107,21 @@ run env0 tmpl =
         Value.Array arr -> do
           let xs =
                 zipWith
-                  (\i x -> (x, loopObj Nothing (length arr) i))
+                  (\i x -> (x, loopObj Nothing (List.length arr) i))
                   [0..]
                   (toList arr)
-          pure (bool (Just xs) Nothing (null xs))
+          pure (bool (Just xs) Nothing (List.null xs))
         Value.Object o -> do
           -- When iterating on objects, we sort the keys to get a
           -- predictable order of elements.
           let xs =
                 zipWith
-                  (\i (k, x) -> (x, loopObj (pure k) (length o) i))
+                  (\i (k, x) -> (x, loopObj (pure k) (List.length o) i))
                   [0..]
                   (List.sortOn
-                    fst
+                    (\(k, _) -> k)
                     (HashMap.toList o))
-          pure (bool (Just xs) Nothing (null xs))
+          pure (bool (Just xs) Nothing (List.null xs))
         _ ->
           throwError (NotIterable exp (Value.display value))
       case itemsQ of

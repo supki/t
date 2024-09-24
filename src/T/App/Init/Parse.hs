@@ -7,10 +7,8 @@ module T.App.Init.Parse
 
 import Control.Monad.Reader (runReaderT)
 import Data.List qualified as List
-import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding qualified as Text
-import Prelude hiding (lines)
 import Text.Trifecta
   ( Result
   , anyChar
@@ -24,6 +22,7 @@ import Text.Trifecta
 
 import T.Tmpl (Tmpl)
 import T.Parse qualified as T (parser)
+import T.Prelude
 import T.Stdlib qualified as Stdlib
 
 
@@ -62,7 +61,7 @@ parseText str0 =
 
 findParserByPrefix :: Text -> [(Text, Parser a)] -> Maybe (Parser a)
 findParserByPrefix line =
-  fmap snd . List.find (\(prefix, _p) -> Text.isPrefixOf prefix line)
+  map (\(_, p) -> p) . List.find (\(prefix, _p) -> Text.isPrefixOf prefix line)
 
 parsers :: [(Text, Text -> Either String Stmt)]
 parsers =
@@ -77,7 +76,7 @@ noop _str =
 
 setup :: Parser Stmt
 setup str =
-  fmap Setup (fromResult (parseByteString (runReaderT p Stdlib.def) mempty (Text.encodeUtf8 str)))
+  map Setup (fromResult (parseByteString (runReaderT p Stdlib.def) mempty (Text.encodeUtf8 str)))
  where
   p = do
     _ <- string "{# SETUP #}\n"
@@ -85,7 +84,7 @@ setup str =
 
 file :: Parser Stmt
 file str =
-  fmap (uncurry File) (fromResult (parseByteString (runReaderT p Stdlib.def) mempty (Text.encodeUtf8 str)))
+  map (uncurry File) (fromResult (parseByteString (runReaderT p Stdlib.def) mempty (Text.encodeUtf8 str)))
  where
   p = do
    _ <- string "{# FILE"

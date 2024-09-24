@@ -8,8 +8,7 @@ module T.Parse.Macro
   , displayError
   ) where
 
-import Data.List.NonEmpty (NonEmpty)
-import Prelude hiding (exp)
+import Data.List qualified as List
 
 import T.Exp
   ( Cofree(..)
@@ -19,6 +18,7 @@ import T.Exp
   , (:+)(..)
   )
 import T.Name (Name)
+import T.Prelude
 
 
 type Expansion =
@@ -35,7 +35,7 @@ expand ms =
   go = \case
     -- expand known macros
     ann :< App (_ann :+ name) args
-      | Just m <- lookup name ms -> do
+      | Just m <- List.lookup name ms -> do
           exp <- m ann args
           go exp
 

@@ -1,21 +1,15 @@
 {-# LANGUAGE OverloadedLists #-}
 module T.ParseSpec (spec) where
 
-import Data.Bifunctor (first)
-import Data.ByteString (ByteString)
-import Data.Int (Int64)
-import Data.List (foldl')
-import Data.List.NonEmpty (NonEmpty(..))
 import Data.HashMap.Strict qualified as HashMap
-import Data.Text (Text)
 import Data.Vector qualified as Vector
-import Prelude hiding (null)
 import Test.Hspec
 
 import T.Parse (parse)
 import T.Exp (Exp, Literal(..), litE_, varE_, ifE_, appE_)
 import T.Exp.Ann (noann)
 import T.Name (Name(..))
+import T.Prelude
 import T.Stdlib qualified as Stdlib
 import T.Tmpl (Tmpl((:*:)))
 import T.Tmpl qualified as Tmpl

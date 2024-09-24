@@ -16,9 +16,8 @@ module T.Stdlib.Macro
   , coalesce
   ) where
 
+import Data.List qualified as List
 import Data.Map.Strict qualified as Map
-import Data.Maybe (mapMaybe)
-import Prelude hiding (and, or, exp)
 
 import T.Exp
   ( Cofree(..)
@@ -36,6 +35,7 @@ import T.Parse.Macro
   , badArity
   , badArgument
   )
+import T.Prelude
 import T.Stdlib.Op qualified as Op (Fixity(..), PriorityMap)
 
 
@@ -73,7 +73,7 @@ expansions =
 priorities :: [Macro] -> Op.PriorityMap
 priorities =
     Map.fromListWith (<>)
-  . mapMaybe (\macro -> fmap (\op -> (op.priority, [(macro.name, op.fixity)])) macro.op)
+  . mapMaybe (\macro -> map (\op -> (op.priority, [(macro.name, op.fixity)])) macro.op)
 
 -- lazy 'and' macro:
 --
@@ -82,7 +82,7 @@ and :: Expansion
 and ann [expl, expr] =
   Right (ifE ann expl expr (litE_ falseL))
 and _ann args =
-  badArity 2 (length args)
+  badArity 2 (List.length args)
 
 -- lazy 'or' macro:
 --
@@ -91,7 +91,7 @@ or :: Expansion
 or ann [expl, expr] =
   Right (ifE ann expl (litE_ trueL) expr)
 or _ann args =
-  badArity 2 (length args)
+  badArity 2 (List.length args)
 
 -- function application macro:
 --
@@ -106,7 +106,7 @@ legacyApp _ann = \case
   [_expl, expr] ->
     badArgument expr
   args ->
-    badArity 2 (length args)
+    badArity 2 (List.length args)
 
 -- COALESCE macro;
 --

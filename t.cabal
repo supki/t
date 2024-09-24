@@ -38,6 +38,7 @@ library
       T.Name
       T.Parse
       T.Parse.Macro
+      T.Prelude
       T.Render
       T.Stdlib
       T.Stdlib.Fun
@@ -52,6 +53,7 @@ library
   default-extensions:
       ImportQualifiedPost
       LambdaCase
+      NoImplicitPrelude
       OverloadedStrings
       TypeOperators
   ghc-options: -funbox-strict-fields -Wall -Wno-incomplete-uni-patterns
@@ -89,6 +91,7 @@ executable t
   default-extensions:
       ImportQualifiedPost
       LambdaCase
+      NoImplicitPrelude
       OverloadedStrings
       TypeOperators
   ghc-options: -Wall -Wno-incomplete-uni-patterns -threaded -with-rtsopts=-N
@@ -114,6 +117,7 @@ test-suite spec
   default-extensions:
       ImportQualifiedPost
       LambdaCase
+      NoImplicitPrelude
       OverloadedStrings
       TypeOperators
   ghc-options: -Wall -Wno-incomplete-uni-patterns -threaded -with-rtsopts=-N

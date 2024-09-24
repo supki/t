@@ -8,14 +8,11 @@ module T.Tmpl
 
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
-import Data.List.NonEmpty (NonEmpty)
-import Data.String (IsString(..))
-import Data.Text (Text)
-import Prelude hiding (exp)
 
 import T.Exp (Exp)
 import T.Exp.Ann (Ann, (:+)(..))
 import T.Name (Name)
+import T.Prelude
 
 
 infixr 1 :*:

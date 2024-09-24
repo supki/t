@@ -6,6 +6,7 @@ module T.App.Init.Cfg
   ) where
 
 import T qualified
+import T.Prelude
 
 
 data Cfg = Cfg

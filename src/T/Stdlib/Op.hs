@@ -12,20 +12,18 @@ module T.Stdlib.Op
   ) where
 
 import Data.HashMap.Strict qualified as HashMap
-import Data.Int (Int64)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (isJust)
-import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
 import Data.Vector qualified as Vector
-import Prelude hiding (subtract)
 import Text.Regex.PCRE.Light qualified as Pcre
 
 import T.Embed (embed0)
 import T.Error (Error(..))
 import T.Exp.Ann ((:+)(..))
 import T.Name (Name)
+import T.Prelude
 import T.Value (Value(..), display, typeOf)
 
 

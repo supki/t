@@ -7,9 +7,8 @@ module T.RenderSpec (spec) where
 import Data.Aeson qualified as Aeson
 import Data.Aeson.KeyMap qualified as Aeson (toHashMapText)
 import Data.Aeson.QQ (aesonQQ)
-import Data.Bool (bool)
+import Data.List qualified as List
 import Data.HashMap.Strict qualified as HashMap
-import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
 import Data.Text.Lazy qualified as Lazy (Text)
 import Test.Hspec
@@ -20,6 +19,7 @@ import T.Error (Error(..), Warning(..))
 import T.Name (Name(..))
 import T.Parse (parse)
 import T.Parse.Macro (badArity)
+import T.Prelude
 import T.Render (Scope(..), render)
 import T.Stdlib (def)
 import T.Stdlib qualified as Stdlib
@@ -328,7 +328,7 @@ shouldRender
   -> a
   -> Expectation
 tmpl `shouldRender` res =
-  fmap snd tmpl `shouldBe` Right res
+  map (\(_, a) -> a) tmpl `shouldBe` Right res
 
 shouldWarn
   :: (HasCallStack, Show e, Eq e, Show ws, Eq ws, Show a, Eq a)
@@ -336,7 +336,7 @@ shouldWarn
   -> ws
   -> Expectation
 tmpl `shouldWarn` res =
-  fmap fst tmpl `shouldBe` Right res
+  map (\(ws, _) -> ws) tmpl `shouldBe` Right res
 
 shouldRaise
   :: (HasCallStack, Show e, Eq e, Show ws, Eq ws, Show a, Eq a)
@@ -351,7 +351,7 @@ rWith json tmplStr = do
   let
     Aeson.Object o = json
     scope =
-      Scope (fmap reifyAeson (HashMap.mapKeys Name (Aeson.toHashMapText o)))
+      Scope (map reifyAeson (HashMap.mapKeys Name (Aeson.toHashMapText o)))
     stdlib =
       Stdlib.with (def.ops <> opExt) (def.funs <> funExt) (def.macros <> macroExt)
     Right tmpl =
@@ -378,7 +378,7 @@ macroExt =
     [expl, expr] ->
       Right (appE ann "coalesce" [expl, expr])
     args ->
-      badArity 2 (length args)
+      badArity 2 (List.length args)
 
 r_ :: Text -> Either Error ([Warning], Lazy.Text)
 r_ =

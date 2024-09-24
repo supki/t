@@ -10,14 +10,15 @@ module T.Stdlib.Fun
 
 import Data.Aeson.Encode.Pretty qualified as Aeson (encodePretty)
 import Data.HashMap.Strict qualified as HashMap
-import Data.Int (Int64)
-import Data.Text (Text)
+import Data.List qualified as List
 import Data.Text qualified as Text
+import GHC.Real (floor, ceiling, round)
 
 import T.Embed (embed, embed0)
 import T.Error (Error(..))
 import T.Exp.Ann ((:+)(..), unann)
 import T.Name (Name)
+import T.Prelude
 import T.Value (Value(..), display, displayWith)
 
 
@@ -61,7 +62,7 @@ nullB name =
     ann :+ String str ->
       pure (embed (ann :+ name) (Text.null str))
     ann :+ Array xs ->
-      pure (embed (ann :+ name) (null xs))
+      pure (embed (ann :+ name) (List.null xs))
     ann :+ Object o ->
       pure (embed (ann :+ name) (HashMap.null o))
     ann :+ value ->
@@ -76,7 +77,7 @@ lengthB name =
     ann :+ String str ->
       pure (embed (ann :+ name) (Text.length str))
     ann :+ Array xs ->
-      pure (embed (ann :+ name) (length xs))
+      pure (embed (ann :+ name) (List.length xs))
     ann :+ Object o ->
       pure (embed (ann :+ name) (HashMap.size o))
     ann :+ value ->
