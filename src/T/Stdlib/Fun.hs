@@ -10,6 +10,7 @@ module T.Stdlib.Fun
 
 import Data.Aeson.Encode.Pretty qualified as Aeson (encodePretty)
 import Data.HashMap.Strict qualified as HashMap
+import Data.Int (Int64)
 import Data.Text (Text)
 import Data.Text qualified as Text
 
@@ -33,6 +34,11 @@ functions :: [Fun]
 functions =
   [ Fun "empty?" nullB
   , Fun "length" lengthB
+
+  , Fun "floor" (flip embed0 (floor @Double @Int64))
+  , Fun "ceiling" (flip embed0 (ceiling @Double @Int64))
+  , Fun "round" (flip embed0 (round @Double @Int64))
+  , Fun "int->double" (flip embed0 (fromIntegral @Int64 @Double))
 
   , Fun "upper-case" (flip embed0 Text.toUpper)
   , Fun "lower-case" (flip embed0 Text.toLower)

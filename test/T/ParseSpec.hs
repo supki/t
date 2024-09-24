@@ -3,10 +3,10 @@ module T.ParseSpec (spec) where
 
 import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
+import Data.Int (Int64)
 import Data.List (foldl')
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.HashMap.Strict qualified as HashMap
-import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Vector qualified as Vector
 import Prelude hiding (null)
@@ -44,37 +44,39 @@ spec =
       "{{ null }}" `shouldParseTo` Tmpl.Exp null
       "{{ false }}" `shouldParseTo` Tmpl.Exp false
       "{{ true }}" `shouldParseTo` Tmpl.Exp true
-      "{{ 4 }}" `shouldParseTo` Tmpl.Exp (number 4)
+      "{{ 4 }}" `shouldParseTo` Tmpl.Exp (int 4)
+      "{{ 4.0 }}" `shouldParseTo` Tmpl.Exp (double 4)
+      "{{ 4.2 }}" `shouldParseTo` Tmpl.Exp (double 4.2)
       "{{ \"foo\" }}" `shouldParseTo` Tmpl.Exp (string "foo")
       "{{ [] }}" `shouldParseTo` Tmpl.Exp (array [])
-      "{{ [1, 2, 3] }}" `shouldParseTo` Tmpl.Exp (array [number 1, number 2, number 3])
+      "{{ [1, 2, 3] }}" `shouldParseTo` Tmpl.Exp (array [int 1, int 2, int 3])
       "{{ [1, x.y, \"foo\"] }}" `shouldParseTo`
         Tmpl.Exp
           (array
-            [ number 1
+            [ int 1
             , vars ["x", "y"]
             , string "foo"
             ])
       "{{ {} }}" `shouldParseTo` Tmpl.Exp (object [])
-      "{{ {x: 4} }}" `shouldParseTo` Tmpl.Exp (object [("x", number 4)])
+      "{{ {x: 4} }}" `shouldParseTo` Tmpl.Exp (object [("x", int 4)])
       "{{ {x: 4, y: \"foo\"} }}" `shouldParseTo`
         Tmpl.Exp
           (object
-            [ ("x", number 4)
+            [ ("x", int 4)
             , ("y", string "foo")
             ])
       "{{ if 4 then \"foo\" else 7 }}" `shouldParseTo`
-        Tmpl.Exp (ifE_ (number 4) (string "foo") (number 7))
-      "{% set x = 4 %}" `shouldParseTo` Tmpl.Set [Tmpl.Assign "x" (number 4)]
-      "{% let x = 4 %}foo{% endlet %}" `shouldParseTo` Tmpl.Let [Tmpl.Assign "x" (number 4)] "foo"
+        Tmpl.Exp (ifE_ (int 4) (string "foo") (int 7))
+      "{% set x = 4 %}" `shouldParseTo` Tmpl.Set [Tmpl.Assign "x" (int 4)]
+      "{% let x = 4 %}foo{% endlet %}" `shouldParseTo` Tmpl.Let [Tmpl.Assign "x" (int 4)] "foo"
       "{% if x %}t{% endif %}" `shouldParseTo`
         whenIf (var "x") "t"
       "{% if x %}t{% else %}f{% endif %}" `shouldParseTo`
         simpleIf (var "x") "t" "f"
       "{% if 4 %}4{% elif 7 %}7{% endif %}" `shouldParseTo`
-        Tmpl.If [(number 4, "4"), (number 7, "7")]
+        Tmpl.If [(int 4, "4"), (int 7, "7")]
       "{% if 4 %}4{% elif 7 %}7{% else %}foo{% endif %}" `shouldParseTo`
-        Tmpl.If [(number 4, "4"), (number 7, "7"), (true, "foo")]
+        Tmpl.If [(int 4, "4"), (int 7, "7"), (true, "foo")]
       "{{ foo(bar) }}" `shouldParseTo`
         Tmpl.Exp (appE_ "foo" [var "bar"])
       "{{ bar | foo }}" `shouldParseTo`
@@ -84,17 +86,17 @@ spec =
       "{{ foo(bar, baz) }}" `shouldParseTo`
         Tmpl.Exp (appE_ "foo" [var "bar", var "baz"])
       "{% if 4 && null %}foo{% endif %}" `shouldParseTo`
-        whenIf (ifE_ (number 4) null false) "foo"
+        whenIf (ifE_ (int 4) null false) "foo"
       "{% if null || 4 %}foo{% endif %}" `shouldParseTo`
-        whenIf (ifE_ null true (number 4)) "foo"
+        whenIf (ifE_ null true (int 4)) "foo"
       "{% if ! true %}foo{% endif %}" `shouldParseTo`
         whenIf (appE_ "!" [true]) "foo"
       "{% for x in [1, 2, 3] %}{{ x }}{% endfor %}" `shouldParseTo`
-        Tmpl.For "x" Nothing (array [number 1, number 2, number 3]) (Tmpl.Exp (var "x")) Nothing
+        Tmpl.For "x" Nothing (array [int 1, int 2, int 3]) (Tmpl.Exp (var "x")) Nothing
       "{% for x in [] %}{{ x }}{% else %}foo{% endfor %}" `shouldParseTo`
         Tmpl.For "x" Nothing (array []) (Tmpl.Exp (var "x")) (pure "foo")
       "{% for x, it in [1, 2, 3] %}{{ x }}{% endfor %}" `shouldParseTo`
-        Tmpl.For "x" (Just "it") (array [number 1, number 2, number 3]) (Tmpl.Exp (var "x")) Nothing
+        Tmpl.For "x" (Just "it") (array [int 1, int 2, int 3]) (Tmpl.Exp (var "x")) Nothing
       "{# yo #}foo" `shouldParseTo`
         (Tmpl.Comment "yo" :*: Tmpl.Raw "foo")
       "{# yo #}\nfoo" `shouldParseTo`
@@ -110,10 +112,10 @@ spec =
               "+"
               [ appE_
                   "+"
-                  [ number 1
-                  , number 2
+                  [ int 1
+                  , int 2
                   ]
-              , number 3
+              , int 3
               ])
         "{{ (1 + 2) + 3 }}" `shouldParseTo`
           Tmpl.Exp
@@ -121,20 +123,20 @@ spec =
               "+"
               [ appE_
                   "+"
-                  [ number 1
-                  , number 2
+                  [ int 1
+                  , int 2
                   ]
-              , number 3
+              , int 3
               ])
         "{{ 1 + (2 + 3) }}" `shouldParseTo`
           Tmpl.Exp
             (appE_
               "+"
-              [ number 1
+              [ int 1
               , appE_
                   "+"
-                  [ number 2
-                  , number 3
+                  [ int 2
+                  , int 3
                   ]
               ])
 
@@ -150,7 +152,7 @@ spec =
         "{% set\n\
         \     foo =\n\
         \       4\n\
-        \%}" `shouldParseTo` Tmpl.Set [Tmpl.Assign "foo" (number 4)]
+        \%}" `shouldParseTo` Tmpl.Set [Tmpl.Assign "foo" (int 4)]
 
     context "multi-*" $ do
       it "multi-sets" $ do
@@ -162,8 +164,8 @@ spec =
         \     baz =\n\
         \       \"foo\"\n\
         \%}" `shouldParseTo` Tmpl.Set
-          [ Tmpl.Assign "foo" (number 4)
-          , Tmpl.Assign "bar" (number 7)
+          [ Tmpl.Assign "foo" (int 4)
+          , Tmpl.Assign "bar" (int 7)
           , Tmpl.Assign "baz" (string "foo")
           ]
 
@@ -177,8 +179,8 @@ spec =
         \       \"foo\"\n\
         \%}{% endlet %}" `shouldParseTo`
           (Tmpl.Let
-            [ Tmpl.Assign "foo" (number 4)
-            , Tmpl.Assign "bar" (number 7)
+            [ Tmpl.Assign "foo" (int 4)
+            , Tmpl.Assign "bar" (int 7)
             , Tmpl.Assign "baz" (string "foo")
             ]
             "")
@@ -203,9 +205,13 @@ true :: Exp
 true =
   litE_ (Bool True)
 
-number :: Scientific -> Exp
-number =
-  litE_ . Number
+int :: Int64 -> Exp
+int =
+  litE_ . Int
+
+double :: Double -> Exp
+double =
+  litE_ . Double
 
 string :: Text -> Exp
 string =

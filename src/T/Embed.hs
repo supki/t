@@ -7,7 +7,7 @@ module T.Embed
 
 import Data.Foldable (toList)
 import Data.HashMap.Strict (HashMap)
-import Data.Scientific (Scientific)
+import Data.Int (Int64)
 import Data.Text (Text)
 import Data.Vector qualified as Vector
 import Text.Regex.PCRE.Light qualified as Pcre
@@ -38,10 +38,13 @@ instance Embed Bool where
 
 instance Embed Int where
   embed _name =
-    Number . fromIntegral
+    Int . fromIntegral
 
-instance Embed Scientific where
-  embed _name = Number
+instance Embed Int64 where
+  embed _name = Int
+
+instance Embed Double where
+  embed _name = Double
 
 instance Embed Text where
   embed _name = String
@@ -77,12 +80,19 @@ instance Eject Bool where
     value ->
       Left (TypeError name "Bool" (typeOf value) (display value))
 
-instance Eject Scientific where
+instance Eject Int64 where
   eject name = \case
-    Number n ->
+    Int n ->
       pure n
     value ->
-      Left (TypeError name "Scientific" (typeOf value) (display value))
+      Left (TypeError name "Int64" (typeOf value) (display value))
+
+instance Eject Double where
+  eject name = \case
+    Double n ->
+      pure n
+    value ->
+      Left (TypeError name "Double" (typeOf value) (display value))
 
 instance Eject Text where
   eject name = \case

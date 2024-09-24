@@ -118,20 +118,52 @@ spec =
         [ShadowedBy "x", ShadowedBy "y"]
 
     context "functions" $ do
-      it "numeric operations" $ do
-        r_ "{{ 1 + 2 }}" `shouldRender` "3"
-        r_ "{{ 0.1 + 0.2 }}" `shouldRender` "0.3"
-        r_ "{{ 1 - 2 }}" `shouldRender` "-1"
-        r_ "{{ 1 - 2 - 3 }}" `shouldRender` "-4"
-        r_ "{{ 4 * 7 }}" `shouldRender` "28"
-        r_ "{{ 4 / 8 }}" `shouldRender` "0.5"
-        r_ "{{ 4 / 8 / 2 }}" `shouldRender` "0.25"
+      context "numeric operations" $ do
+        it "integer operations" $ do
+          r_ "{{ 1 + 2 }}" `shouldRender` "3"
+          r_ "{{ 1 - 2 }}" `shouldRender` "-1"
+          r_ "{{ 1 - 2 - 3 }}" `shouldRender` "-4"
+          r_ "{{ 4 * 7 }}" `shouldRender` "28"
+          r_ "{{ 4 / 8 }}" `shouldRender` "0"
+          r_ "{{ 8 / 4 }}" `shouldRender` "2"
+          r_ "{{ 9 / 2 }}" `shouldRender` "4"
 
-      it "numeric comparisons" $ do
-        r_ "{{ 1 > 2 }}" `shouldRender` "false"
-        r_ "{{ 1 >= 2 }}" `shouldRender` "false"
-        r_ "{{ 1 < 2 }}" `shouldRender` "true"
-        r_ "{{ 1 <= 2 }}" `shouldRender` "true"
+        it "floating operations" $ do
+          r_ "{{ 0.1 + 0.2 }}" `shouldRender` "0.30000000000000004"
+          r_ "{{ 0.1 - 0.2 }}" `shouldRender` "-0.1"
+          r_ "{{ 0.4 * 0.7 }}" `shouldRender` "0.27999999999999997"
+          r_ "{{ 4.0 / 8.0 }}" `shouldRender` "0.5"
+          r_ "{{ 4.0 / 8.0 / 2.0 }}" `shouldRender` "0.25"
+          r_ "{{ 1.0 / 3.0 }}" `shouldRender` "0.3333333333333333"
+
+      context "numeric comparisons" $ do
+        it "integer operations" $ do
+          r_ "{{ 1 > 2 }}" `shouldRender` "false"
+          r_ "{{ 1 >= 2 }}" `shouldRender` "false"
+          r_ "{{ 1 < 2 }}" `shouldRender` "true"
+          r_ "{{ 1 <= 2 }}" `shouldRender` "true"
+
+        it "floating operations" $ do
+          r_ "{{ 1.0 > 2.0 }}" `shouldRender` "false"
+          r_ "{{ 1.0 >= 2.0 }}" `shouldRender` "false"
+          r_ "{{ 1.0 < 2.0 }}" `shouldRender` "true"
+          r_ "{{ 1.0 <= 2.0 }}" `shouldRender` "true"
+
+      context "numberic conversions" $ do
+        it "floor" $ do
+          r_ "{{ floor(1.8) }}" `shouldRender` "1"
+
+        it "ceiling" $ do
+          r_ "{{ ceiling(1.2) }}" `shouldRender` "2"
+
+        it "round" $ do
+          r_ "{{ round(1.5) }}" `shouldRender` "2"
+          r_ "{{ round(2.5) }}" `shouldRender` "2"
+          r_ "{{ round(-1.5) }}" `shouldRender` "-2"
+          r_ "{{ round(-2.5) }}" `shouldRender` "-2"
+
+        it "int->double" $
+          r_ "{{ int->double(4) }}" `shouldRender` "4.0"
 
       it "string concatenation" $ do
         r_ "{{ \"foo\" <> \"bar\" }}" `shouldRender` "foobar"
@@ -210,7 +242,7 @@ spec =
         r_ "{{ \"Foo\" =~ /foo/i }}" `shouldRender` "true"
 
       it "not-iterable" $
-        r_ "{% for x in 4 %}{% endfor %}" `shouldRaise` NotIterable (litE_ (Number 4)) "4"
+        r_ "{% for x in 4 %}{% endfor %}" `shouldRaise` NotIterable (litE_ (Int 4)) "4"
 
       it "not-renderable" $
         r_ "{{ [] }}" `shouldRaise` NotRenderable (litE_ (Array [])) "[]"

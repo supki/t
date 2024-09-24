@@ -12,7 +12,8 @@ import Data.Aeson qualified as Aeson
 import Data.Aeson.KeyMap qualified as Aeson (fromHashMapText, toHashMapText)
 import Data.ByteString.Lazy qualified as Lazy (ByteString)
 import Data.HashMap.Strict (HashMap)
-import Data.Scientific (Scientific)
+import Data.Int (Int64)
+import Data.Scientific qualified as Scientific
 import Data.Text (Text)
 import Data.Text.Lazy qualified as Text.Lazy
 import Data.Text.Lazy.Encoding qualified as Text.Lazy
@@ -26,7 +27,8 @@ import T.Exp ((:+)(..), Ann)
 data Value
   = Null
   | Bool Bool
-  | Number Scientific
+  | Double Double
+  | Int Int64
   | String Text
   | Array (Vector Value)
   | Object (HashMap Text Value)
@@ -43,8 +45,12 @@ instance Aeson.ToJSON Value where
         [ "variant" .= ("bool" :: Text)
         , "value" .= value
         ]
-      Number value ->
-        [ "variant" .= ("number" :: Text)
+      Int value ->
+        [ "variant" .= ("int" :: Text)
+        , "value" .= value
+        ]
+      Double value ->
+        [ "variant" .= ("double" :: Text)
         , "value" .= value
         ]
       String value ->
@@ -86,8 +92,10 @@ displayWith f =
       Aeson.Null
     Bool b ->
       Aeson.Bool b
-    Number n ->
-      Aeson.Number n
+    Int n ->
+      Aeson.Number (fromIntegral n)
+    Double n ->
+      Aeson.Number (Scientific.fromFloatDigits n)
     String str ->
       Aeson.String str
     Regexp _regexp ->
@@ -103,7 +111,8 @@ typeOf :: Value -> Text
 typeOf = \case
   Null -> "null"
   Bool _ -> "bool"
-  Number _ -> "number"
+  Int _ -> "int"
+  Double _ -> "double"
   String _ -> "string"
   Regexp _ -> "regexp"
   Array _ -> "array"
@@ -117,7 +126,7 @@ reifyAeson = \case
   Aeson.Bool b ->
     Bool b
   Aeson.Number n ->
-    Number n
+    either Double Int (Scientific.floatingOrInteger n)
   Aeson.String str ->
     String str
   Aeson.Array xs ->

@@ -15,7 +15,6 @@ import Data.Foldable (asum)
 import Data.HashMap.Strict qualified as HashMap
 import Data.List.NonEmpty (NonEmpty(..), fromList)
 import Data.Map.Strict qualified as Map
-import Data.Scientific qualified as Scientific
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
@@ -290,7 +289,7 @@ litP = do
       , Bool True <$ symbol "true"
       ]
   numberP =
-    fmap (Number . either fromIntegral Scientific.fromFloatDigits) integerOrDouble
+    fmap (either (Int . fromIntegral) Double) integerOrDouble
   stringP =
     fmap String stringLiteral
   arrayP =
@@ -364,7 +363,7 @@ nameP =
   firstL =
     letter <|> char '_'
   restL =
-    letter <|> digit <|> oneOf "_-?!"
+    letter <|> digit <|> oneOf "_-?!><"
 
 parseRaw :: (Monad m, CharParsing m, LookAheadParsing m) => m Tmpl
 parseRaw =

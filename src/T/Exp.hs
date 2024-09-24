@@ -25,10 +25,10 @@ module T.Exp
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.Functor.Classes (Eq1(..), eq1)
+import Data.Int (Int64)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.HashMap.Strict (HashMap)
-import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Vector (Vector)
 import GHC.Generics (Generic1)
@@ -133,7 +133,8 @@ appE_ =
 data Literal
   = Null
   | Bool Bool
-  | Number Scientific
+  | Int Int64
+  | Double Double
   | String Text
   | Regexp Pcre.Regex
   | Array (Vector Exp)
@@ -150,8 +151,12 @@ instance Aeson.ToJSON Literal where
         [ "variant" .= ("bool" :: Text)
         , "value" .= value
         ]
-      Number value ->
-        [ "variant" .= ("number" :: Text)
+      Int value ->
+        [ "variant" .= ("int" :: Text)
+        , "value" .= value
+        ]
+      Double value ->
+        [ "variant" .= ("double" :: Text)
         , "value" .= value
         ]
       String value ->

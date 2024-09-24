@@ -20,7 +20,6 @@ import Data.Foldable (asum, for_, toList)
 import Data.HashMap.Strict (HashMap)
 import Data.List qualified as List
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.Scientific (floatingOrInteger)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String (fromString)
@@ -156,8 +155,10 @@ renderExp exp = do
       pure ""
     Value.Bool b ->
       pure (bool "false" "true" b)
-    Value.Number n ->
-      pure (fromString (either (show @Double) (show @Int) (floatingOrInteger n)))
+    Value.Int n ->
+      pure (fromString (show n))
+    Value.Double n ->
+      pure (fromString (show n))
     Value.String str ->
       pure str
     o ->
@@ -171,8 +172,10 @@ evalExp = \case
         pure Value.Null
       Bool b ->
         pure (Value.Bool b)
-      Number n ->
-        pure (Value.Number n)
+      Int n ->
+        pure (Value.Int n)
+      Double n ->
+        pure (Value.Double n)
       String str ->
         pure (Value.String str)
       Regexp str ->
@@ -260,8 +263,8 @@ build chunk =
 loopObj :: Maybe Text -> Int -> Int -> Value
 loopObj key len idx =
   Value.Object $ HashMap.fromList
-    [ ("length", Value.Number (fromIntegral len))
-    , ("index", Value.Number (fromIntegral idx))
+    [ ("length", Value.Int (fromIntegral len))
+    , ("index", Value.Int (fromIntegral idx))
     , ("first", Value.Bool (idx == 0))
     , ("last", Value.Bool (idx == len - 1))
     , ("key", maybe Value.Null Value.String key)
