@@ -1,3 +1,4 @@
+{-# LANGUAGE NoFieldSelectors #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeApplications #-}
@@ -11,19 +12,21 @@ module T.Stdlib.Op
   ) where
 
 import Data.HashMap.Strict qualified as HashMap
+import Data.Int (Int64)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (isJust)
-import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
 import Data.Vector qualified as Vector
+import Prelude hiding (subtract)
 import Text.Regex.PCRE.Light qualified as Pcre
 
 import T.Embed (embed0)
+import T.Error (Error(..))
+import T.Exp.Ann ((:+)(..))
 import T.Name (Name)
-import T.Value (Value(..))
-
+import T.Value (Value(..), display, typeOf)
 
 
 data Op = Op
@@ -58,18 +61,96 @@ operators =
   , Op "!=" (flip embed0 neq) Infix 4
   , Op "=~" (flip embed0 match) Infix 4
 
-  , Op "+" (flip embed0 ((+) @Scientific)) Infixl 6
-  , Op "-" (flip embed0 ((-) @Scientific)) Infixl 6
-  , Op "*" (flip embed0 ((*) @Scientific)) Infixl 7
-  , Op "/" (flip embed0 ((/) @Scientific)) Infixl 7
+  , Op "+" add Infixl 6
+  , Op "-" subtract Infixl 6
+  , Op "*" multiply Infixl 7
+  , Op "/" divide Infixl 7
 
-  , Op ">" (flip embed0 ((>) @Scientific)) Infix 4
-  , Op ">=" (flip embed0 ((>=) @Scientific)) Infix 4
-  , Op "<" (flip embed0 ((<) @Scientific)) Infix 4
-  , Op "<=" (flip embed0 ((<=) @Scientific)) Infix 4
+  , Op "<" lt Infix 4
+  , Op "<=" le Infix 4
+  , Op ">" gt Infix 4
+  , Op ">=" ge Infix 4
 
   , Op "<>" (flip embed0 ((<>) @Text)) Infixr 6
   ]
+
+combineNumbers :: (Int64 -> Int64 -> Int64) -> (Double -> Double -> Double) -> Name -> Value
+combineNumbers intOp doubleOp name =
+  Lam $ \case
+    _ann :+ Int n0 ->
+      pure . Lam $ \case
+        _ann :+ Int n1 ->
+          pure (Int (n0 `intOp` n1))
+        ann :+ n ->
+          Left (notApplicable ann n)
+    _ann :+ Double n0 ->
+      pure . Lam $ \case
+        _ann :+ Double n1 ->
+          pure (Double (n0 `doubleOp` n1))
+        ann :+ n ->
+          Left (notApplicable ann n)
+    ann :+ n ->
+      Left (notApplicable ann n)
+ where
+  notApplicable ann n =
+    UserError
+      (ann :+ name)
+      ("not applicable to " <> display n <> " : " <> typeOf n <> " (not an integer or double)")
+
+add :: Name -> Value
+add =
+  combineNumbers (+) (+)
+
+subtract :: Name -> Value
+subtract =
+  combineNumbers (-) (-)
+
+multiply :: Name -> Value
+multiply =
+  combineNumbers (*) (*)
+
+divide :: Name -> Value
+divide =
+  combineNumbers div (/)
+
+predicateNumbers :: (Int64 -> Int64 -> Bool) -> (Double -> Double -> Bool) -> Name -> Value
+predicateNumbers intOp doubleOp name =
+  Lam $ \case
+    _ann :+ Int n0 ->
+      pure . Lam $ \case
+        _ann :+ Int n1 ->
+          pure (Bool (n0 `intOp` n1))
+        ann :+ n ->
+          Left (notApplicable ann n)
+    _ann :+ Double n0 ->
+      pure . Lam $ \case
+        _ann :+ Double n1 ->
+          pure (Bool (n0 `doubleOp` n1))
+        ann :+ n ->
+          Left (notApplicable ann n)
+    ann :+ n ->
+      Left (notApplicable ann n)
+ where
+  notApplicable ann n =
+    UserError
+      (ann :+ name)
+      ("not applicable to " <> display n <> " : " <> typeOf n <> " (not an integer or double)")
+
+lt :: Name -> Value
+lt =
+  predicateNumbers (<) (<)
+
+le :: Name -> Value
+le =
+  predicateNumbers (<=) (<=)
+
+gt :: Name -> Value
+gt =
+  predicateNumbers (>) (>)
+
+ge :: Name -> Value
+ge =
+  predicateNumbers (>=) (>=)
 
 eq :: Value -> Value -> Bool
 eq x y =
@@ -78,7 +159,9 @@ eq x y =
       True
     (Bool b0, Bool b1) ->
       b0 == b1
-    (Number n0, Number n1) ->
+    (Int n0, Int n1) ->
+      n0 == n1
+    (Double n0, Double n1) ->
       n0 == n1
     (String s0, String s1) ->
       s0 == s1

@@ -77,7 +77,7 @@ noop _str =
 
 setup :: Parser Stmt
 setup str =
-  fmap Setup (fromResult (parseByteString (runReaderT p Stdlib.def.ops) mempty (Text.encodeUtf8 str)))
+  fmap Setup (fromResult (parseByteString (runReaderT p Stdlib.def) mempty (Text.encodeUtf8 str)))
  where
   p = do
     _ <- string "{# SETUP #}\n"
@@ -85,7 +85,7 @@ setup str =
 
 file :: Parser Stmt
 file str =
-  fmap (uncurry File) (fromResult (parseByteString (runReaderT p Stdlib.def.ops) mempty (Text.encodeUtf8 str)))
+  fmap (uncurry File) (fromResult (parseByteString (runReaderT p Stdlib.def) mempty (Text.encodeUtf8 str)))
  where
   p = do
    _ <- string "{# FILE"
