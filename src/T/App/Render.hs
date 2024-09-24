@@ -1,4 +1,5 @@
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 module T.App.Render (run) where
 
 import Data.Text.IO qualified as Text
@@ -12,12 +13,26 @@ import Prettyprinter.Render.Terminal qualified as PP (AnsiStyle, hPutDoc)
 
 import T qualified
 import T.Prelude
+import T.App.Render.Cfg
+  ( Cfg(..)
+  , RenderTmpl(..)
+  )
 
 
-run :: FilePath -> T.Scope -> IO ()
-run path vars = do
-  str <- Text.readFile path
-  case T.parseFile T.stdlib path (Text.encodeUtf8 str) of
+run :: Cfg -> IO ()
+run cfg =
+  traverse_ (runTmpl cfg.env <=< getTmpl) cfg.tmpls
+
+getTmpl :: RenderTmpl -> IO Text
+getTmpl = \case
+  Path path -> do
+    Text.readFile path
+  String str ->
+    pure (str <> "\n")
+
+runTmpl :: T.Scope -> Text -> IO ()
+runTmpl vars str =
+  case T.parse T.stdlib (Text.encodeUtf8 str) of
     Left Tri.ErrInfo {Tri._errDoc} ->
       ppDie _errDoc
     Right exp ->

@@ -11,7 +11,7 @@ main :: IO ()
 main = do
   cmd <- Opts.parse
   case cmd of
-    Opts.Render path env ->
-      T.App.Render.run path env
+    Opts.Render cfg ->
+      T.App.Render.run cfg
     Opts.Init cfg ->
       T.App.Init.run cfg

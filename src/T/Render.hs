@@ -95,7 +95,7 @@ run env0 tmpl =
         value <- evalExp exp
         insertVar name value
       go tmpl0
-      modify (\env -> env {scope = scope oldEnv})
+      modify (\env -> env {scope = oldEnv.scope})
     Tmpl.If clauses -> do
       let matchClause (exp, thenTmpl) acc = do
             value <- evalExp exp
@@ -133,7 +133,7 @@ run env0 tmpl =
             insertVar name x
             for_ itQ (\it -> insertVar it itObj)
             go forTmpl
-            modify (\env -> env {scope = scope oldEnv})
+            modify (\env -> env {scope = oldEnv.scope})
     Tmpl.Exp exp -> do
       str <- renderExp exp
       build (Builder.fromText str)
@@ -234,7 +234,7 @@ insertVar (ann :+ name) value = do
   for_ (lookup env name) $ \(ann', _value) ->
     warn ann (ShadowedBy ((ann', ann) :+ name))
   modify $ \env' -> env'
-    { scope = HashMap.insert name (ann, value) (scope env')
+    { scope = HashMap.insert name (ann, value) env'.scope
     }
 
 lookup :: Env -> Name -> Maybe (Ann, Value)
@@ -248,11 +248,11 @@ lookup env name =
 
 warn :: MonadState Env m => Ann -> Warning -> m ()
 warn ann warning =
-  modify (\s -> s {warnings = Set.insert (ann, warning) (warnings s)})
+  modify (\s -> s {warnings = Set.insert (ann, warning) s.warnings})
 
 build :: MonadState Env m => Builder -> m ()
 build chunk =
-  modify (\env -> env {result = result env <> chunk})
+  modify (\env -> env {result = env.result <> chunk})
 
 loopObj :: Maybe Text -> Int -> Int -> Value
 loopObj key len idx =

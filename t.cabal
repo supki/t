@@ -31,6 +31,7 @@ library
       T.App.Init.IO
       T.App.Init.Parse
       T.App.Render
+      T.App.Render.Cfg
       T.Embed
       T.Error
       T.Exp
@@ -53,6 +54,7 @@ library
   default-extensions:
       ImportQualifiedPost
       LambdaCase
+      NoFieldSelectors
       NoImplicitPrelude
       OverloadedStrings
       TypeOperators
@@ -91,6 +93,7 @@ executable t
   default-extensions:
       ImportQualifiedPost
       LambdaCase
+      NoFieldSelectors
       NoImplicitPrelude
       OverloadedStrings
       TypeOperators
@@ -117,6 +120,7 @@ test-suite spec
   default-extensions:
       ImportQualifiedPost
       LambdaCase
+      NoFieldSelectors
       NoImplicitPrelude
       OverloadedStrings
       TypeOperators

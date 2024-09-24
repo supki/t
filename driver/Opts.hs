@@ -20,11 +20,15 @@ import T.App.Init.Cfg qualified as Init
   ( Cfg(..)
   , InitTmpl(..)
   )
+import T.App.Render.Cfg qualified as Render
+  ( Cfg(..)
+  , RenderTmpl(..)
+  )
 import T.Prelude
 
 
 data Cmd
-  = Render FilePath T.Scope
+  = Render Render.Cfg
   | Init Init.Cfg
 
 parse :: IO Cmd
@@ -45,13 +49,21 @@ parser =
 
 renderP :: Parser Cmd
 renderP = do
-  path <-
-    argument str
-      ( metavar "PATH"
-     <> help "Template file path"
-      )
+  tmpls <-
+    some $
+      option (map Render.Path str)
+        ( long "path"
+       <> short 'f'
+       <> metavar "PATH"
+       <> help "Template file path"
+        )
+     <|>
+      option (map Render.String str)
+        ( long "str"
+       <> help "Template string"
+        )
   env <- envP
-  pure (Render path env)
+  pure (Render Render.Cfg {..})
 
 initP :: Parser Cmd
 initP = do

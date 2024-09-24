@@ -1,5 +1,4 @@
 {-# LANGUAGE StrictData #-}
-{-# LANGUAGE NoFieldSelectors #-}
 module T.App.Init.Cfg
   ( Cfg(..)
   , InitTmpl(..)
@@ -10,10 +9,10 @@ import T.Prelude
 
 
 data Cfg = Cfg
-  { tmpl        :: InitTmpl
-  , env         :: T.Scope
-  , rootDir     :: FilePath
-  , tmplDir     :: FilePath
+  { tmpl    :: InitTmpl
+  , env     :: T.Scope
+  , rootDir :: FilePath
+  , tmplDir :: FilePath
   }
 
 data InitTmpl
