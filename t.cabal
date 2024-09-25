@@ -41,6 +41,7 @@ library
       T.Parse.Macro
       T.Prelude
       T.Render
+      T.SExp
       T.Stdlib
       T.Stdlib.Fun
       T.Stdlib.Macro
@@ -114,6 +115,7 @@ test-suite spec
       T.Parse.AnnSpec
       T.ParseSpec
       T.RenderSpec
+      T.SExpSpec
       Paths_t
   hs-source-dirs:
       test

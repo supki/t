@@ -33,7 +33,7 @@ import T.Stdlib (Stdlib)
 import T.Stdlib qualified as Stdlib
 import T.Value (Value)
 import T.Value qualified as Value
-import T.Tmpl (Tmpl((:*:)))
+import T.Tmpl (Tmpl)
 import T.Tmpl qualified as Tmpl
 
 
@@ -137,9 +137,8 @@ run env0 tmpl =
     Tmpl.Exp exp -> do
       str <- renderExp exp
       build (Builder.fromText str)
-    tmpl0 :*: tmpl1 -> do
-      go tmpl0
-      go tmpl1
+    Tmpl.Cat tmpls ->
+      traverse_ go tmpls
 
 renderExp :: (MonadState Env m, MonadError Error m) => Exp -> m Text
 renderExp exp = do

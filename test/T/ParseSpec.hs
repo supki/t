@@ -12,7 +12,7 @@ import T.Exp.Ann (noann)
 import T.Name (Name(..))
 import T.Prelude
 import T.Stdlib qualified as Stdlib
-import T.Tmpl (Tmpl((:*:)))
+import T.Tmpl (Tmpl)
 import T.Tmpl qualified as Tmpl
 
 
@@ -20,12 +20,12 @@ spec :: Spec
 spec =
   describe "parse" $ do
     it "examples" $ do
-      "" `shouldParseTo` ""
+      "" `shouldParseTo` Tmpl.Cat []
       "foo" `shouldParseTo` "foo"
       "{{ x }}" `shouldParseTo` Tmpl.Exp (var "x")
       "{{ x? }}" `shouldParseTo` Tmpl.Exp (var "x?")
       "{{ foo-bar }}" `shouldParseTo` Tmpl.Exp (var "foo-bar")
-      "{{ x }}{{ y }}" `shouldParseTo` (Tmpl.Exp (var "x") :*: Tmpl.Exp (var "y"))
+      "{{ x }}{{ y }}" `shouldParseTo` Tmpl.Cat [Tmpl.Exp (var "x"), Tmpl.Exp (var "y")]
       "{{ x.y.z }}" `shouldParseTo`
         Tmpl.Exp
           (appE_
@@ -34,8 +34,8 @@ spec =
             , string "z"
             ])
       "{{ x.y.z }}" `shouldParseTo` Tmpl.Exp (vars ["x", "y", "z"])
-      "foo{{ x }}" `shouldParseTo` ("foo" :*: Tmpl.Exp (var "x"))
-      "foo{{ x }}bar" `shouldParseTo` ("foo" :*: Tmpl.Exp (var "x") :*: "bar")
+      "foo{{ x }}" `shouldParseTo` Tmpl.Cat ["foo", Tmpl.Exp (var "x")]
+      "foo{{ x }}bar" `shouldParseTo` Tmpl.Cat ["foo", Tmpl.Exp (var "x"), "bar"]
       "{{ null }}" `shouldParseTo` Tmpl.Exp null
       "{{ false }}" `shouldParseTo` Tmpl.Exp false
       "{{ true }}" `shouldParseTo` Tmpl.Exp true
@@ -93,9 +93,9 @@ spec =
       "{% for x, it in [1, 2, 3] %}{{ x }}{% endfor %}" `shouldParseTo`
         Tmpl.For "x" (Just "it") (array [int 1, int 2, int 3]) (Tmpl.Exp (var "x")) Nothing
       "{# yo #}foo" `shouldParseTo`
-        (Tmpl.Comment "yo" :*: Tmpl.Raw "foo")
+        Tmpl.Cat [Tmpl.Comment "yo", Tmpl.Raw "foo"]
       "{# yo #}\nfoo" `shouldParseTo`
-        (Tmpl.Comment "yo" :*: Tmpl.Raw "foo")
+        Tmpl.Cat [Tmpl.Comment "yo", Tmpl.Raw "foo"]
 
     context "nesting" $
       it "examples" $ do
@@ -178,7 +178,7 @@ spec =
             , Tmpl.Assign "bar" (int 7)
             , Tmpl.Assign "baz" (string "foo")
             ]
-            "")
+            (Tmpl.Cat []))
 
 vars :: NonEmpty Name -> Exp
 vars (chunk :| chunks) =

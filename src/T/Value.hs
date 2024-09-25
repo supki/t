@@ -4,13 +4,15 @@ module T.Value
   , display
   , displayWith
   , typeOf
-  , reifyAeson
+  , embedAeson
   ) where
 
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.Aeson.KeyMap qualified as Aeson (fromHashMapText, toHashMapText)
 import Data.ByteString.Lazy qualified as Lazy (ByteString)
+import Data.HashMap.Strict qualified as HashMap
+import Data.List qualified as List
 import Data.Scientific qualified as Scientific
 import Data.Text.Lazy qualified as Text.Lazy
 import Data.Text.Lazy.Encoding qualified as Text.Lazy
@@ -19,18 +21,44 @@ import Text.Regex.PCRE.Light qualified as Pcre
 import T.Error (Error)
 import T.Exp ((:+)(..), Ann)
 import T.Prelude
+import T.SExp (sexp)
+import T.SExp qualified as SExp
 
 
 data Value
   = Null
   | Bool Bool
-  | Double Double
   | Int Int64
+  | Double Double
   | String Text
+  | Regexp Pcre.Regex
   | Array (Vector Value)
   | Object (HashMap Text Value)
-  | Regexp Pcre.Regex
   | Lam (Ann :+ Value -> Either Error Value)
+
+instance SExp.To Value where
+  sexp = \case
+    Null ->
+      SExp.var "null"
+    Bool False ->
+      SExp.var "false"
+    Bool True ->
+      SExp.var "true"
+    Int n ->
+      sexp n
+    Double n ->
+      sexp n
+    String str ->
+      sexp str
+    Regexp regexp ->
+      SExp.round ["regexp", sexp regexp]
+    Array xs ->
+      SExp.square (map sexp (toList xs))
+    Object xs ->
+      SExp.curly
+        (concatMap (\(k, v) -> [sexp k, sexp v]) (List.sortOn (\(k, _v) -> k) (HashMap.toList xs)))
+    Lam _ ->
+      SExp.round ["lambda", SExp.square ["_"], "..."]
 
 instance Aeson.ToJSON Value where
   toJSON =
@@ -82,9 +110,9 @@ display =
 
 displayWith :: (Aeson.Value -> Lazy.ByteString) -> Value -> Text
 displayWith f =
-  Text.Lazy.toStrict . Text.Lazy.decodeUtf8 . f . embedAeson
+  Text.Lazy.toStrict . Text.Lazy.decodeUtf8 . f . ejectAeson
  where
-  embedAeson = \case
+  ejectAeson = \case
     Null ->
       Aeson.Null
     Bool b ->
@@ -98,9 +126,9 @@ displayWith f =
     Regexp _regexp ->
       Aeson.String "<regexp>"
     Array xs ->
-      Aeson.Array (map embedAeson xs)
+      Aeson.Array (map ejectAeson xs)
     Object o ->
-      Aeson.Object (Aeson.fromHashMapText (map embedAeson o))
+      Aeson.Object (Aeson.fromHashMapText (map ejectAeson o))
     Lam _f ->
       Aeson.String "<lambda>"
 
@@ -116,8 +144,8 @@ typeOf = \case
   Object _ -> "object"
   Lam _ -> "lambda"
 
-reifyAeson :: Aeson.Value -> Value
-reifyAeson = \case
+embedAeson :: Aeson.Value -> Value
+embedAeson = \case
   Aeson.Null ->
     Null
   Aeson.Bool b ->
@@ -127,6 +155,6 @@ reifyAeson = \case
   Aeson.String str ->
     String str
   Aeson.Array xs ->
-    Array (map reifyAeson xs)
+    Array (map embedAeson xs)
   Aeson.Object xs ->
-    Object (Aeson.toHashMapText (map reifyAeson xs))
+    Object (Aeson.toHashMapText (map embedAeson xs))

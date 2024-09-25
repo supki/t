@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 module T.Exp
@@ -22,15 +24,16 @@ module T.Exp
   , trueL
   ) where
 
-import Data.Aeson ((.=))
-import Data.Aeson qualified as Aeson
+import Data.HashMap.Strict qualified as HashMap
 import Data.List qualified as List
 import Data.List.NonEmpty qualified as NonEmpty
 import Text.Regex.PCRE.Light qualified as Pcre
 
 import T.Exp.Ann (Ann, (:+)(..), emptyAnn)
-import T.Name (Name)
+import T.Name (Name(..))
 import T.Prelude
+import T.SExp (sexp)
+import T.SExp qualified as SExp
 
 
 data Cofree f a = a :< f (Cofree f a)
@@ -41,10 +44,6 @@ instance Eq1 f => Eq (Cofree f a) where
   (_ :< f) == (_ :< g) =
     eq1 f g
 
-instance Aeson.ToJSON1 f => Aeson.ToJSON (Cofree f a) where
-  toJSON (_ :< f) =
-    Aeson.toJSON1 f
-
 type Exp = Cofree ExpF Ann
 
 data ExpF a
@@ -53,6 +52,17 @@ data ExpF a
   | If a a a
   | App (Ann :+ Name) (NonEmpty a)
     deriving (Show, Eq, Generic1)
+
+instance SExp.To Exp where
+  sexp = \case
+    _ :< Lit lit ->
+      sexp lit
+    _ :< Var (_ :+ name) ->
+      sexp name
+    _ :< If p t f ->
+      SExp.round ["if", sexp p, sexp t, sexp f]
+    _ :< App (_ :+ name) args ->
+      SExp.round (sexp name : map sexp (toList args))
 
 instance Eq1 ExpF where
   liftEq _ (Lit l0) (Lit l1) =
@@ -65,32 +75,6 @@ instance Eq1 ExpF where
     (n0 == n1) && List.and (NonEmpty.zipWith (==?) as0 as1)
   liftEq _ _ _ =
     False
-
-instance Aeson.ToJSON1 ExpF where
-  liftToJSON f _fxs =
-    Aeson.object . \case
-      Lit value ->
-        [ "variant" .= ("lit" :: Text)
-        , "value" .= value
-        ]
-      Var name ->
-        [ "variant" .= ("var" :: Text)
-        , "name" .= name
-        ]
-      If p expt expf ->
-        [ "variant" .= ("if" :: Text)
-        , "predicate" .= f p
-        , "when-true" .= f expt
-        , "when-false" .= f expf
-        ]
-      App name args ->
-        [ "variant" .= ("app" :: Text)
-        , "name" .= name
-        , "args" .= map f args
-        ]
-
-instance Aeson.ToJSON a => Aeson.ToJSON (ExpF a) where
-  toJSON = Aeson.toJSON1
 
 litE :: Ann -> Literal -> Exp
 litE ann lit =
@@ -135,40 +119,27 @@ data Literal
   | Object (HashMap Text Exp)
     deriving (Show, Eq)
 
-instance Aeson.ToJSON Literal where
-  toJSON =
-    Aeson.object . \case
-      Null ->
-        [ "variant" .= ("null" :: Text)
-        ]
-      Bool value ->
-        [ "variant" .= ("bool" :: Text)
-        , "value" .= value
-        ]
-      Int value ->
-        [ "variant" .= ("int" :: Text)
-        , "value" .= value
-        ]
-      Double value ->
-        [ "variant" .= ("double" :: Text)
-        , "value" .= value
-        ]
-      String value ->
-        [ "variant" .= ("string" :: Text)
-        , "value" .= value
-        ]
-      Regexp value ->
-        [ "variant" .= ("regexp" :: Text)
-        , "value" .= show value
-        ]
-      Array value ->
-        [ "variant" .= ("array" :: Text)
-        , "value" .= value
-        ]
-      Object value ->
-        [ "variant" .= ("object" :: Text)
-        , "value" .= value
-        ]
+instance SExp.To Literal where
+  sexp = \case
+    Null ->
+      SExp.var "null"
+    Bool False ->
+      SExp.var "false"
+    Bool True ->
+      SExp.var "true"
+    Int n ->
+      sexp n
+    Double n ->
+      sexp n
+    String str ->
+      sexp str
+    Regexp regexp ->
+      SExp.round ["regexp", sexp regexp]
+    Array xs ->
+      SExp.square (map sexp (toList xs))
+    Object xs ->
+      SExp.curly
+        (concatMap (\(k, v) -> [sexp k, sexp v]) (List.sortOn (\(k, _v) -> k) (HashMap.toList xs)))
 
 falseL :: Literal
 falseL =

@@ -44,6 +44,7 @@ module T.Prelude
   , (/)
   , asum
   , bool
+  , concatMap
   , const
   , div
   , either
@@ -127,6 +128,7 @@ import Prelude
   , (-)
   , (*)
   , (/)
+  , concatMap
   , const
   , div
   , either

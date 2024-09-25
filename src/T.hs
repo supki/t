@@ -12,7 +12,7 @@ module T
   , parse
   , parseFile
   , render
-  , reifyAeson
+  , embedAeson
 
   , Stdlib
   , stdlib
@@ -28,7 +28,7 @@ import T.Tmpl (Tmpl)
 import T.Parse (parse, parseFile)
 import T.Render (Env, Scope(..), render)
 import T.Stdlib (Stdlib, def)
-import T.Value (Value, reifyAeson)
+import T.Value (Value, embedAeson)
 
 
 stdlib :: Stdlib

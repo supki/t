@@ -10,7 +10,6 @@ module T.Exp.Ann
   , emptyAnn
   ) where
 
-import Data.Aeson qualified as Aeson
 import Text.Trifecta (DeltaParsing, Span(..), Spanned(..), spanning, spanned)
 
 import T.Prelude
@@ -40,12 +39,6 @@ instance IsString t => IsString (Ann :+ t) where
 instance IsString t => IsString ((Ann, Ann) :+ t) where
   fromString str =
     (emptyAnn, emptyAnn) :+ fromString str
-
-instance Aeson.ToJSON t => Aeson.ToJSON (ann :+ t) where
-  toJSON =
-    Aeson.toJSON . unann
-  toEncoding =
-    Aeson.toEncoding . unann
 
 anning :: DeltaParsing m => m a -> m Ann
 anning =
