@@ -108,7 +108,7 @@ jsonR =
   eitherReader r
  where
   r =
-    map (T.Scope . map T.reifyAeson) . Aeson.eitherDecode . fromString
+    map (T.Scope . map T.embedAeson) . Aeson.eitherDecode . fromString
 
 currentDirectory :: FilePath
 currentDirectory =

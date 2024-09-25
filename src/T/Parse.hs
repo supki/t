@@ -38,8 +38,8 @@ import T.Name (Name(..))
 import T.Name qualified as Name
 import T.Parse.Macro qualified as Macro
 import T.Prelude
+import T.Tmpl (Tmpl)
 import T.Tmpl qualified as Tmpl
-import T.Tmpl (Tmpl((:*:)))
 import T.Stdlib (Stdlib(..))
 import T.Stdlib.Macro qualified as Macro
 import T.Stdlib.Op qualified as Op
@@ -63,49 +63,54 @@ parseDelta stdlib delta str =
 
 cleanup :: Tmpl -> Tmpl
 cleanup = \case
-  Tmpl.Raw "" :*: x ->
-    cleanup x
-  x :*: Tmpl.Raw "" ->
-    cleanup x
   Tmpl.If clauses ->
     Tmpl.If (map (second cleanup) clauses)
   Tmpl.For name it exp x y ->
     Tmpl.For name it exp (cleanup x) (map cleanup y)
   Tmpl.Let assignments x ->
     Tmpl.Let assignments (cleanup x)
-  x :*: y ->
-    cleanup x :*: cleanup y
+  Tmpl.Cat xs0 ->
+    case map cleanup (filter (not . null) xs0) of
+      [x] ->
+        x
+      xs ->
+        Tmpl.Cat xs
   x ->
     x
+ where
+  null = \case
+    Tmpl.Raw "" -> True
+    Tmpl.Cat [] -> True
+    _ -> False
 
 parser :: (MonadFail m, e ~ Stdlib, MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
 parser =
-  go (\t -> t)
+  go []
  where
-  go :: (MonadFail m, e ~ Stdlib, MonadReader e m, DeltaParsing m, LookAheadParsing m) => (Tmpl -> r) -> m r
+  go :: (MonadFail m, e ~ Stdlib, MonadReader e m, DeltaParsing m, LookAheadParsing m) => [Tmpl] -> m Tmpl
   go acc =
     asum
       [ do comment <- parseComment
-           go (acc . (:*:) comment)
+           go (comment : acc)
       , do set <- parseSet
-           go (acc . (:*:) set)
+           go (set : acc)
       , do let_ <- parseLet
-           go (acc . (:*:) let_)
+           go (let_ : acc)
       , do if_ <- parseIf
-           go (acc . (:*:) if_)
+           go (if_ : acc)
       , do case_ <- parseCase
-           go (acc . (:*:) case_)
+           go (case_ : acc)
       , do for <- parseFor
-           go (acc . (:*:) for)
+           go (for : acc)
       , do exp <- parseExp
-           go (acc . (:*:) exp)
+           go (exp : acc)
         -- `parseRaw` succeeds on the empty string; so to avoid
         -- looping indefinitely, we check that the parser position
         -- moved at least a bit.
       , do pos0 <- position
            raw <- parseRaw
            pos1 <- position
-           bool (go (acc . (:*:) raw)) (pure (acc raw)) (pos0 == pos1)
+           bool (go (raw : acc)) (pure (Tmpl.Cat (reverse (raw : acc)))) (pos0 == pos1)
       ]
 
 parseComment :: CharParsing m => m Tmpl

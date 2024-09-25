@@ -24,7 +24,7 @@ import T.Render (Scope(..), render)
 import T.Stdlib (def)
 import T.Stdlib qualified as Stdlib
 import T.Stdlib.Op qualified as Op
-import T.Value (reifyAeson)
+import T.Value (embedAeson)
 
 
 spec :: Spec
@@ -351,7 +351,7 @@ rWith json tmplStr = do
   let
     Aeson.Object o = json
     scope =
-      Scope (map reifyAeson (HashMap.mapKeys Name (Aeson.toHashMapText o)))
+      Scope (map embedAeson (HashMap.mapKeys Name (Aeson.toHashMapText o)))
     stdlib =
       Stdlib.with (def.ops <> opExt) (def.funs <> funExt) (def.macros <> macroExt)
     Right tmpl =
