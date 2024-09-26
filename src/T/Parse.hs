@@ -274,7 +274,7 @@ litP = do
     , stringP
     , regexpP
     , arrayP
-    , objectP
+    , recordP
     ]
   _ <- spaces
   pure (litE ann lit)
@@ -293,8 +293,8 @@ litP = do
   arrayP =
     map (Array . Vector.fromList)
       (brackets (Unspaced (sepBy expP (symbol ","))))
-  objectP =
-    map (Object . HashMap.fromList)
+  recordP =
+    map (Record . HashMap.fromList)
       (braces (Unspaced (sepBy kv (symbol ","))))
    where
     kv = do

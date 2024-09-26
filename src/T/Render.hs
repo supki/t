@@ -107,16 +107,16 @@ run env0 tmpl =
         Value.Array arr -> do
           let xs =
                 zipWith
-                  (\i x -> (x, loopObj Nothing (List.length arr) i))
+                  (\i x -> (x, loopRecord Nothing (List.length arr) i))
                   [0..]
                   (toList arr)
           pure (bool (Just xs) Nothing (List.null xs))
-        Value.Object o -> do
-          -- When iterating on objects, we sort the keys to get a
+        Value.Record o -> do
+          -- When iterating on records, we sort the keys to get a
           -- predictable order of elements.
           let xs =
                 zipWith
-                  (\i (k, x) -> (x, loopObj (pure k) (List.length o) i))
+                  (\i (k, x) -> (x, loopRecord (pure k) (List.length o) i))
                   [0..]
                   (List.sortOn
                     (\(k, _) -> k)
@@ -128,10 +128,10 @@ run env0 tmpl =
         Nothing ->
           maybe (pure ()) go elseTmpl
         Just items -> do
-          for_ items $ \(x, itObj) -> do
+          for_ items $ \(x, itRecord) -> do
             oldEnv <- get
             insertVar name x
-            for_ itQ (\it -> insertVar it itObj)
+            for_ itQ (\it -> insertVar it itRecord)
             go forTmpl
             modify (\env -> env {scope = oldEnv.scope})
     Tmpl.Exp exp -> do
@@ -176,9 +176,9 @@ evalExp = \case
       Array xs -> do
         ys <- traverse evalExp xs
         pure (Value.Array ys)
-      Object xs -> do
+      Record xs -> do
         ys <- traverse evalExp xs
-        pure (Value.Object ys)
+        pure (Value.Record ys)
   _ :< If p t f -> do
     pv <- evalExp p
     evalExp (bool f t (Value.truthy pv))
@@ -253,9 +253,9 @@ build :: MonadState Env m => Builder -> m ()
 build chunk =
   modify (\env -> env {result = env.result <> chunk})
 
-loopObj :: Maybe Text -> Int -> Int -> Value
-loopObj key len idx =
-  Value.Object $ HashMap.fromList
+loopRecord :: Maybe Text -> Int -> Int -> Value
+loopRecord key len idx =
+  Value.Record $ HashMap.fromList
     [ ("length", Value.Int (fromIntegral len))
     , ("index", Value.Int (fromIntegral idx))
     , ("first", Value.Bool (idx == 0))

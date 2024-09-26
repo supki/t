@@ -107,7 +107,7 @@ instance Eject Pcre.Regex where
 
 instance (k ~ Text, v ~ Value) => Eject (HashMap k v) where
   eject name = \case
-    Object o ->
+    Record o ->
       pure o
     value ->
       Left (TypeError name "HashMap Text Value" (typeOf value) (display value))

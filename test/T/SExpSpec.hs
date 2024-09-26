@@ -72,7 +72,7 @@ spec = do
       it "array" $
         rexp "{{ [false, 42] }}" `shouldBe` "[false 42]"
 
-      it "object" $
+      it "record" $
         rexp "{{ {foo: 42, bar: 4.2} }}" `shouldBe` "{\"bar\" 4.2 \"foo\" 42}"
 
     it "var" $
@@ -110,8 +110,8 @@ spec = do
     it "array" $
       render (sexp (Value.Array [Value.Int 1, Value.Int 2, Value.Int 3])) `shouldBe` "[1 2 3]"
 
-    it "object" $
-      render (sexp (Value.Object [("foo", Value.Int 4), ("bar",  Value.Int 7)])) `shouldBe`
+    it "record" $
+      render (sexp (Value.Record [("foo", Value.Int 4), ("bar",  Value.Int 7)])) `shouldBe`
         "{\"bar\" 7 \"foo\" 4}"
 
     it "lam" $

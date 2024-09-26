@@ -62,13 +62,13 @@ nullB name =
       pure (embed (ann :+ name) (Text.null str))
     ann :+ Array xs ->
       pure (embed (ann :+ name) (List.null xs))
-    ann :+ Object o ->
+    ann :+ Record o ->
       pure (embed (ann :+ name) (HashMap.null o))
     ann :+ value ->
       Left
         (UserError
           (ann :+ name)
-          ("not applicable to " <> display value <> " (not a string, array, or object)"))
+          ("not applicable to " <> display value <> " (not a string, array, or record)"))
 
 lengthB :: Name -> Value
 lengthB name =
@@ -77,13 +77,13 @@ lengthB name =
       pure (embed (ann :+ name) (Text.length str))
     ann :+ Array xs ->
       pure (embed (ann :+ name) (List.length xs))
-    ann :+ Object o ->
+    ann :+ Record o ->
       pure (embed (ann :+ name) (HashMap.size o))
     ann :+ value ->
       Left
         (UserError
           (ann :+ name)
-          ("not applicable to " <> display value <> " (not a string, array, or object)"))
+          ("not applicable to " <> display value <> " (not a string, array, or record)"))
 
 dieB :: Name -> Value
 dieB name =

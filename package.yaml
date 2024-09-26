@@ -79,6 +79,7 @@ tests:
       - aeson-qq
       - bytestring
       - hspec
+      - pcre-light
       - scientific
       - text
       - unordered-containers

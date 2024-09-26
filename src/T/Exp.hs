@@ -116,7 +116,7 @@ data Literal
   | String Text
   | Regexp Pcre.Regex
   | Array (Vector Exp)
-  | Object (HashMap Text Exp)
+  | Record (HashMap Text Exp)
     deriving (Show, Eq)
 
 instance SExp.To Literal where
@@ -137,7 +137,7 @@ instance SExp.To Literal where
       SExp.round ["regexp", sexp regexp]
     Array xs ->
       SExp.square (map sexp (toList xs))
-    Object xs ->
+    Record xs ->
       SExp.curly
         (concatMap (\(k, v) -> [sexp k, sexp v]) (List.sortOn (\(k, _v) -> k) (HashMap.toList xs)))
 

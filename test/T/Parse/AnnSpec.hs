@@ -56,9 +56,9 @@ spec =
           \1 | {{ [1,2,3] + 1 }}<EOF> \n\
           \  |    ~~~~~~~             "
 
-      it "object" $ do
+      it "record" $ do
         errorOf "{{ {foo:4} + 1 }}" `shouldBe`
-          "(interactive):1:4: error: +: not applicable to {\"foo\":4} : object (not an integer or double)\n\
+          "(interactive):1:4: error: +: not applicable to {\"foo\":4} : record (not an integer or double)\n\
           \1 | {{ {foo:4} + 1 }}<EOF> \n\
           \  |    ~~~~~~~             "
 

@@ -133,6 +133,7 @@ test-suite spec
     , base >=4.14 && <5
     , bytestring
     , hspec
+    , pcre-light
     , scientific
     , t
     , text

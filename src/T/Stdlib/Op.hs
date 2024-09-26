@@ -167,7 +167,7 @@ eq x y =
           Vector.and (Vector.zipWith eq arr0 arr1)
       | otherwise ->
           False
-    (Object o0, Object o1)
+    (Record o0, Record o1)
       | HashMap.null (HashMap.difference o0 o1) &&
         HashMap.null (HashMap.difference o1 o0) ->
           HashMap.foldl' (&&) True (HashMap.intersectionWith eq o0 o1)

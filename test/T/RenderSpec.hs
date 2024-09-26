@@ -184,14 +184,14 @@ spec =
         r_ "{{ empty?({}) }}" `shouldRender` "true"
         r_ "{{ empty?({x: 4, y: 7}) }}" `shouldRender` "false"
         r_ "{{ empty?(4) }}" `shouldRaise`
-          UserError "empty?" "not applicable to 4 (not a string, array, or object)"
+          UserError "empty?" "not applicable to 4 (not a string, array, or record)"
 
       it "length" $ do
         r_ "{{ length(\"hello\") }}" `shouldRender` "5"
         r_ "{{ length([1, 2, 3]) }}" `shouldRender` "3"
         r_ "{{ length({x: 4, y: 7}) }}" `shouldRender` "2"
         r_ "{{ length(4) }}" `shouldRaise`
-          UserError "length" "not applicable to 4 (not a string, array, or object)"
+          UserError "length" "not applicable to 4 (not a string, array, or record)"
 
       it "split" $
         r_ "{% for x in split(\",\", \"foo,bar,baz\") %}{{ x }}{% endfor %}" `shouldRender`

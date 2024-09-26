@@ -52,11 +52,11 @@ spec =
             , vars ["x", "y"]
             , string "foo"
             ])
-      "{{ {} }}" `shouldParseTo` Tmpl.Exp (object [])
-      "{{ {x: 4} }}" `shouldParseTo` Tmpl.Exp (object [("x", int 4)])
+      "{{ {} }}" `shouldParseTo` Tmpl.Exp (record [])
+      "{{ {x: 4} }}" `shouldParseTo` Tmpl.Exp (record [("x", int 4)])
       "{{ {x: 4, y: \"foo\"} }}" `shouldParseTo`
         Tmpl.Exp
-          (object
+          (record
             [ ("x", int 4)
             , ("y", string "foo")
             ])
@@ -216,9 +216,9 @@ array :: [Exp] -> Exp
 array =
   litE_ . Array . Vector.fromList
 
-object :: [(Text, Exp)] -> Exp
-object =
-  litE_ . Object . HashMap.fromList
+record :: [(Text, Exp)] -> Exp
+record =
+  litE_ . Record . HashMap.fromList
 
 simpleIf :: Exp -> Tmpl -> Tmpl -> Tmpl
 simpleIf p thenTmpl elseTmpl =
