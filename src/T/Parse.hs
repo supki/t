@@ -59,29 +59,7 @@ parseDelta stdlib delta str =
     Failure errDoc ->
       Left errDoc
     Success tmpl ->
-      Right (cleanup tmpl)
-
-cleanup :: Tmpl -> Tmpl
-cleanup = \case
-  Tmpl.If clauses ->
-    Tmpl.If (map (second cleanup) clauses)
-  Tmpl.For name it exp x y ->
-    Tmpl.For name it exp (cleanup x) (map cleanup y)
-  Tmpl.Let assignments x ->
-    Tmpl.Let assignments (cleanup x)
-  Tmpl.Cat xs0 ->
-    case map cleanup (filter (not . null) xs0) of
-      [x] ->
-        x
-      xs ->
-        Tmpl.Cat xs
-  x ->
-    x
- where
-  null = \case
-    Tmpl.Raw "" -> True
-    Tmpl.Cat [] -> True
-    _ -> False
+      Right tmpl
 
 parser :: (MonadFail m, e ~ Stdlib, MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
 parser =
@@ -110,8 +88,15 @@ parser =
       , do pos0 <- position
            raw <- parseRaw
            pos1 <- position
-           bool (go (raw : acc)) (pure (Tmpl.Cat (reverse (raw : acc)))) (pos0 == pos1)
+           bool (go (raw : acc)) (pure (cleanup (reverse acc))) (pos0 == pos1)
       ]
+   where
+    cleanup [] =
+      Tmpl.Cat []
+    cleanup [x] =
+      x
+    cleanup xs =
+      Tmpl.Cat xs
 
 parseComment :: CharParsing m => m Tmpl
 parseComment =
