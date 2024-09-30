@@ -15,7 +15,6 @@ module T.Exp
   , litE
   , litE_
   , varE
-  , varE_
   , ifE
   , ifE_
   , appE
@@ -96,13 +95,9 @@ litE_ :: Literal -> Exp
 litE_ =
   litE emptyAnn
 
-varE :: Ann -> Ann :+ Name -> Exp
-varE ann name =
+varE :: Ann :+ Name -> Exp
+varE name@(ann :+ _) =
   ann :< Var name
-
-varE_ :: Ann :+ Name -> Exp
-varE_ =
-  varE emptyAnn
 
 ifE :: Ann -> Exp -> Exp -> Exp -> Exp
 ifE ann p t f =

@@ -7,7 +7,7 @@ import Data.Vector qualified as Vector
 import Test.Hspec
 
 import T.Parse (parse)
-import T.Exp (Exp, Literal(..), litE_, varE_, ifE_, appE_, idxE_)
+import T.Exp (Exp, Literal(..), litE_, varE, ifE_, appE_, idxE_)
 import T.Exp.Ann (noann)
 import T.Name (Name(..))
 import T.Prelude
@@ -188,8 +188,8 @@ vars (chunk :| chunks) =
   foldl' (\acc chunk' -> appE_ "." [acc, string chunk'.unName]) (var chunk) chunks
 
 var :: Name -> Exp
-var =
-  varE_ . noann
+var name =
+  varE (noann name)
 
 null :: Exp
 null =

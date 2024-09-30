@@ -81,15 +81,15 @@ combineNumbers intOp doubleOp name =
         _ann :+ Int n1 ->
           pure (Int (n0 `intOp` n1))
         ann :+ n ->
-          Left (TypeError (varE ann (ann :+ name)) Type.Int (typeOf n) (display n))
+          Left (TypeError (varE (ann :+ name)) Type.Int (typeOf n) (display n))
     _ann :+ Double n0 ->
       pure . Lam $ \case
         _ann :+ Double n1 ->
           pure (Double (n0 `doubleOp` n1))
         ann :+ n ->
-          Left (TypeError (varE ann (ann :+ name)) Type.Double (typeOf n) (display n))
+          Left (TypeError (varE (ann :+ name)) Type.Double (typeOf n) (display n))
     ann :+ n ->
-      Left (TypeError (varE ann (ann :+ name)) Type.Number (typeOf n) (display n))
+      Left (TypeError (varE (ann :+ name)) Type.Number (typeOf n) (display n))
 
 add :: Name -> Value
 add =
@@ -115,15 +115,15 @@ predicateNumbers intOp doubleOp name =
         _ann :+ Int n1 ->
           pure (Bool (n0 `intOp` n1))
         ann :+ n ->
-          Left (TypeError (varE ann (ann :+ name)) Type.Int (typeOf n) (display n))
+          Left (TypeError (varE (ann :+ name)) Type.Int (typeOf n) (display n))
     _ann :+ Double n0 ->
       pure . Lam $ \case
         _ann :+ Double n1 ->
           pure (Bool (n0 `doubleOp` n1))
         ann :+ n ->
-          Left (TypeError (varE ann (ann :+ name)) Type.Double (typeOf n) (display n))
+          Left (TypeError (varE (ann :+ name)) Type.Double (typeOf n) (display n))
     ann :+ n ->
-      Left (TypeError (varE ann (ann :+ name)) Type.Number (typeOf n) (display n))
+      Left (TypeError (varE (ann :+ name)) Type.Number (typeOf n) (display n))
 
 lt :: Name -> Value
 lt =

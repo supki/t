@@ -354,9 +354,8 @@ appP = do
   pure (appE ann name args)
 
 varP :: DeltaParsing m => m Exp
-varP = do
-  name@(ann :+ _) <- nameP
-  pure (varE ann name)
+varP =
+  map varE nameP
 
 nameP :: DeltaParsing m => m (Ann :+ Name)
 nameP =

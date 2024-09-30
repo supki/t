@@ -13,7 +13,7 @@ import Data.Text.Encoding qualified as Text
 import Data.Text.Lazy qualified as Lazy (Text)
 import Test.Hspec
 
-import T.Exp (Literal(..), litE_, appE, varE_)
+import T.Exp (Literal(..), litE_, appE, varE)
 import T.Embed (embed0)
 import T.Error (Error(..), Warning(..))
 import T.Name (Name(..))
@@ -260,10 +260,10 @@ spec =
         r_ "{{ [] }}" `shouldRaise` TypeError (litE_ (Array [])) Type.Renderable Type.Array "[]"
 
       it "not-a-function" $
-        rWith [aesonQQ|{f: "foo"}|] "{{ f(4) }}" `shouldRaise` TypeError (varE_ "f") Type.Fun Type.String "\"foo\""
+        rWith [aesonQQ|{f: "foo"}|] "{{ f(4) }}" `shouldRaise` TypeError (varE "f") Type.Fun Type.String "\"foo\""
 
       it "type errors" $
-        r_ "{{ bool01(\"foo\") }}" `shouldRaise` TypeError (varE_ "bool01") Type.Bool Type.String "\"foo\""
+        r_ "{{ bool01(\"foo\") }}" `shouldRaise` TypeError (varE "bool01") Type.Bool Type.String "\"foo\""
 
       it "defined?" $
         rWith [aesonQQ|{foo: {}}|] "{{ defined?(foo.bar.baz) }}" `shouldRender` "false"

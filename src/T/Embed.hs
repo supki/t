@@ -72,50 +72,50 @@ instance Eject Value where
   eject _name = pure
 
 instance Eject Bool where
-  eject name@(ann :+ _) = \case
+  eject name = \case
     Bool b ->
       pure b
     value ->
-      Left (TypeError (varE ann name) Type.Bool (typeOf value) (display value))
+      Left (TypeError (varE name) Type.Bool (typeOf value) (display value))
 
 instance Eject Int64 where
-  eject name@(ann :+ _) = \case
+  eject name = \case
     Int n ->
       pure n
     value ->
-      Left (TypeError (varE ann name) Type.Int (typeOf value) (display value))
+      Left (TypeError (varE name) Type.Int (typeOf value) (display value))
 
 instance Eject Double where
-  eject name@(ann :+ _) = \case
+  eject name = \case
     Double n ->
       pure n
     value ->
-      Left (TypeError (varE ann name) Type.Double (typeOf value) (display value))
+      Left (TypeError (varE name) Type.Double (typeOf value) (display value))
 
 instance Eject Text where
-  eject name@(ann :+ _) = \case
+  eject name = \case
     String str ->
       pure str
     value ->
-      Left (TypeError (varE ann name) Type.String (typeOf value) (display value))
+      Left (TypeError (varE name) Type.String (typeOf value) (display value))
 
 instance Eject Pcre.Regex where
-  eject name@(ann :+ _) = \case
+  eject name = \case
     Regexp regexp ->
       pure regexp
     value ->
-      Left (TypeError (varE ann name) Type.Regexp (typeOf value) (display value))
+      Left (TypeError (varE name) Type.Regexp (typeOf value) (display value))
 
 instance (k ~ Text, v ~ Value) => Eject (HashMap k v) where
-  eject name@(ann :+ _) = \case
+  eject name = \case
     Record o ->
       pure o
     value ->
-      Left (TypeError (varE ann name) Type.Record (typeOf value) (display value))
+      Left (TypeError (varE name) Type.Record (typeOf value) (display value))
 
 instance Eject a => Eject [a] where
-  eject name@(ann :+ _) = \case
+  eject name = \case
     Array xs ->
       map toList (traverse (eject name) xs)
     value ->
-      Left (TypeError (varE ann name) Type.Array (typeOf value) (display value))
+      Left (TypeError (varE name) Type.Array (typeOf value) (display value))
