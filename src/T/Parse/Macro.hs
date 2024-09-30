@@ -52,6 +52,11 @@ expand ms =
     ann :< App name xs0 -> do
       xs <- traverse go xs0
       pure (ann :< App name xs)
+    ann :< Idx exp0 expIdx0 -> do
+      exp <- go exp0
+      expIdx <- go expIdx0
+      pure (ann :< Idx exp expIdx)
+
 
 badArity :: Int -> Int -> Either ExpansionError a
 badArity expected actual =

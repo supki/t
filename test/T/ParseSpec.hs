@@ -7,7 +7,7 @@ import Data.Vector qualified as Vector
 import Test.Hspec
 
 import T.Parse (parse)
-import T.Exp (Exp, Literal(..), litE_, varE_, ifE_, appE_)
+import T.Exp (Exp, Literal(..), litE_, varE_, ifE_, appE_, idxE_)
 import T.Exp.Ann (noann)
 import T.Name (Name(..))
 import T.Prelude
@@ -45,13 +45,16 @@ spec =
       "{{ \"foo\" }}" `shouldParseTo` Tmpl.Exp (string "foo")
       "{{ [] }}" `shouldParseTo` Tmpl.Exp (array [])
       "{{ [1, 2, 3] }}" `shouldParseTo` Tmpl.Exp (array [int 1, int 2, int 3])
-      "{{ [1, x.y, \"foo\"] }}" `shouldParseTo`
-        Tmpl.Exp
-          (array
-            [ int 1
-            , vars ["x", "y"]
-            , string "foo"
-            ])
+      "{{ [1, x.y, \"foo\"] }}" `shouldParseTo` Tmpl.Exp
+        (array
+          [ int 1
+          , vars ["x", "y"]
+          , string "foo"
+          ])
+      "{{ [1, 2, 3][0] }}" `shouldParseTo` Tmpl.Exp
+        (idxE_
+          (array [int 1, int 2, int 3])
+          (int 0))
       "{{ {} }}" `shouldParseTo` Tmpl.Exp (record [])
       "{{ {x: 4} }}" `shouldParseTo` Tmpl.Exp (record [("x", int 4)])
       "{{ {x: 4, y: \"foo\"} }}" `shouldParseTo`

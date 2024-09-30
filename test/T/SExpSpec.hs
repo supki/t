@@ -84,6 +84,11 @@ spec = do
     it "app" $
       rexp "{{ foo(4, 7) }}" `shouldBe` "(foo 4 7)"
 
+    it "idx" $ do
+      rexp "{{ [1,2,3][0] }}" `shouldBe` "(at-index 0 [1 2 3])"
+      rexp "{{ [1,2,3][1 + 2] }}" `shouldBe` "(at-index (+ 1 2) [1 2 3])"
+      rexp "{{ [[1,2],[3]][0][1] }}" `shouldBe` "(at-index 1 (at-index 0 [[1 2] [3]]))"
+
   context "value" $ do
     it "null" $
       render (sexp Value.Null) `shouldBe` "null"
