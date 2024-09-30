@@ -22,6 +22,8 @@ import T.Exp ((:+)(..), Ann)
 import T.Prelude
 import T.SExp (sexp)
 import T.SExp qualified as SExp
+import T.Type (Type)
+import T.Type qualified as Type
 
 
 data Value
@@ -93,17 +95,17 @@ displayWith f =
     Lam _f ->
       Aeson.String "<lambda>"
 
-typeOf :: Value -> Text
+typeOf :: Value -> Type
 typeOf = \case
-  Null -> "null"
-  Bool _ -> "bool"
-  Int _ -> "int"
-  Double _ -> "double"
-  String _ -> "string"
-  Regexp _ -> "regexp"
-  Array _ -> "array"
-  Record _ -> "record"
-  Lam _ -> "lambda"
+  Null -> Type.Null
+  Bool _ -> Type.Bool
+  Int _ -> Type.Int
+  Double _ -> Type.Double
+  String _ -> Type.String
+  Regexp _ -> Type.Regexp
+  Array _ -> Type.Array
+  Record _ -> Type.Record
+  Lam _ -> Type.Fun
 
 embedAeson :: Aeson.Value -> Value
 embedAeson = \case

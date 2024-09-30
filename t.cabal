@@ -47,6 +47,7 @@ library
       T.Stdlib.Macro
       T.Stdlib.Op
       T.Tmpl
+      T.Type
       T.Value
   other-modules:
       Paths_t

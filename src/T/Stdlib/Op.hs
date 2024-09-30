@@ -24,6 +24,7 @@ import T.Exp.Ann ((:+)(..))
 import T.Name (Name)
 import T.Prelude
 import T.Value (Value(..), display, typeOf)
+import T.Type qualified as Type
 
 
 data Op = Op
@@ -79,20 +80,15 @@ combineNumbers intOp doubleOp name =
         _ann :+ Int n1 ->
           pure (Int (n0 `intOp` n1))
         ann :+ n ->
-          Left (notApplicable ann n)
+          Left (TypeError (ann :+ name) Type.Int (typeOf n) (display n))
     _ann :+ Double n0 ->
       pure . Lam $ \case
         _ann :+ Double n1 ->
           pure (Double (n0 `doubleOp` n1))
         ann :+ n ->
-          Left (notApplicable ann n)
+          Left (TypeError (ann :+ name) Type.Double (typeOf n) (display n))
     ann :+ n ->
-      Left (notApplicable ann n)
- where
-  notApplicable ann n =
-    UserError
-      (ann :+ name)
-      ("not applicable to " <> display n <> " : " <> typeOf n <> " (not an integer or double)")
+      Left (TypeError (ann :+ name) Type.Number (typeOf n) (display n))
 
 add :: Name -> Value
 add =
@@ -118,20 +114,15 @@ predicateNumbers intOp doubleOp name =
         _ann :+ Int n1 ->
           pure (Bool (n0 `intOp` n1))
         ann :+ n ->
-          Left (notApplicable ann n)
+          Left (TypeError (ann :+ name) Type.Int (typeOf n) (display n))
     _ann :+ Double n0 ->
       pure . Lam $ \case
         _ann :+ Double n1 ->
           pure (Bool (n0 `doubleOp` n1))
         ann :+ n ->
-          Left (notApplicable ann n)
+          Left (TypeError (ann :+ name) Type.Double (typeOf n) (display n))
     ann :+ n ->
-      Left (notApplicable ann n)
- where
-  notApplicable ann n =
-    UserError
-      (ann :+ name)
-      ("not applicable to " <> display n <> " : " <> typeOf n <> " (not an integer or double)")
+      Left (TypeError (ann :+ name) Type.Number (typeOf n) (display n))
 
 lt :: Name -> Value
 lt =

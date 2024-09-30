@@ -14,6 +14,7 @@ import T.Exp.Ann (emptyAnn)
 import T.Name (Name)
 import T.Prelude
 import T.Value (Value(..), display, typeOf)
+import T.Type qualified as Type
 
 
 class Embed t where
@@ -75,46 +76,46 @@ instance Eject Bool where
     Bool b ->
       pure b
     value ->
-      Left (TypeError name "Bool" (typeOf value) (display value))
+      Left (TypeError name Type.Bool (typeOf value) (display value))
 
 instance Eject Int64 where
   eject name = \case
     Int n ->
       pure n
     value ->
-      Left (TypeError name "Int64" (typeOf value) (display value))
+      Left (TypeError name Type.Int (typeOf value) (display value))
 
 instance Eject Double where
   eject name = \case
     Double n ->
       pure n
     value ->
-      Left (TypeError name "Double" (typeOf value) (display value))
+      Left (TypeError name Type.Double (typeOf value) (display value))
 
 instance Eject Text where
   eject name = \case
     String str ->
       pure str
     value ->
-      Left (TypeError name "Text" (typeOf value) (display value))
+      Left (TypeError name Type.String (typeOf value) (display value))
 
 instance Eject Pcre.Regex where
   eject name = \case
     Regexp regexp ->
       pure regexp
     value ->
-      Left (TypeError name "Pcre.Regex" (typeOf value) (display value))
+      Left (TypeError name Type.Regexp (typeOf value) (display value))
 
 instance (k ~ Text, v ~ Value) => Eject (HashMap k v) where
   eject name = \case
     Record o ->
       pure o
     value ->
-      Left (TypeError name "HashMap Text Value" (typeOf value) (display value))
+      Left (TypeError name Type.Record (typeOf value) (display value))
 
 instance Eject a => Eject [a] where
   eject name = \case
     Array xs ->
       map toList (traverse (eject name) xs)
     value ->
-      Left (TypeError name "[a]" (typeOf value) (display value))
+      Left (TypeError name Type.Array (typeOf value) (display value))

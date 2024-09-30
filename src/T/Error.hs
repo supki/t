@@ -15,6 +15,7 @@ import Text.Trifecta.Delta qualified as Tri
 import T.Exp (Cofree((:<)), Exp, (:+)(..), Ann)
 import T.Name (Name)
 import T.Prelude
+import T.Type (Type)
 
 
 data Error
@@ -26,10 +27,10 @@ data Error
   | NotRenderable Exp Text
   | NotAFunction (Ann :+ Name) Text
   | NotAnArray Exp Text
-  | NotAnIndex Exp Text
+  | NotAnInt Exp Text
   | OutOfBounds Exp Text Text
   | UserError (Ann :+ Name) Text
-  | TypeError (Ann :+ Name) Text Text Text
+  | TypeError (Ann :+ Name) Type Type Text
     deriving (Show, Eq)
 
 prettyError :: Error -> Doc AnsiStyle
@@ -55,9 +56,9 @@ prettyError = \case
     header ann <>
     "not an array: " <> PP.pretty value <> PP.line <>
     excerpt ann
-  NotAnIndex (ann :< _) value ->
+  NotAnInt (ann :< _) value ->
     header ann <>
-    "not an index: " <> PP.pretty value <> PP.line <>
+    "not an int: " <> PP.pretty value <> PP.line <>
     excerpt ann
   OutOfBounds (ann :< _) value valueIdx ->
     header ann <>
@@ -71,8 +72,8 @@ prettyError = \case
   TypeError (ann :+ name) expected actual value ->
     header ann <>
     "mismatched types in " <> PP.pretty name <> ": " <> PP.line <>
-      PP.indent 2 "expected: something convertable to " <> PP.pretty expected <> PP.line <>
-      PP.indent 2 " but got: " <> PP.pretty value <> " : " <> PP.pretty actual <> PP.line <>
+      PP.indent 2 "expected: " <> PP.pretty (show expected) <> PP.line <>
+      PP.indent 2 " but got: " <> PP.pretty value <> " : " <> PP.pretty (show actual) <> PP.line <>
     excerpt ann
  where
   header (Tri.Span from _to _line) =

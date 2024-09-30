@@ -25,6 +25,7 @@ import T.Stdlib (def)
 import T.Stdlib qualified as Stdlib
 import T.Stdlib.Op qualified as Op
 import T.Value (embedAeson)
+import T.Type qualified as Type
 
 
 spec :: Spec
@@ -63,7 +64,7 @@ spec =
         r_ "{{ [1,2,3][0] }}" `shouldRender` "1"
         r_ "{{ [[1,2],[3]][0][1] }}" `shouldRender` "2"
         r_ "{{ 4[0] }}" `shouldRaise` NotAnArray (litE_ (Int 4)) "4"
-        r_ "{{ [1,2,3][\"foo\"] }}" `shouldRaise` NotAnIndex (litE_ (String "foo")) "\"foo\""
+        r_ "{{ [1,2,3][\"foo\"] }}" `shouldRaise` NotAnInt (litE_ (String "foo")) "\"foo\""
         r_ "{{ [1,2,3][-1] }}" `shouldRaise` OutOfBounds (litE_ (Int (-1))) "[1,2,3]" "-1"
 
 
@@ -260,7 +261,7 @@ spec =
         rWith [aesonQQ|{f: "foo"}|] "{{ f(4) }}" `shouldRaise` NotAFunction "f" "\"foo\""
 
       it "type errors" $
-        r_ "{{ bool01(\"foo\") }}" `shouldRaise` TypeError "bool01" "Bool" "string" "\"foo\""
+        r_ "{{ bool01(\"foo\") }}" `shouldRaise` TypeError "bool01" Type.Bool Type.String "\"foo\""
 
       it "defined?" $
         rWith [aesonQQ|{foo: {}}|] "{{ defined?(foo.bar.baz) }}" `shouldRender` "false"

@@ -197,21 +197,31 @@ evalExp = \case
     f <- evalExp (ann :< Var name)
     evalApp name f (toList args)
   _ :< Idx exp expIdx -> do
-    v <- evalExp exp
-    vIdx <- evalExp expIdx
-    case v of
-      Value.Array xs ->
-        case vIdx of
-          Value.Int idx ->
-            case xs !? fromIntegral idx of
-              Just x ->
-                pure x
-              Nothing ->
-                throwError (OutOfBounds expIdx (Value.display v) (Value.display vIdx))
-          _ ->
-            throwError (NotAnIndex expIdx (Value.display vIdx))
-      _ ->
-        throwError (NotAnArray exp (Value.display v))
+    xs <- evalArray exp
+    idx <- evalInt expIdx
+    case xs !? fromIntegral idx of
+      Nothing ->
+        throwError (OutOfBounds expIdx (Value.display (Value.Array xs)) (Value.display (Value.Int idx)))
+      Just x ->
+        pure x
+
+evalArray :: (MonadState Env m, MonadError Error m) => Exp -> m (Vector Value)
+evalArray exp = do
+  v <- evalExp exp
+  case v of
+    Value.Array xs ->
+      pure xs
+    _ ->
+      throwError (NotAnArray exp (Value.display v))
+
+evalInt :: (MonadState Env m, MonadError Error m) => Exp -> m Int64
+evalInt exp = do
+  v <- evalExp exp
+  case v of
+    Value.Int xs ->
+      pure xs
+    _ ->
+      throwError (NotAnInt exp (Value.display v))
 
 evalApp
   :: (MonadState Env m, MonadError Error m)

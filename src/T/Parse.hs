@@ -204,12 +204,19 @@ expP = do
       ]
 
 fromFixity :: DeltaParsing m => (Name, Op.Fixity) -> Operator m Exp
-fromFixity (name, fixity) =
-  case fixity of
-    Op.Prefix -> prefixOp (Name.toString name)
-    Op.Infix -> infixOp (Name.toString name)
-    Op.Infixl -> infixlOp (Name.toString name)
-    Op.Infixr -> infixrOp (Name.toString name)
+fromFixity (name, fixity) = do
+  op (Name.toString name)
+ where
+  op =
+    case fixity of
+      Op.Prefix ->
+        prefixOp
+      Op.Infix ->
+        infixOp
+      Op.Infixl ->
+        infixlOp
+      Op.Infixr ->
+        infixrOp
 
 dotOp :: DeltaParsing m => String -> Operator m Exp
 dotOp name =
