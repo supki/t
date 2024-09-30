@@ -20,6 +20,8 @@ module T.Exp
   , ifE_
   , appE
   , appE_
+  , idxE
+  , idxE_
   , falseL
   , trueL
   ) where
@@ -48,9 +50,15 @@ type Exp = Cofree ExpF Ann
 
 data ExpF a
   = Lit Literal
+    -- ^ literals: 4, [1,2,3], {foo: 4}
   | Var (Ann :+ Name)
+    -- ^ variable lookup: foo
   | If a a a
+    -- ^ if-expression: if ... then ... else ...
   | App (Ann :+ Name) (NonEmpty a)
+    -- ^ application: f(x)
+  | Idx a a
+    -- ^ array index access: xs[0]
     deriving (Show, Eq, Generic1)
 
 instance SExp.To Exp where
@@ -63,6 +71,8 @@ instance SExp.To Exp where
       SExp.round ["if", sexp p, sexp t, sexp f]
     _ :< App (_ :+ name) args ->
       SExp.round (sexp name : map sexp (toList args))
+    _ :< Idx exp expIdx ->
+      SExp.round ["at-index", sexp expIdx, sexp exp]
 
 instance Eq1 ExpF where
   liftEq _ (Lit l0) (Lit l1) =
@@ -73,6 +83,8 @@ instance Eq1 ExpF where
     (p0 ==? p1) && (t0 ==? t1) && (f0 ==? f1)
   liftEq (==?) (App n0 as0) (App n1 as1) =
     (n0 == n1) && List.and (NonEmpty.zipWith (==?) as0 as1)
+  liftEq (==?) (Idx e0 idx0) (Idx e1 idx1) =
+    (e0 ==? e1) && (idx0 ==? idx1)
   liftEq _ _ _ =
     False
 
@@ -107,6 +119,14 @@ appE ann name args =
 appE_ :: Ann :+ Name -> NonEmpty Exp -> Exp
 appE_ =
   appE emptyAnn
+
+idxE :: Ann -> Exp -> Exp -> Exp
+idxE ann exp expIdx =
+  ann :< Idx exp expIdx
+
+idxE_ :: Exp -> Exp -> Exp
+idxE_ =
+  idxE emptyAnn
 
 data Literal
   = Null

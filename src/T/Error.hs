@@ -25,6 +25,9 @@ data Error
   | NotIterable Exp Text
   | NotRenderable Exp Text
   | NotAFunction (Ann :+ Name) Text
+  | NotAnArray Exp Text
+  | NotAnIndex Exp Text
+  | OutOfBounds Exp Text Text
   | UserError (Ann :+ Name) Text
   | TypeError (Ann :+ Name) Text Text Text
     deriving (Show, Eq)
@@ -47,6 +50,19 @@ prettyError = \case
     header ann <>
     "not a function: " <> PP.pretty name <> PP.line <>
       PP.indent 2 "but something else: " <> PP.pretty value <> PP.line <>
+    excerpt ann
+  NotAnArray (ann :< _) value ->
+    header ann <>
+    "not an array: " <> PP.pretty value <> PP.line <>
+    excerpt ann
+  NotAnIndex (ann :< _) value ->
+    header ann <>
+    "not an index: " <> PP.pretty value <> PP.line <>
+    excerpt ann
+  OutOfBounds (ann :< _) value valueIdx ->
+    header ann <>
+    "index : " <> PP.pretty valueIdx <> PP.line <>
+    "is out of bounds for array: " <> PP.pretty value <> PP.line <>
     excerpt ann
   UserError (ann :+ name) text ->
     header ann <>

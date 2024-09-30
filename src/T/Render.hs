@@ -23,6 +23,7 @@ import Data.Text.Lazy qualified as Lazy (Text)
 import Data.Text.Lazy.Builder (Builder)
 import Data.Text.Lazy.Builder qualified as Builder
 import Data.HashMap.Strict qualified as HashMap
+import Data.Vector ((!?))
 
 import T.Exp (Cofree(..), Exp, ExpF(..), Literal(..), (:+)(..), Ann)
 import T.Exp.Ann (emptyAnn)
@@ -195,6 +196,22 @@ evalExp = \case
   ann :< App name args -> do
     f <- evalExp (ann :< Var name)
     evalApp name f (toList args)
+  _ :< Idx exp expIdx -> do
+    v <- evalExp exp
+    vIdx <- evalExp expIdx
+    case v of
+      Value.Array xs ->
+        case vIdx of
+          Value.Int idx ->
+            case xs !? fromIntegral idx of
+              Just x ->
+                pure x
+              Nothing ->
+                throwError (OutOfBounds expIdx (Value.display v) (Value.display vIdx))
+          _ ->
+            throwError (NotAnIndex expIdx (Value.display vIdx))
+      _ ->
+        throwError (NotAnArray exp (Value.display v))
 
 evalApp
   :: (MonadState Env m, MonadError Error m)

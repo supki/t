@@ -58,6 +58,15 @@ spec =
       r_ "{% case 11 %}{% when 4 %}4{% else %}11{% endcase %}" `shouldRender` "11"
       r_ "{{ null }}" `shouldRender` ""
 
+    context "indexing" $
+      it "examples" $ do
+        r_ "{{ [1,2,3][0] }}" `shouldRender` "1"
+        r_ "{{ [[1,2],[3]][0][1] }}" `shouldRender` "2"
+        r_ "{{ 4[0] }}" `shouldRaise` NotAnArray (litE_ (Int 4)) "4"
+        r_ "{{ [1,2,3][\"foo\"] }}" `shouldRaise` NotAnIndex (litE_ (String "foo")) "\"foo\""
+        r_ "{{ [1,2,3][-1] }}" `shouldRaise` OutOfBounds (litE_ (Int (-1))) "[1,2,3]" "-1"
+
+
     context "line blocks" $
       it "examples" $ do
         r_ "{% if true %}\n4\n{% endif %}\n" `shouldRender` "4\n"

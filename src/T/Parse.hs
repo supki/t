@@ -186,7 +186,7 @@ expP = do
 
  where
   table macros operators =
-    [dotOp "."] : fromMap (Macro.priorities macros <> Op.priorities operators)
+    [dotOp ".", idxOp] : fromMap (Macro.priorities macros <> Op.priorities operators)
 
   fromMap =
     map (\(_k, v) -> map fromFixity v) . Map.toDescList
@@ -225,6 +225,18 @@ dotOp name =
               , (case b of ann' :< Var (_ :+ Name b') -> litE ann' (String b'); _ -> b)
               ])))
     AssocLeft
+
+idxOp :: (e ~ Stdlib, MonadReader e m, DeltaParsing m) => Operator m Exp
+idxOp =
+  Postfix (chainl1 idxP (pure (flip (.))))
+ where
+  idxP = do
+    ann :+ expIdx <- anned $ do
+      _ <- symbol "["
+      expIdx <- expP
+      _ <- symbol "]"
+      pure expIdx
+    pure (\exp -> ann :< Idx exp expIdx)
 
 infixOp :: DeltaParsing m => String -> Operator m Exp
 infixOp name =
