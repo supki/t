@@ -13,7 +13,7 @@ import Data.Text.Encoding qualified as Text
 import Data.Text.Lazy qualified as Lazy (Text)
 import Test.Hspec
 
-import T.Exp (Literal(..), litE_, appE)
+import T.Exp (Literal(..), litE_, appE, varE_)
 import T.Embed (embed0)
 import T.Error (Error(..), Warning(..))
 import T.Name (Name(..))
@@ -63,8 +63,10 @@ spec =
       it "examples" $ do
         r_ "{{ [1,2,3][0] }}" `shouldRender` "1"
         r_ "{{ [[1,2],[3]][0][1] }}" `shouldRender` "2"
-        r_ "{{ 4[0] }}" `shouldRaise` NotAnArray (litE_ (Int 4)) "4"
-        r_ "{{ [1,2,3][\"foo\"] }}" `shouldRaise` NotAnInt (litE_ (String "foo")) "\"foo\""
+        r_ "{{ 4[0] }}" `shouldRaise`
+          TypeError (litE_ (Int 4)) Type.Array Type.Int "4"
+        r_ "{{ [1,2,3][\"foo\"] }}" `shouldRaise`
+          TypeError (litE_ (String "foo")) Type.Int Type.String "\"foo\""
         r_ "{{ [1,2,3][-1] }}" `shouldRaise` OutOfBounds (litE_ (Int (-1))) "[1,2,3]" "-1"
 
 
@@ -252,16 +254,16 @@ spec =
         r_ "{{ \"Foo\" =~ /foo/i }}" `shouldRender` "true"
 
       it "not-iterable" $
-        r_ "{% for x in 4 %}{% endfor %}" `shouldRaise` NotIterable (litE_ (Int 4)) "4"
+        r_ "{% for x in 4 %}{% endfor %}" `shouldRaise` TypeError (litE_ (Int 4)) Type.Iterable Type.Int "4"
 
       it "not-renderable" $
-        r_ "{{ [] }}" `shouldRaise` NotRenderable (litE_ (Array [])) "[]"
+        r_ "{{ [] }}" `shouldRaise` TypeError (litE_ (Array [])) Type.Renderable Type.Array "[]"
 
       it "not-a-function" $
-        rWith [aesonQQ|{f: "foo"}|] "{{ f(4) }}" `shouldRaise` NotAFunction "f" "\"foo\""
+        rWith [aesonQQ|{f: "foo"}|] "{{ f(4) }}" `shouldRaise` TypeError (varE_ "f") Type.Fun Type.String "\"foo\""
 
       it "type errors" $
-        r_ "{{ bool01(\"foo\") }}" `shouldRaise` TypeError "bool01" Type.Bool Type.String "\"foo\""
+        r_ "{{ bool01(\"foo\") }}" `shouldRaise` TypeError (varE_ "bool01") Type.Bool Type.String "\"foo\""
 
       it "defined?" $
         rWith [aesonQQ|{foo: {}}|] "{{ defined?(foo.bar.baz) }}" `shouldRender` "false"

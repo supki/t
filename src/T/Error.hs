@@ -12,7 +12,7 @@ import Prettyprinter.Render.Terminal qualified as PP (Color(..), color)
 import Text.Trifecta qualified as Tri
 import Text.Trifecta.Delta qualified as Tri
 
-import T.Exp (Cofree((:<)), Exp, (:+)(..), Ann)
+import T.Exp (Cofree((:<)), Exp, ExpF(..), (:+)(..), Ann)
 import T.Name (Name)
 import T.Prelude
 import T.Type (Type)
@@ -23,14 +23,9 @@ data Error
     -- Ideally, we want a Value here instead of Text,
     -- but there's neither Show Value nor Eq Value,
     -- and that makes working with Error annoying too.
-  | NotIterable Exp Text
-  | NotRenderable Exp Text
-  | NotAFunction (Ann :+ Name) Text
-  | NotAnArray Exp Text
-  | NotAnInt Exp Text
   | OutOfBounds Exp Text Text
   | UserError (Ann :+ Name) Text
-  | TypeError (Ann :+ Name) Type Type Text
+  | TypeError Exp Type Type Text
     deriving (Show, Eq)
 
 prettyError :: Error -> Doc AnsiStyle
@@ -38,27 +33,6 @@ prettyError = \case
   NotInScope (ann :+ name) ->
     header ann <>
     "not in scope: " <> PP.pretty name <> PP.line <>
-    excerpt ann
-  NotIterable (ann :< _) value ->
-    header ann <>
-    "not an iterable: " <> PP.pretty value <> PP.line <>
-    excerpt ann
-  NotRenderable (ann :< _) value ->
-    header ann <>
-    "not renderable: " <> PP.pretty value <> PP.line <>
-    excerpt ann
-  NotAFunction (ann :+ name) value ->
-    header ann <>
-    "not a function: " <> PP.pretty name <> PP.line <>
-      PP.indent 2 "but something else: " <> PP.pretty value <> PP.line <>
-    excerpt ann
-  NotAnArray (ann :< _) value ->
-    header ann <>
-    "not an array: " <> PP.pretty value <> PP.line <>
-    excerpt ann
-  NotAnInt (ann :< _) value ->
-    header ann <>
-    "not an int: " <> PP.pretty value <> PP.line <>
     excerpt ann
   OutOfBounds (ann :< _) value valueIdx ->
     header ann <>
@@ -69,9 +43,14 @@ prettyError = \case
     header ann <>
     PP.pretty name <> ": " <> PP.pretty text <> PP.line <>
     excerpt ann
-  TypeError (ann :+ name) expected actual value ->
+  TypeError (ann :< Var (_ann :+ name)) expected actual value ->
     header ann <>
     "mismatched types in " <> PP.pretty name <> ": " <> PP.line <>
+      PP.indent 2 "expected: " <> PP.pretty (show expected) <> PP.line <>
+      PP.indent 2 " but got: " <> PP.pretty value <> " : " <> PP.pretty (show actual) <> PP.line <>
+    excerpt ann
+  TypeError (ann :< _) expected actual value ->
+    header ann <>
       PP.indent 2 "expected: " <> PP.pretty (show expected) <> PP.line <>
       PP.indent 2 " but got: " <> PP.pretty value <> " : " <> PP.pretty (show actual) <> PP.line <>
     excerpt ann

@@ -9,7 +9,7 @@ import Data.Vector qualified as Vector
 import Text.Regex.PCRE.Light qualified as Pcre
 
 import T.Error (Error(..))
-import T.Exp ((:+)(..), Ann)
+import T.Exp ((:+)(..), Ann, varE)
 import T.Exp.Ann (emptyAnn)
 import T.Name (Name)
 import T.Prelude
@@ -72,50 +72,50 @@ instance Eject Value where
   eject _name = pure
 
 instance Eject Bool where
-  eject name = \case
+  eject name@(ann :+ _) = \case
     Bool b ->
       pure b
     value ->
-      Left (TypeError name Type.Bool (typeOf value) (display value))
+      Left (TypeError (varE ann name) Type.Bool (typeOf value) (display value))
 
 instance Eject Int64 where
-  eject name = \case
+  eject name@(ann :+ _) = \case
     Int n ->
       pure n
     value ->
-      Left (TypeError name Type.Int (typeOf value) (display value))
+      Left (TypeError (varE ann name) Type.Int (typeOf value) (display value))
 
 instance Eject Double where
-  eject name = \case
+  eject name@(ann :+ _) = \case
     Double n ->
       pure n
     value ->
-      Left (TypeError name Type.Double (typeOf value) (display value))
+      Left (TypeError (varE ann name) Type.Double (typeOf value) (display value))
 
 instance Eject Text where
-  eject name = \case
+  eject name@(ann :+ _) = \case
     String str ->
       pure str
     value ->
-      Left (TypeError name Type.String (typeOf value) (display value))
+      Left (TypeError (varE ann name) Type.String (typeOf value) (display value))
 
 instance Eject Pcre.Regex where
-  eject name = \case
+  eject name@(ann :+ _) = \case
     Regexp regexp ->
       pure regexp
     value ->
-      Left (TypeError name Type.Regexp (typeOf value) (display value))
+      Left (TypeError (varE ann name) Type.Regexp (typeOf value) (display value))
 
 instance (k ~ Text, v ~ Value) => Eject (HashMap k v) where
-  eject name = \case
+  eject name@(ann :+ _) = \case
     Record o ->
       pure o
     value ->
-      Left (TypeError name Type.Record (typeOf value) (display value))
+      Left (TypeError (varE ann name) Type.Record (typeOf value) (display value))
 
 instance Eject a => Eject [a] where
-  eject name = \case
+  eject name@(ann :+ _) = \case
     Array xs ->
       map toList (traverse (eject name) xs)
     value ->
-      Left (TypeError name Type.Array (typeOf value) (display value))
+      Left (TypeError (varE ann name) Type.Array (typeOf value) (display value))

@@ -36,6 +36,7 @@ import T.Value (Value)
 import T.Value qualified as Value
 import T.Tmpl (Tmpl)
 import T.Tmpl qualified as Tmpl
+import T.Type qualified as Type
 
 
 data Env = Env
@@ -124,7 +125,7 @@ run env0 tmpl =
                     (HashMap.toList o))
           pure (bool (Just xs) Nothing (List.null xs))
         _ ->
-          throwError (NotIterable exp (Value.display value))
+          throwError (TypeError exp Type.Iterable (Value.typeOf value) (Value.display value))
       case itemsQ of
         Nothing ->
           maybe (pure ()) go elseTmpl
@@ -155,8 +156,8 @@ renderExp exp = do
       pure (fromString (show n))
     Value.String str ->
       pure str
-    o ->
-      throwError (NotRenderable exp (Value.display o))
+    _ ->
+      throwError (TypeError exp Type.Renderable (Value.typeOf value) (Value.display value))
 
 evalExp :: (MonadState Env m, MonadError Error m) => Exp -> m Value
 evalExp = \case
@@ -197,31 +198,31 @@ evalExp = \case
     f <- evalExp (ann :< Var name)
     evalApp name f (toList args)
   _ :< Idx exp expIdx -> do
-    xs <- evalArray exp
-    idx <- evalInt expIdx
+    xs <- enforceArray exp
+    idx <- enforceInt expIdx
     case xs !? fromIntegral idx of
       Nothing ->
         throwError (OutOfBounds expIdx (Value.display (Value.Array xs)) (Value.display (Value.Int idx)))
       Just x ->
         pure x
 
-evalArray :: (MonadState Env m, MonadError Error m) => Exp -> m (Vector Value)
-evalArray exp = do
+enforceArray :: (MonadState Env m, MonadError Error m) => Exp -> m (Vector Value)
+enforceArray exp = do
   v <- evalExp exp
   case v of
     Value.Array xs ->
       pure xs
     _ ->
-      throwError (NotAnArray exp (Value.display v))
+      throwError (TypeError exp Type.Array (Value.typeOf v) (Value.display v))
 
-evalInt :: (MonadState Env m, MonadError Error m) => Exp -> m Int64
-evalInt exp = do
+enforceInt :: (MonadState Env m, MonadError Error m) => Exp -> m Int64
+enforceInt exp = do
   v <- evalExp exp
   case v of
     Value.Int xs ->
       pure xs
     _ ->
-      throwError (NotAnInt exp (Value.display v))
+      throwError (TypeError exp Type.Int (Value.typeOf v) (Value.display v))
 
 evalApp
   :: (MonadState Env m, MonadError Error m)
@@ -229,20 +230,20 @@ evalApp
   -> Value
   -> [Exp]
   -> m Value
-evalApp name =
+evalApp name@(ann0 :+ _) =
   go
  where
   -- either we have to arguments left, so we return whatever we have
-  go val [] =
-    pure val
+  go v [] =
+    pure v
   -- or we have a function to apply to the next argument
   go (Value.Lam f) (exp0@(ann :< _) : exps) = do
     x <- evalExp exp0
     g <- liftEither (f (ann :+ x))
     go g exps
   -- in every other case something went wrong :-(
-  go val _ =
-    throwError (NotAFunction name (Value.display val))
+  go v _ =
+    throwError (TypeError (ann0 :< Var name) Type.Fun (Value.typeOf v) (Value.display v))
 
 lookupVar :: MonadError Error m => Env -> Ann :+ Name -> m Value
 lookupVar env (ann :+ name) =
