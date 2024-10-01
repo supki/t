@@ -6,6 +6,7 @@ module T.Parse
   ) where
 
 import Control.Monad.Reader (MonadReader, runReaderT, ask)
+import Data.ByteString qualified as ByteString (readFile)
 import Data.Char qualified as Char
 import Data.HashMap.Strict qualified as HashMap
 import Data.List.NonEmpty (fromList)
@@ -45,9 +46,9 @@ import T.Stdlib.Macro qualified as Macro
 import T.Stdlib.Op qualified as Op
 
 
-parseFile :: Stdlib -> FilePath -> ByteString -> Either ErrInfo Tmpl
+parseFile :: Stdlib -> FilePath -> IO (Either ErrInfo Tmpl)
 parseFile stdlib path =
-  parseDelta stdlib (Directed (fromString path) 0 0 0 0)
+  map (parseDelta stdlib (Directed (fromString path) 0 0 0 0)) (ByteString.readFile path)
 
 parse :: Stdlib -> ByteString -> Either ErrInfo Tmpl
 parse stdlib =
