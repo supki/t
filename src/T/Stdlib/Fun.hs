@@ -48,7 +48,6 @@ functions =
   , Fun "join" (flip embed0 Text.intercalate)
   , Fun "concat" (flip embed0 Text.concat)
 
-  , Fun "." (flip embed0 (flip (HashMap.lookup @Text @Value)))
   , Fun "die" dieB
 
   , Fun "show" (\_ -> showB)

@@ -186,7 +186,7 @@ expP = do
 
  where
   table macros operators =
-    [dotOp ".", idxOp] : fromMap (Macro.priorities macros <> Op.priorities operators)
+    [accessOp] : fromMap (Macro.priorities macros <> Op.priorities operators)
 
   fromMap =
     map (\(_k, v) -> map fromFixity v) . Map.toDescList
@@ -218,24 +218,9 @@ fromFixity (name, fixity) = do
       Op.Infixr ->
         infixrOp
 
-dotOp :: DeltaParsing m => String -> Operator m Exp
-dotOp name =
-  Infix
-    (do ann <- anning (reserve emptyOps name)
-        pure (\a b ->
-          appE ann
-            (fromString name)
-            (fromList
-              [ a
-              -- Property lookups have the syntax of variables, but
-              -- we actually want them as strings.
-              , (case b of ann' :< Var (_ :+ Name b') -> litE ann' (String b'); _ -> b)
-              ])))
-    AssocLeft
-
-idxOp :: (e ~ Stdlib, MonadReader e m, DeltaParsing m) => Operator m Exp
-idxOp =
-  Postfix (chainl1 idxP (pure (flip (.))))
+accessOp :: (e ~ Stdlib, MonadReader e m, DeltaParsing m) => Operator m Exp
+accessOp =
+  Postfix (chainl1 (idxP <|> dotP) (pure (flip (.))))
  where
   idxP = do
     ann :+ expIdx <- anned $ do
@@ -244,6 +229,11 @@ idxOp =
       _ <- symbol "]"
       pure expIdx
     pure (\exp -> ann :< Idx exp expIdx)
+  dotP = do
+    ann :+ key <- anned $ do
+      _ <- symbol "."
+      nameP
+    pure (\exp -> ann :< Key exp key)
 
 infixOp :: DeltaParsing m => String -> Operator m Exp
 infixOp name =

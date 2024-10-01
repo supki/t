@@ -56,6 +56,9 @@ expand ms =
       exp <- go exp0
       expIdx <- go expIdx0
       pure (ann :< Idx exp expIdx)
+    ann :< Key exp0 key -> do
+      exp <- go exp0
+      pure (ann :< Key exp key)
 
 
 badArity :: Int -> Int -> Either ExpansionError a

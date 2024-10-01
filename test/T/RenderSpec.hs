@@ -69,6 +69,14 @@ spec =
           TypeError (litE_ (String "foo")) Type.Int Type.String "\"foo\""
         r_ "{{ [1,2,3][-1] }}" `shouldRaise` OutOfBounds (litE_ (Int (-1))) "[1,2,3]" "-1"
 
+    context "keying" $
+      it "examples" $ do
+        r_ "{{ {foo: 4}.foo }}" `shouldRender` "4"
+        r_ "{{ {foo: [1,2,3]}.foo[0] }}" `shouldRender` "1"
+        r_ "{{ {foo: [1,{bar: 7},3]}.foo[1].bar }}" `shouldRender` "7"
+        r_ "{{ 4.foo }}" `shouldRaise`
+          TypeError (litE_ (Int 4)) Type.Record Type.Int "4"
+        r_ "{{ {}.foo }}" `shouldRaise` MissingProperty (litE_ (Record mempty)) "{}" "\"foo\""
 
     context "line blocks" $
       it "examples" $ do

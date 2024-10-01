@@ -89,6 +89,10 @@ spec = do
       rexp "{{ [1,2,3][1 + 2] }}" `shouldBe` "(at-index (+ 1 2) [1 2 3])"
       rexp "{{ [[1,2],[3]][0][1] }}" `shouldBe` "(at-index 1 (at-index 0 [[1 2] [3]]))"
 
+    it "key" $ do
+      rexp "{{ foo.bar }}" `shouldBe` "(at-key \"bar\" foo)"
+      rexp "{{ foo.bar.baz }}" `shouldBe` "(at-key \"baz\" (at-key \"bar\" foo))"
+
   context "value" $ do
     it "null" $
       render (sexp Value.Null) `shouldBe` "null"

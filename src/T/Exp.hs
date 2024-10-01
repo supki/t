@@ -21,6 +21,7 @@ module T.Exp
   , appE_
   , idxE
   , idxE_
+  , keyE_
   , falseL
   , trueL
   ) where
@@ -58,6 +59,8 @@ data ExpF a
     -- ^ application: f(x)
   | Idx a a
     -- ^ array index access: xs[0]
+  | Key a (Ann :+ Name)
+    -- ^ record property access: foo.bar
     deriving (Show, Eq, Generic1)
 
 instance SExp.To Exp where
@@ -72,6 +75,8 @@ instance SExp.To Exp where
       SExp.round (sexp name : map sexp (toList args))
     _ :< Idx exp expIdx ->
       SExp.round ["at-index", sexp expIdx, sexp exp]
+    _ :< Key exp key ->
+      SExp.round ["at-key", sexp key, sexp exp]
 
 instance Eq1 ExpF where
   liftEq _ (Lit l0) (Lit l1) =
@@ -84,6 +89,8 @@ instance Eq1 ExpF where
     (n0 == n1) && List.and (NonEmpty.zipWith (==?) as0 as1)
   liftEq (==?) (Idx e0 idx0) (Idx e1 idx1) =
     (e0 ==? e1) && (idx0 ==? idx1)
+  liftEq (==?) (Key e0 key0) (Key e1 key1) =
+    (e0 ==? e1) && (key0 == key1)
   liftEq _ _ _ =
     False
 
@@ -116,12 +123,16 @@ appE_ =
   appE emptyAnn
 
 idxE :: Ann -> Exp -> Exp -> Exp
-idxE ann exp expIdx =
-  ann :< Idx exp expIdx
+idxE ann exp idx =
+  ann :< Idx exp idx
 
 idxE_ :: Exp -> Exp -> Exp
 idxE_ =
   idxE emptyAnn
+
+keyE_ :: Exp -> Ann :+ Name -> Exp
+keyE_ exp key =
+  emptyAnn :< Key exp key
 
 data Literal
   = Null

@@ -24,6 +24,7 @@ data Error
     -- but there's neither Show Value nor Eq Value,
     -- and that makes working with Error annoying too.
   | OutOfBounds Exp Text Text
+  | MissingProperty Exp Text Text
   | UserError (Ann :+ Name) Text
   | TypeError Exp Type Type Text
     deriving (Show, Eq)
@@ -34,10 +35,15 @@ prettyError = \case
     header ann <>
     "not in scope: " <> PP.pretty name <> PP.line <>
     excerpt ann
-  OutOfBounds (ann :< _) value valueIdx ->
+  OutOfBounds (ann :< _) array idx ->
     header ann <>
-    "index : " <> PP.pretty valueIdx <> PP.line <>
-    "is out of bounds for array: " <> PP.pretty value <> PP.line <>
+    "index: " <> PP.pretty idx <> PP.line <>
+    "is out of bounds for array: " <> PP.pretty array <> PP.line <>
+    excerpt ann
+  MissingProperty (ann :< _) r key ->
+    header ann <>
+    "key: " <> PP.pretty key <> PP.line <>
+    "is missing from the record: " <> PP.pretty r <> PP.line <>
     excerpt ann
   UserError (ann :+ name) text ->
     header ann <>

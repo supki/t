@@ -7,7 +7,7 @@ import Data.Vector qualified as Vector
 import Test.Hspec
 
 import T.Parse (parse)
-import T.Exp (Exp, Literal(..), litE_, varE, ifE_, appE_, idxE_)
+import T.Exp (Exp, Literal(..), litE_, varE, ifE_, appE_, idxE_, keyE_)
 import T.Exp.Ann (noann)
 import T.Name (Name(..))
 import T.Prelude
@@ -28,12 +28,11 @@ spec =
       "{{ x }}{{ y }}" `shouldParseTo` Tmpl.Cat [Tmpl.Exp (var "x"), Tmpl.Exp (var "y")]
       "{{ x.y.z }}" `shouldParseTo`
         Tmpl.Exp
-          (appE_
-            "."
-            [ appE_ "." [var "x", string "y"]
-            , string "z"
-            ])
-      "{{ x.y.z }}" `shouldParseTo` Tmpl.Exp (vars ["x", "y", "z"])
+          (keyE_
+            (keyE_
+              (var "x")
+              "y")
+            "z")
       "foo{{ x }}" `shouldParseTo` Tmpl.Cat ["foo", Tmpl.Exp (var "x")]
       "foo{{ x }}bar" `shouldParseTo` Tmpl.Cat ["foo", Tmpl.Exp (var "x"), "bar"]
       "{{ null }}" `shouldParseTo` Tmpl.Exp null
@@ -48,13 +47,23 @@ spec =
       "{{ [1, x.y, \"foo\"] }}" `shouldParseTo` Tmpl.Exp
         (array
           [ int 1
-          , vars ["x", "y"]
+          , keyE_ (var "x") "y"
           , string "foo"
           ])
       "{{ [1, 2, 3][0] }}" `shouldParseTo` Tmpl.Exp
         (idxE_
           (array [int 1, int 2, int 3])
           (int 0))
+      "{{ foo.bar[4].baz[7] }}" `shouldParseTo` Tmpl.Exp
+        (idxE_
+          (keyE_
+            (idxE_
+              (keyE_
+                (var "foo")
+                "bar")
+              (int 4))
+            "baz")
+          (int 7))
       "{{ {} }}" `shouldParseTo` Tmpl.Exp (record [])
       "{{ {x: 4} }}" `shouldParseTo` Tmpl.Exp (record [("x", int 4)])
       "{{ {x: 4, y: \"foo\"} }}" `shouldParseTo`
@@ -182,10 +191,6 @@ spec =
             , Tmpl.Assign "baz" (string "foo")
             ]
             (Tmpl.Cat []))
-
-vars :: NonEmpty Name -> Exp
-vars (chunk :| chunks) =
-  foldl' (\acc chunk' -> appE_ "." [acc, string chunk'.unName]) (var chunk) chunks
 
 var :: Name -> Exp
 var name =

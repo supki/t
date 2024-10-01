@@ -205,6 +205,22 @@ evalExp = \case
         throwError (OutOfBounds expIdx (Value.display (Value.Array xs)) (Value.display (Value.Int idx)))
       Just x ->
         pure x
+  _ :< Key exp (_ :+ Name key) -> do
+    r <- enforceRecord exp
+    case HashMap.lookup key r of
+      Nothing ->
+        throwError (MissingProperty exp (Value.display (Value.Record r)) (Value.display (Value.String key)))
+      Just x ->
+        pure x
+
+enforceInt :: (MonadState Env m, MonadError Error m) => Exp -> m Int64
+enforceInt exp = do
+  v <- evalExp exp
+  case v of
+    Value.Int xs ->
+      pure xs
+    _ ->
+      throwError (TypeError exp Type.Int (Value.typeOf v) (Value.display v))
 
 enforceArray :: (MonadState Env m, MonadError Error m) => Exp -> m (Vector Value)
 enforceArray exp = do
@@ -215,14 +231,14 @@ enforceArray exp = do
     _ ->
       throwError (TypeError exp Type.Array (Value.typeOf v) (Value.display v))
 
-enforceInt :: (MonadState Env m, MonadError Error m) => Exp -> m Int64
-enforceInt exp = do
+enforceRecord :: (MonadState Env m, MonadError Error m) => Exp -> m (HashMap Text Value)
+enforceRecord exp = do
   v <- evalExp exp
   case v of
-    Value.Int xs ->
-      pure xs
+    Value.Record r ->
+      pure r
     _ ->
-      throwError (TypeError exp Type.Int (Value.typeOf v) (Value.display v))
+      throwError (TypeError exp Type.Record (Value.typeOf v) (Value.display v))
 
 evalApp
   :: (MonadState Env m, MonadError Error m)
