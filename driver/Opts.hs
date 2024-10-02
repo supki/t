@@ -30,6 +30,7 @@ import T.Prelude
 data Cmd
   = Render Render.Cfg
   | Init Init.Cfg
+  | Repl
 
 parse :: IO Cmd
 parse =
@@ -42,9 +43,11 @@ parser :: Parser Cmd
 parser =
   subparser
     ( command "render"
-      (info renderP (progDesc "render a template"))
+      (info renderP (progDesc "render a template file or string"))
    <> command "init"
       (info initP (progDesc "init a directory"))
+   <> command "repl"
+      (info replP (progDesc "start REPL"))
     )
 
 renderP :: Parser Cmd
@@ -85,6 +88,10 @@ initP = do
     { tmplDir = tmplDirectory
     , ..
     }
+
+replP :: Parser Cmd
+replP =
+  pure Repl
 
 envP :: Parser T.Scope
 envP =

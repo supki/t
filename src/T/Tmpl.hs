@@ -50,7 +50,7 @@ instance SExp.To Tmpl where
     Let assigns tmpl ->
       SExp.round ["let", SExp.square (map sexp assigns), sexp tmpl]
     If cases ->
-      SExp.round ["if", SExp.square (map (\(exp, tmpl) -> SExp.square [sexp exp, sexp tmpl]) (toList cases))]
+      SExp.round ["case", SExp.square (map (\(exp, tmpl) -> SExp.square [sexp exp, sexp tmpl]) (toList cases))]
     For value keyQ exp tmpl elseTmpl ->
       SExp.round
         [ "for"

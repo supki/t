@@ -3,16 +3,11 @@
 module T.App.Render (run) where
 
 import Data.Text.IO qualified as Text
-import Data.Text.Encoding qualified as Text
 import Data.Text.Lazy.IO qualified as Text.Lazy
-import System.Exit (exitFailure)
-import System.IO (stderr)
-import Text.Trifecta qualified as Tri
-import Prettyprinter qualified as PP
-import Prettyprinter.Render.Terminal qualified as PP (AnsiStyle, hPutDoc)
 
 import T qualified
 import T.Prelude
+import T.App.IO (warn, die)
 import T.App.Render.Cfg
   ( Cfg(..)
   , RenderTmpl(..)
@@ -32,22 +27,13 @@ getTmpl = \case
 
 runTmpl :: T.Scope -> Text -> IO ()
 runTmpl vars str =
-  case T.parse T.stdlib (Text.encodeUtf8 str) of
-    Left Tri.ErrInfo {Tri._errDoc} ->
-      ppDie _errDoc
-    Right exp ->
-      case T.render (T.stdlib, vars) exp of
+  case T.parseText T.stdlib str of
+    Left err ->
+      die err
+    Right tmpl ->
+      case T.render (T.stdlib, vars) tmpl of
         Left err ->
-          ppDie (T.prettyError err)
+          die err
         Right (warnings, res) -> do
-          traverse_ (ppWarn . T.prettyWarning) warnings
+          traverse_ warn warnings
           Text.Lazy.putStr res
-
-ppDie :: PP.Doc PP.AnsiStyle -> IO a
-ppDie doc = do
-  ppWarn doc
-  exitFailure
-
-ppWarn :: PP.Doc PP.AnsiStyle -> IO ()
-ppWarn doc =
-  PP.hPutDoc stderr (doc <> PP.line)

@@ -1,4 +1,4 @@
-cabal-version: 1.12
+cabal-version: 1.24
 
 -- This file has been generated from package.yaml by hpack version 0.36.0.
 --
@@ -14,7 +14,7 @@ bug-reports:    https://github.com/supki/t/issues
 maintainer:     matvey.aksenov@gmail.com
 copyright:      Matvey Aksenov 2022
 license:        BSD2
-build-type:     Simple
+build-type:     Custom
 extra-source-files:
     README.markdown
     CHANGELOG.markdown
@@ -23,6 +23,14 @@ source-repository head
   type: git
   location: https://github.com/supki/t
 
+custom-setup
+  setup-depends:
+      Cabal
+    , base
+    , directory
+    , filepath
+    , process
+
 library
   exposed-modules:
       T
@@ -30,8 +38,10 @@ library
       T.App.Init.Cfg
       T.App.Init.IO
       T.App.Init.Parse
+      T.App.IO
       T.App.Render
       T.App.Render.Cfg
+      T.App.Repl
       T.Embed
       T.Error
       T.Exp
@@ -50,7 +60,7 @@ library
       T.Type
       T.Value
   other-modules:
-      Paths_t
+      Meta_t
   hs-source-dirs:
       src
   default-extensions:
@@ -71,6 +81,7 @@ library
     , either
     , filepath
     , hashable
+    , haskeline
     , mtl
     , parsers
     , pcre-light

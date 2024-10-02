@@ -11,6 +11,7 @@ module T.Prelude
   , IsString(..)
   , Monad(..)
   , MonadFail(..)
+  , MonadIO(..)
   , Monoid(..)
   , Num
   , Ord(..)
@@ -78,6 +79,7 @@ module T.Prelude
 
 import Control.Applicative (Alternative(..))
 import Control.Monad ((<=<), foldM_, when, unless)
+import Control.Monad.IO.Class (MonadIO(..))
 import Data.Bool (bool)
 import Data.Bifunctor (first, second)
 import Data.ByteString (ByteString)

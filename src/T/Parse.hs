@@ -1,7 +1,9 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 module T.Parse
-  ( parse
+  ( ParseError(..)
   , parseFile
+  , parseText
+  , parseBytes
   , parser
   ) where
 
@@ -13,7 +15,9 @@ import Data.List.NonEmpty (fromList)
 import Data.Map.Strict qualified as Map
 import Data.Text.Encoding qualified as Text
 import Data.Vector qualified as Vector
-import Text.Trifecta
+import Prettyprinter (Doc)
+import Prettyprinter.Render.Terminal (AnsiStyle)
+import Text.Trifecta hiding (err)
 import Text.Trifecta.Delta (Delta(..))
 import Text.Parser.Expression (Assoc(..), Operator(..), buildExpressionParser)
 import Text.Parser.LookAhead (LookAheadParsing, lookAhead)
@@ -46,19 +50,27 @@ import T.Stdlib.Macro qualified as Macro
 import T.Stdlib.Op qualified as Op
 
 
-parseFile :: Stdlib -> FilePath -> IO (Either ErrInfo Tmpl)
+data ParseError
+  = ParseError (Doc AnsiStyle)
+    deriving (Show)
+
+parseFile :: Stdlib -> FilePath -> IO (Either ParseError Tmpl)
 parseFile stdlib path =
   map (parseDelta stdlib (Directed (fromString path) 0 0 0 0)) (ByteString.readFile path)
 
-parse :: Stdlib -> ByteString -> Either ErrInfo Tmpl
-parse stdlib =
+parseText :: Stdlib -> Text -> Either ParseError Tmpl
+parseText stdlib =
+  parseBytes stdlib . Text.encodeUtf8
+
+parseBytes :: Stdlib -> ByteString -> Either ParseError Tmpl
+parseBytes stdlib =
   parseDelta stdlib mempty
 
-parseDelta :: Stdlib -> Delta -> ByteString -> Either ErrInfo Tmpl
+parseDelta :: Stdlib -> Delta -> ByteString -> Either ParseError Tmpl
 parseDelta stdlib delta str =
   case parseByteString (runReaderT parser stdlib) delta str of
-    Failure errDoc ->
-      Left errDoc
+    Failure err ->
+      Left (ParseError err._errDoc)
     Success tmpl ->
       Right tmpl
 

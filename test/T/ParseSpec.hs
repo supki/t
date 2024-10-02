@@ -6,7 +6,7 @@ import Data.HashMap.Strict qualified as HashMap
 import Data.Vector qualified as Vector
 import Test.Hspec
 
-import T.Parse (parse)
+import T.Parse (parseText)
 import T.Exp (Exp, Literal(..), litE_, varE, ifE_, appE_, idxE_, keyE_)
 import T.Exp.Ann (noann)
 import T.Name (Name(..))
@@ -236,6 +236,6 @@ whenIf :: Exp -> Tmpl -> Tmpl
 whenIf p thenTmpl =
   Tmpl.If [(p, thenTmpl)]
 
-shouldParseTo :: HasCallStack => ByteString -> Tmpl -> Expectation
+shouldParseTo :: HasCallStack => Text -> Tmpl -> Expectation
 tmpl `shouldParseTo` res =
-  first show (parse Stdlib.def tmpl) `shouldBe` Right res
+  first show (parseText Stdlib.def tmpl) `shouldBe` Right res

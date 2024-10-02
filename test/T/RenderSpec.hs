@@ -9,7 +9,6 @@ import Data.Aeson.KeyMap qualified as Aeson (toHashMapText)
 import Data.Aeson.QQ (aesonQQ)
 import Data.List qualified as List
 import Data.HashMap.Strict qualified as HashMap
-import Data.Text.Encoding qualified as Text
 import Data.Text.Lazy qualified as Lazy (Text)
 import Test.Hspec
 
@@ -17,7 +16,7 @@ import T.Exp (Literal(..), litE_, appE, varE)
 import T.Embed (embed0)
 import T.Error (Error(..), Warning(..))
 import T.Name (Name(..))
-import T.Parse (parse)
+import T.Parse (parseText)
 import T.Parse.Macro (badArity)
 import T.Prelude
 import T.Render (Scope(..), render)
@@ -375,7 +374,7 @@ rWith json tmplStr = do
     stdlib =
       Stdlib.with (def.ops <> opExt) (def.funs <> funExt) (def.macros <> macroExt)
     Right tmpl =
-      parse stdlib (Text.encodeUtf8 tmplStr)
+      parseText stdlib tmplStr
   render (stdlib, scope) tmpl
 
 opExt :: [Stdlib.Op]
