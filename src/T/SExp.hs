@@ -7,9 +7,11 @@ module T.SExp
   , curly
   , To(..)
   , render
+  , renderLazyText
   ) where
 
 import Data.Text.Encoding qualified as Text
+import Data.Text.Lazy qualified as Lazy
 import Data.Text.Lazy.Builder (Builder)
 import Data.Text.Lazy.Builder qualified as Builder
 import Text.Regex.PCRE.Light.Base qualified as Pcre
@@ -83,13 +85,19 @@ instance name ~ Name => To (ann :+ name) where
   sexp (_ann :+ Name name) =
     sexp name
 
-render :: SExp -> Builder
-render = \case
-  App parenType children ->
-    fromParenType parenType (sepBy (Builder.singleton ' ') (map render children))
-  Var name ->
-    Builder.fromText name
+renderLazyText :: To sexp => sexp -> Lazy.Text
+renderLazyText =
+  Builder.toLazyText . render
+
+render :: To sexp => sexp -> Builder
+render =
+  go . sexp
  where
+  go = \case
+    App parenType children ->
+      fromParenType parenType (sepBy (Builder.singleton ' ') (map go children))
+    Var name ->
+      Builder.fromText name
   fromParenType = \case
     Round -> parens
     Square -> brackets

@@ -3,6 +3,7 @@
 :set -isrc
 :set -itest
 :set -idriver
+:set -i.stack-work/dist/x86_64-linux/ghc-9.6.5/build/global-autogen
 :set -XImportQualifiedPost
 :set -XNoFieldSelectors
 :set -XNoImplicitPrelude

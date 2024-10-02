@@ -2,6 +2,7 @@ module T
   ( Tmpl
   , Env
   , Scope(..)
+  , Exp
   , Value
   , Name(..)
   , Error(..)
@@ -9,23 +10,38 @@ module T
   , Warning(..)
   , prettyWarning
 
-  , parse
+  , ParseError(..)
   , parseFile
+  , parseText
+  , parseBytes
   , render
   , embedAeson
 
   , Stdlib
   , stdlib
+  , emptyScope
 
   , Embed(..)
   , Eject(..)
   ) where
 
 import T.Embed (Embed(..), Eject(..))
-import T.Error (Error(..), Warning(..), prettyError, prettyWarning)
+import T.Error
+  ( Error(..)
+  , Warning(..)
+  , prettyError
+  , prettyWarning
+  )
+import T.Exp (Exp)
 import T.Name (Name(..))
 import T.Tmpl (Tmpl)
-import T.Parse (parse, parseFile)
+import T.Parse
+  ( ParseError(..)
+  , parseFile
+  , parseText
+  , parseBytes
+  )
+import T.Prelude
 import T.Render (Env, Scope(..), render)
 import T.Stdlib (Stdlib, def)
 import T.Value (Value, embedAeson)
@@ -33,3 +49,7 @@ import T.Value (Value, embedAeson)
 
 stdlib :: Stdlib
 stdlib = def
+
+emptyScope :: Scope
+emptyScope =
+  Scope mempty

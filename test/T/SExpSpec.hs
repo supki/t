@@ -5,7 +5,7 @@ import Data.Text.Lazy.Builder (Builder)
 import Test.Hspec
 import Text.Regex.PCRE.Light qualified as Pcre
 
-import T.Parse (parse)
+import T.Parse (parseText)
 import T.Prelude
 import T.Exp (Exp)
 import T.SExp (render, sexp)
@@ -36,7 +36,7 @@ spec = do
 
     it "if" $
       rexp2 "{% if true %}4{% elif false %}7{% endif %}" `shouldBe`
-        "(if [[true (raw \"4\")] [false (raw \"7\")]])"
+        "(case [[true (raw \"4\")] [false (raw \"7\")]])"
 
     it "for" $ do
       rexp2 "{% for k in [1,2,3] %}4{% endfor %}" `shouldBe`
@@ -126,24 +126,24 @@ spec = do
     it "lam" $
       render (sexp (Value.Lam (\_ -> pure Value.Null))) `shouldBe` "(lambda [_] ...)"
 
-rexp :: ByteString -> Builder
+rexp :: Text -> Builder
 rexp =
   render . sexp . pexp
 
-pexp :: ByteString -> Exp
+pexp :: Text -> Exp
 pexp str = do
   let
     Tmpl.Exp exp =
       texp str
   exp
 
-rexp2 :: ByteString -> Builder
+rexp2 :: Text -> Builder
 rexp2 =
   render . sexp . texp
 
-texp :: ByteString -> Tmpl
+texp :: Text -> Tmpl
 texp str = do
   let
     Right tmpl =
-      parse Stdlib.def str
+      parseText Stdlib.def str
   tmpl

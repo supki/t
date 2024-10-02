@@ -74,9 +74,9 @@ spec =
           \1 | {{ {foo:4} + 1 }}<EOF> \n\
           \  |    ~~~~~~~             "
 
-errorOf :: ByteString -> String
+errorOf :: Text -> String
 errorOf str =
   let
-    Right parsed = parse stdlib str
+    Right parsed = parseText stdlib str
   in
     either (show . prettyError) (error "not-supposed-to-render") (render (stdlib, mempty) parsed)
