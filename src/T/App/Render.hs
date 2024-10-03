@@ -34,6 +34,6 @@ runTmpl vars str =
       case T.render (T.stdlib, vars) tmpl of
         Left err ->
           die err
-        Right (warnings, res) -> do
-          traverse_ warn warnings
-          Text.Lazy.putStr res
+        Right rendered -> do
+          traverse_ warn (rendered.warnings)
+          Text.Lazy.putStr (rendered.result)

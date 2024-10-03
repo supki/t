@@ -79,25 +79,25 @@ runStmt dir scope0 stmt =
     Noop ->
       pure scope0
     Setup tmpl ->
-      case T.Render.exec (T.stdlib, scope0) tmpl of
+      case T.Render.render (T.stdlib, scope0) tmpl of
         Left err ->
           die (T.prettyError err)
-        Right (warnings, scope) -> do
-          traverse_ (warn . T.prettyWarning) warnings
-          pure scope
+        Right rendered -> do
+          traverse_ (warn . T.prettyWarning) rendered.warnings
+          pure (rendered.scope)
     File path tmpl ->
       case T.render (T.stdlib, scope0) tmpl of
         Left err ->
           die (T.prettyError err)
-        Right (warnings, str) -> do
-          traverse_ (warn . T.prettyWarning) warnings
+        Right rendered -> do
+          traverse_ (warn . T.prettyWarning) rendered.warnings
           let
             filepath =
               dir </> path
           relative <- filepath `isRelativeTo` dir
           if relative then do
             Text.putStrLn (fromString filepath)
-            writeFile filepath str
+            writeFile filepath rendered.result
             pure scope0
           else
             Exit.die (filepath <> " is not relative to " <> dir <> ", aborting")

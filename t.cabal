@@ -51,6 +51,7 @@ library
       T.Parse.Macro
       T.Prelude
       T.Render
+      T.Render.Rendering
       T.SExp
       T.Stdlib
       T.Stdlib.Fun

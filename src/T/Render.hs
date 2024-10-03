@@ -1,3 +1,5 @@
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -6,17 +8,16 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
 module T.Render
-  ( Env(..)
+  ( Rendered(..)
   , Scope(..)
   , render
-  , exec
   ) where
 
-import Control.Monad.Except (MonadError(..), ExceptT, runExcept, liftEither)
-import Control.Monad.State (MonadState(..), StateT, execStateT, evalStateT, modify)
+import Control.Monad.Except (MonadError(..), runExcept, liftEither)
+import Control.Monad.Reader (MonadReader(..), runReaderT)
+import Control.Monad.State (MonadState(..), execStateT, evalStateT, modify)
 import Data.Either (isRight)
 import Data.List qualified as List
-import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as Lazy (Text)
@@ -30,6 +31,8 @@ import T.Exp.Ann (emptyAnn)
 import T.Error (Error(..), Warning(..))
 import T.Name (Name(..))
 import T.Prelude
+import T.Render.Rendering (Rendering(..))
+import T.Render.Rendering qualified as Rendering
 import T.Stdlib (Stdlib)
 import T.Stdlib qualified as Stdlib
 import T.Value (Value)
@@ -39,110 +42,115 @@ import T.Tmpl qualified as Tmpl
 import T.Type qualified as Type
 
 
-data Env = Env
-  { stdlib   :: HashMap Name Value
-  , scope    :: HashMap Name (Ann, Value)
-  , result   :: Builder
-  , warnings :: Set (Ann, Warning)
+data Rendered = Rendered
+  { scope    :: Scope
+  , result   :: Lazy.Text
+  , warnings :: [Warning]
   }
+
+data Env = Env
+  { stdlib :: HashMap Name Value
+  }
+
+-- | Context common for most rendering functions.
+type Ctx m = (MonadReader Env m, MonadState Rendering m)
 
 newtype Scope = Scope (HashMap Name Value)
     deriving (Semigroup, Monoid)
 
 -- | Convert a template to text using the provided environment.
-render :: (Stdlib, Scope) -> Tmpl -> Either Error ([Warning], Lazy.Text)
-render (uncurry mkEnv -> env0) tmpl =
-  map fromEnv (run env0 tmpl)
- where
-  fromEnv env =
-    ( map (\(_, w) -> w) (Set.toAscList env.warnings)
-    , Builder.toLazyText env.result
-    )
+render :: (Stdlib, Scope) -> Tmpl -> Either Error Rendered
+render (stdlib, scope) tmpl =
+  map rendered (run (mkEnv stdlib) (mkRendering scope) tmpl)
 
--- | Collect the environment-changing side-effects.
-exec :: (Stdlib, Scope) -> Tmpl -> Either Error ([Warning], Scope)
-exec (uncurry mkEnv -> env0) tmpl =
-  map fromEnv (run env0 tmpl)
- where
-  fromEnv env =
-    ( map (\(_, w) -> w) (Set.toAscList env.warnings)
-    , Scope (map (\(_, x) -> x) env.scope)
-    )
+rendered :: Rendering -> Rendered
+rendered r = Rendered
+  { scope =
+      Scope (map (\(_, w) -> w) r.scope)
+  , result =
+      Builder.toLazyText r.result
+  , warnings =
+      map (\(_, w) -> w) (Set.toAscList r.warnings)
+  }
 
-mkEnv :: Stdlib -> Scope -> Env
-mkEnv stdlib (Scope vars) = Env
+mkEnv :: Stdlib -> Env
+mkEnv stdlib = Env
   { stdlib = Stdlib.bindings stdlib
-  , scope = map (\x -> (emptyAnn, x)) vars
+  }
+
+mkRendering :: Scope -> Rendering
+mkRendering (Scope vars) = Rendering
+  { scope = map (\x -> (emptyAnn, x)) vars
   , result = mempty
   , warnings = mempty
   }
 
-run :: Env -> Tmpl -> Either Error Env
-run env0 tmpl =
-  runExcept (execStateT (go tmpl) env0)
- where
-  go :: Monad m => Tmpl -> StateT Env (ExceptT Error m) ()
-  go = \case
-    Tmpl.Raw str ->
-      build (Builder.fromText str)
-    Tmpl.Comment _str ->
-      pure ()
-    Tmpl.Set assignments -> do
-      for_ assignments $ \(Tmpl.Assign name exp) -> do
-        value <- evalExp exp
-        insertVar name value
-    Tmpl.Let assignments tmpl0 -> do
-      oldEnv <- get
-      for_ assignments $ \(Tmpl.Assign name exp) -> do
-        value <- evalExp exp
-        insertVar name value
-      go tmpl0
-      modify (\env -> env {scope = oldEnv.scope})
-    Tmpl.If clauses -> do
-      let matchClause (exp, thenTmpl) acc = do
-            value <- evalExp exp
-            if Value.truthy value then go thenTmpl else acc
-      foldr matchClause (pure ()) clauses
-    Tmpl.For name itQ exp forTmpl elseTmpl -> do
-      value <- evalExp exp
-      itemsQ <- case value of
-        Value.Array arr -> do
-          let xs =
-                zipWith
-                  (\i x -> (x, loopRecord Nothing (List.length arr) i))
-                  [0..]
-                  (toList arr)
-          pure (bool (Just xs) Nothing (List.null xs))
-        Value.Record o -> do
-          -- When iterating on records, we sort the keys to get a
-          -- predictable order of elements.
-          let xs =
-                zipWith
-                  (\i (k, x) -> (x, loopRecord (pure k) (List.length o) i))
-                  [0..]
-                  (List.sortOn
-                    (\(k, _) -> k)
-                    (HashMap.toList o))
-          pure (bool (Just xs) Nothing (List.null xs))
-        _ ->
-          throwError (TypeError exp Type.Iterable (Value.typeOf value) (Value.display value))
-      case itemsQ of
-        Nothing ->
-          maybe (pure ()) go elseTmpl
-        Just items -> do
-          for_ items $ \(x, itRecord) -> do
-            oldEnv <- get
-            insertVar name x
-            for_ itQ (\it -> insertVar it itRecord)
-            go forTmpl
-            modify (\env -> env {scope = oldEnv.scope})
-    Tmpl.Exp exp -> do
-      str <- renderExp exp
-      build (Builder.fromText str)
-    Tmpl.Cat tmpls ->
-      traverse_ go tmpls
+run :: Env -> Rendering -> Tmpl -> Either Error Rendering
+run env0 r0 tmpl =
+  runExcept (execStateT (runReaderT (renderTmpl tmpl) env0) r0)
 
-renderExp :: (MonadState Env m, MonadError Error m) => Exp -> m Text
+renderTmpl :: (Ctx m, MonadError Error m) => Tmpl -> m ()
+renderTmpl = \case
+  Tmpl.Raw str ->
+    build (Builder.fromText str)
+  Tmpl.Comment _str ->
+    pure ()
+  Tmpl.Set assignments -> do
+    for_ assignments $ \(Tmpl.Assign name exp) -> do
+      value <- evalExp exp
+      insertVar name value
+  Tmpl.Let assignments tmpl0 -> do
+    r0 <- get
+    for_ assignments $ \(Tmpl.Assign name exp) -> do
+      value <- evalExp exp
+      insertVar name value
+    renderTmpl tmpl0
+    modify (\r -> r {Rendering.scope = r0.scope})
+  Tmpl.If clauses -> do
+    let matchClause (exp, thenTmpl) acc = do
+          value <- evalExp exp
+          if Value.truthy value then renderTmpl thenTmpl else acc
+    foldr matchClause (pure ()) clauses
+  Tmpl.For name itQ exp forTmpl elseTmpl -> do
+    value <- evalExp exp
+    itemsQ <- case value of
+      Value.Array arr -> do
+        let xs =
+              zipWith
+                (\i x -> (x, loopRecord Nothing (List.length arr) i))
+                [0..]
+                (toList arr)
+        pure (bool (Just xs) Nothing (List.null xs))
+      Value.Record o -> do
+        -- When iterating on records, we sort the keys to get a
+        -- predictable order of elements.
+        let xs =
+              zipWith
+                (\i (k, x) -> (x, loopRecord (pure k) (List.length o) i))
+                [0..]
+                (List.sortOn
+                  (\(k, _) -> k)
+                  (HashMap.toList o))
+        pure (bool (Just xs) Nothing (List.null xs))
+      _ ->
+        throwError (TypeError exp Type.Iterable (Value.typeOf value) (Value.display value))
+    case itemsQ of
+      Nothing ->
+        maybe (pure ()) renderTmpl elseTmpl
+      Just items -> do
+        for_ items $ \(x, itRecord) -> do
+          r0 <- get
+          insertVar name x
+          for_ itQ (\it -> insertVar it itRecord)
+          renderTmpl forTmpl
+          modify (\r -> r {Rendering.scope = r0.scope})
+  Tmpl.Exp exp -> do
+    str <- renderExp exp
+    build (Builder.fromText str)
+  Tmpl.Cat tmpls ->
+    traverse_ renderTmpl tmpls
+
+renderExp :: (Ctx m, MonadError Error m) => Exp -> m Text
 renderExp exp = do
   value <- evalExp exp
   case value of
@@ -159,7 +167,7 @@ renderExp exp = do
     _ ->
       throwError (TypeError exp Type.Renderable (Value.typeOf value) (Value.display value))
 
-evalExp :: (MonadState Env m, MonadError Error m) => Exp -> m Value
+evalExp :: (Ctx m, MonadError Error m) => Exp -> m Value
 evalExp = \case
   _ :< Lit literal ->
     case literal of
@@ -185,14 +193,16 @@ evalExp = \case
     pv <- evalExp p
     evalExp (bool f t (Value.truthy pv))
   _ :< Var name -> do
-    env <- get
-    lookupVar env name
+    lookupVar name
   _ :< App "defined?" (exp1 :| []) -> do
     -- this is a very basic form of try-catch;
     -- it gives no control to the user over what kind of exceptions
     -- to catch: it catches all of them indiscriminately.
-    env <- get
-    let subEval exp = runExcept (evalStateT (evalExp exp) env)
+    env <- ask
+    r <- get
+    let
+      subEval exp =
+        runExcept (evalStateT (runReaderT (evalExp exp) env) r)
     pure (Value.Bool (isRight (subEval exp1)))
   ann :< App name args -> do
     f <- evalExp (ann :< Var name)
@@ -213,7 +223,7 @@ evalExp = \case
       Just x ->
         pure x
 
-enforceInt :: (MonadState Env m, MonadError Error m) => Exp -> m Int64
+enforceInt :: (Ctx m, MonadError Error m) => Exp -> m Int64
 enforceInt exp = do
   v <- evalExp exp
   case v of
@@ -222,7 +232,7 @@ enforceInt exp = do
     _ ->
       throwError (TypeError exp Type.Int (Value.typeOf v) (Value.display v))
 
-enforceArray :: (MonadState Env m, MonadError Error m) => Exp -> m (Vector Value)
+enforceArray :: (Ctx m, MonadError Error m) => Exp -> m (Vector Value)
 enforceArray exp = do
   v <- evalExp exp
   case v of
@@ -231,7 +241,7 @@ enforceArray exp = do
     _ ->
       throwError (TypeError exp Type.Array (Value.typeOf v) (Value.display v))
 
-enforceRecord :: (MonadState Env m, MonadError Error m) => Exp -> m (HashMap Text Value)
+enforceRecord :: (Ctx m, MonadError Error m) => Exp -> m (HashMap Text Value)
 enforceRecord exp = do
   v <- evalExp exp
   case v of
@@ -241,7 +251,7 @@ enforceRecord exp = do
       throwError (TypeError exp Type.Record (Value.typeOf v) (Value.display v))
 
 evalApp
-  :: (MonadState Env m, MonadError Error m)
+  :: (Ctx m, MonadError Error m)
   => Ann :+ Name
   -> Value
   -> [Exp]
@@ -261,41 +271,44 @@ evalApp name@(ann0 :+ _) =
   go v _ =
     throwError (TypeError (ann0 :< Var name) Type.Fun (Value.typeOf v) (Value.display v))
 
-lookupVar :: MonadError Error m => Env -> Ann :+ Name -> m Value
-lookupVar env (ann :+ name) =
-  case lookup env name of
+lookupVar :: (Ctx m, MonadError Error m) => Ann :+ Name -> m Value
+lookupVar (ann :+ name) = do
+  valueQ <- lookup name
+  case valueQ of
     Nothing ->
       throwError (NotInScope (ann :+ name))
     Just (_, value) ->
       pure value
 
-insertVar :: MonadState Env m => Ann :+ Name -> Value -> m ()
+insertVar :: Ctx m => Ann :+ Name -> Value -> m ()
 insertVar (_ :+ Name (Text.uncons -> Just ('_', _rest))) _ =
   pure ()
 insertVar (ann :+ name) value = do
-  env <- get
-  for_ (lookup env name) $ \(ann', _value) ->
+  valueQ <- lookup name
+  for_ valueQ $ \(ann', _value) ->
     warn ann (ShadowedBy ((ann', ann) :+ name))
   modify $ \env' -> env'
-    { scope = HashMap.insert name (ann, value) env'.scope
+    { Rendering.scope = HashMap.insert name (ann, value) env'.scope
     }
 
-lookup :: Env -> Name -> Maybe (Ann, Value)
-lookup env name =
-  asum
-    [ HashMap.lookup name env.scope
+lookup :: Ctx m => Name -> m (Maybe (Ann, Value))
+lookup name = do
+  env <- ask
+  r <- get
+  pure $ asum
+    [ HashMap.lookup name r.scope
     , do
       value <- HashMap.lookup name env.stdlib
       pure (emptyAnn, value)
     ]
 
-warn :: MonadState Env m => Ann -> Warning -> m ()
+warn :: MonadState Rendering m => Ann -> Warning -> m ()
 warn ann warning =
-  modify (\s -> s {warnings = Set.insert (ann, warning) s.warnings})
+  modify (\s -> s {Rendering.warnings = Set.insert (ann, warning) s.warnings})
 
-build :: MonadState Env m => Builder -> m ()
+build :: MonadState Rendering m => Builder -> m ()
 build chunk =
-  modify (\env -> env {result = env.result <> chunk})
+  modify (\env -> env {Rendering.result = env.result <> chunk})
 
 loopRecord :: Maybe Text -> Int -> Int -> Value
 loopRecord key len idx =

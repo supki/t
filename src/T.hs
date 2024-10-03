@@ -1,9 +1,9 @@
 module T
   ( Tmpl
-  , Env
   , Scope(..)
   , Exp
   , Value
+  , Rendered(..)
   , Name(..)
   , Error(..)
   , prettyError
@@ -42,7 +42,7 @@ import T.Parse
   , parseBytes
   )
 import T.Prelude
-import T.Render (Env, Scope(..), render)
+import T.Render (Rendered(..), Scope(..), render)
 import T.Stdlib (Stdlib, def)
 import T.Value (Value, embedAeson)
 

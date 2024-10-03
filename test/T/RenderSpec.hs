@@ -19,7 +19,7 @@ import T.Name (Name(..))
 import T.Parse (parseText)
 import T.Parse.Macro (badArity)
 import T.Prelude
-import T.Render (Scope(..), render)
+import T.Render (Rendered(..), Scope(..), render)
 import T.Stdlib (def)
 import T.Stdlib qualified as Stdlib
 import T.Stdlib.Op qualified as Op
@@ -379,7 +379,9 @@ rWith json tmplStr = do
       Stdlib.with (def.ops <> opExt) (def.funs <> funExt) (def.macros <> macroExt)
     Right tmpl =
       parseText stdlib tmplStr
-  render (stdlib, scope) tmpl
+  rendered <-
+    render (stdlib, scope) tmpl
+  pure (rendered.warnings, rendered.result)
 
 opExt :: [Stdlib.Op]
 opExt =

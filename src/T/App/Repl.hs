@@ -1,4 +1,5 @@
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 module T.App.Repl where
 
 import Data.Text qualified as Text
@@ -63,9 +64,9 @@ evalTmpl str = liftIO $
       case T.render (Stdlib.def, T.emptyScope) tmpl of
         Left err ->
           warn err
-        Right (warnings, res) -> do
-          traverse_ warn warnings
-          Text.Lazy.putStrLn res
+        Right rendered -> do
+          traverse_ warn rendered.warnings
+          Text.Lazy.putStrLn rendered.result
 
 parseTmpl :: MonadIO m => Text -> m ()
 parseTmpl str = liftIO $
