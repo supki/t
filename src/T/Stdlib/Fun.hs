@@ -47,6 +47,7 @@ functions =
   , Fun "split" (flip embed0 Text.splitOn)
   , Fun "join" (flip embed0 Text.intercalate)
   , Fun "concat" (flip embed0 Text.concat)
+  , Fun "chunks-of" (flip embed0 Text.chunksOf)
 
   , Fun "die" dieB
 

@@ -78,6 +78,13 @@ instance Eject Bool where
     value ->
       Left (TypeError (varE name) Type.Bool (typeOf value) (display value))
 
+instance Eject Int where
+  eject name = \case
+    Int n ->
+      pure (fromIntegral n)
+    value ->
+      Left (TypeError (varE name) Type.Int (typeOf value) (display value))
+
 instance Eject Int64 where
   eject name = \case
     Int n ->

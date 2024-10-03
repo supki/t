@@ -5,8 +5,8 @@
 :set -idriver
 :set -i.stack-work/dist/x86_64-linux/ghc-9.6.5/build/global-autogen
 :set -XImportQualifiedPost
+:set -XLambdaCase
 :set -XNoFieldSelectors
 :set -XNoImplicitPrelude
 :set -XOverloadedStrings
-:set -XLambdaCase
 :set -XTypeOperators

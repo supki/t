@@ -220,6 +220,10 @@ spec =
         r_ "{{ join(\",\", [\"foo\", \"bar\", \"baz\"]) }}" `shouldRender`
           "foo,bar,baz"
 
+      it "chunks-of" $
+        r_ "{{ join(\"-\", chunks-of(1, \"foo\")) }}" `shouldRender`
+          "f-o-o"
+
       it "die" $ do
         r_ "{{ die(\"reason\") }}" `shouldRaise` UserError "die" "\"reason\""
         r_ "{{ die(4) }}" `shouldRaise` UserError "die" "4"
