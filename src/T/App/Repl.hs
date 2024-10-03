@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 module T.App.Repl where
 
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as Text
 import Data.Text.Lazy.IO qualified as Text.Lazy
@@ -28,9 +29,9 @@ run = do
       H.defaultSettings
         { H.historyFile = Just historyFile
         }
-  H.runInputT settings loop
+  H.runInputT settings (loop T.emptyScope)
  where
-  loop = do
+  loop scope0 = do
     input <- H.getInputLine "t> "
     case input of
       Nothing ->
@@ -40,11 +41,11 @@ run = do
           Quit ->
             pure ()
           EvalTmpl str -> do
-            evalTmpl str
-            loop
+            scope <- evalTmpl scope0 str
+            loop (fromMaybe scope0 scope)
           ParseTmpl str -> do
             parseTmpl str
-            loop
+            loop scope0
 
 header :: IO ()
 header =
@@ -55,18 +56,21 @@ header =
   name = Meta.name :: String
   version = Meta.version :: String
 
-evalTmpl :: MonadIO m => Text -> m ()
-evalTmpl str = liftIO $
+evalTmpl :: MonadIO m => T.Scope -> Text -> m (Maybe T.Scope)
+evalTmpl scope str = liftIO $
   case T.parseText Stdlib.def str of
-    Left err ->
+    Left err -> do
       warn err
+      pure Nothing
     Right tmpl ->
-      case T.render (Stdlib.def, T.emptyScope) tmpl of
-        Left err ->
+      case T.render (Stdlib.def, scope) tmpl of
+        Left err -> do
           warn err
+          pure Nothing
         Right rendered -> do
           traverse_ warn rendered.warnings
           Text.Lazy.putStrLn rendered.result
+          pure (Just rendered.scope)
 
 parseTmpl :: MonadIO m => Text -> m ()
 parseTmpl str = liftIO $
