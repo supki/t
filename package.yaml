@@ -6,21 +6,26 @@ category: Text
 maintainer: matvey.aksenov@gmail.com
 copyright: Matvey Aksenov 2022
 license: BSD2
-extra-source-files:
+extra-doc-files:
   - README.markdown
   - CHANGELOG.markdown
 github: supki/t
+tested-with:
+  - GHC==9.6.4 # it's actually 9.6.5, but that version is unknown to my haskell-ci
+  - GHC==9.8.2
 
 custom-setup:
   dependencies:
-    - base
-    - Cabal
+    # 4.18 comes with GHC 9.6
+    - base >= 4.18 && < 5
+    # 3.10 comes with GHC 9.6
+    - Cabal >= 3.10 && < 3.11
     - directory
     - filepath
     - process
 
 dependencies:
-  - base >= 4.14 && < 5
+  - base >= 4.18 && < 5
 
 default-extensions:
   - ImportQualifiedPost
@@ -55,7 +60,7 @@ library:
     - vector
   source-dirs:
     src
-  other-modules:
+  generated-exposed-modules:
     Meta_t
   ghc-options:
     - -funbox-strict-fields
@@ -84,6 +89,8 @@ executables:
 
 tests:
   spec:
+    build-tools:
+      - hspec-discover
     dependencies:
       - t
       - aeson

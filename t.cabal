@@ -1,4 +1,4 @@
-cabal-version: 1.24
+cabal-version: 2.0
 
 -- This file has been generated from package.yaml by hpack version 0.36.0.
 --
@@ -14,8 +14,12 @@ bug-reports:    https://github.com/supki/t/issues
 maintainer:     matvey.aksenov@gmail.com
 copyright:      Matvey Aksenov 2022
 license:        BSD2
+license-file:   LICENSE
 build-type:     Custom
-extra-source-files:
+tested-with:
+    GHC==9.6.4
+  , GHC==9.8.2
+extra-doc-files:
     README.markdown
     CHANGELOG.markdown
 
@@ -25,8 +29,8 @@ source-repository head
 
 custom-setup
   setup-depends:
-      Cabal
-    , base
+      Cabal ==3.10.*
+    , base >=4.18 && <5
     , directory
     , filepath
     , process
@@ -60,7 +64,11 @@ library
       T.Tmpl
       T.Type
       T.Value
+      Meta_t
   other-modules:
+      Paths_t
+  autogen-modules:
+      Paths_t
       Meta_t
   hs-source-dirs:
       src
@@ -75,7 +83,7 @@ library
   build-depends:
       aeson
     , aeson-pretty
-    , base >=4.14 && <5
+    , base >=4.18 && <5
     , bytestring
     , containers
     , directory
@@ -102,6 +110,8 @@ executable t
   other-modules:
       Opts
       Paths_t
+  autogen-modules:
+      Paths_t
   hs-source-dirs:
       driver
   default-extensions:
@@ -114,7 +124,7 @@ executable t
   ghc-options: -Wall -Wno-incomplete-uni-patterns -threaded -with-rtsopts=-N
   build-depends:
       aeson
-    , base >=4.14 && <5
+    , base >=4.18 && <5
     , directory
     , filepath
     , optparse-applicative
@@ -130,6 +140,8 @@ test-suite spec
       T.RenderSpec
       T.SExpSpec
       Paths_t
+  autogen-modules:
+      Paths_t
   hs-source-dirs:
       test
   default-extensions:
@@ -140,10 +152,12 @@ test-suite spec
       OverloadedStrings
       TypeOperators
   ghc-options: -Wall -Wno-incomplete-uni-patterns -threaded -with-rtsopts=-N
+  build-tool-depends:
+      hspec-discover:hspec-discover
   build-depends:
       aeson
     , aeson-qq
-    , base >=4.14 && <5
+    , base >=4.18 && <5
     , bytestring
     , hspec
     , pcre-light
