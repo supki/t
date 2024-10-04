@@ -24,15 +24,17 @@ import Data.Text.Lazy qualified as Lazy (Text)
 import Data.Text.Lazy.Builder (Builder)
 import Data.Text.Lazy.Builder qualified as Builder
 import Data.HashMap.Strict qualified as HashMap
-import Data.Vector ((!?))
+import Data.Vector ((!?), (//))
 
 import T.Exp (Cofree(..), Exp, ExpF(..), Literal(..), (:+)(..), Ann)
 import T.Exp.Ann (emptyAnn)
 import T.Error (Error(..), Warning(..))
 import T.Name (Name(..))
+import T.Name qualified as Name
 import T.Prelude
 import T.Render.Rendering (Rendering(..))
 import T.Render.Rendering qualified as Rendering
+import T.SExp (sexp)
 import T.Stdlib (Stdlib)
 import T.Stdlib qualified as Stdlib
 import T.Value (Value)
@@ -95,15 +97,11 @@ renderTmpl = \case
     build (Builder.fromText str)
   Tmpl.Comment _str ->
     pure ()
-  Tmpl.Set assignments -> do
-    for_ assignments $ \(Tmpl.Assign name exp) -> do
-      value <- evalExp exp
-      insertVar name value
+  Tmpl.Set assignments ->
+    traverse_ evalAssign assignments
   Tmpl.Let assignments tmpl0 -> do
     r0 <- get
-    for_ assignments $ \(Tmpl.Assign name exp) -> do
-      value <- evalExp exp
-      insertVar name value
+    traverse_ evalAssign assignments
     renderTmpl tmpl0
     modify (\r -> r {Rendering.scope = r0.scope})
   Tmpl.If clauses -> do
@@ -133,15 +131,15 @@ renderTmpl = \case
                   (HashMap.toList o))
         pure (bool (Just xs) Nothing (List.null xs))
       _ ->
-        throwError (TypeError exp Type.Iterable (Value.typeOf value) (Value.display value))
+        throwError (TypeError exp Type.Iterable (Value.typeOf value) (sexp value))
     case itemsQ of
       Nothing ->
         maybe (pure ()) renderTmpl elseTmpl
       Just items -> do
         for_ items $ \(x, itRecord) -> do
           r0 <- get
-          insertVar name x
-          for_ itQ (\it -> insertVar it itRecord)
+          insertVar (topLevel name) x
+          for_ itQ (\it -> insertVar (topLevel it) itRecord)
           renderTmpl forTmpl
           modify (\r -> r {Rendering.scope = r0.scope})
   Tmpl.Exp exp -> do
@@ -149,6 +147,12 @@ renderTmpl = \case
     build (Builder.fromText str)
   Tmpl.Cat tmpls ->
     traverse_ renderTmpl tmpls
+
+evalAssign :: (Ctx m, MonadError Error m) => Tmpl.Assign -> m ()
+evalAssign assign = do
+  (_lv, path) <- evalLValue assign.lvalue
+  rv <- evalExp assign.rvalue
+  insertVar path rv
 
 renderExp :: (Ctx m, MonadError Error m) => Exp -> m Text
 renderExp exp = do
@@ -165,7 +169,7 @@ renderExp exp = do
     Value.String str ->
       pure str
     _ ->
-      throwError (TypeError exp Type.Renderable (Value.typeOf value) (Value.display value))
+      throwError (TypeError exp Type.Renderable (Value.typeOf value) (sexp value))
 
 evalExp :: (Ctx m, MonadError Error m) => Exp -> m Value
 evalExp = \case
@@ -212,14 +216,14 @@ evalExp = \case
     idx <- enforceInt expIdx
     case xs !? fromIntegral idx of
       Nothing ->
-        throwError (OutOfBounds expIdx (Value.display (Value.Array xs)) (Value.display (Value.Int idx)))
+        throwError (OutOfBounds expIdx (sexp xs) (sexp idx))
       Just x ->
         pure x
   _ :< Key exp (_ :+ Name key) -> do
     r <- enforceRecord exp
     case HashMap.lookup key r of
       Nothing ->
-        throwError (MissingProperty exp (Value.display (Value.Record r)) (Value.display (Value.String key)))
+        throwError (MissingProperty exp (sexp (Value.Record r)) (sexp key))
       Just x ->
         pure x
 
@@ -230,7 +234,7 @@ enforceInt exp = do
     Value.Int xs ->
       pure xs
     _ ->
-      throwError (TypeError exp Type.Int (Value.typeOf v) (Value.display v))
+      throwError (TypeError exp Type.Int (Value.typeOf v) (sexp v))
 
 enforceArray :: (Ctx m, MonadError Error m) => Exp -> m (Vector Value)
 enforceArray exp = do
@@ -239,7 +243,7 @@ enforceArray exp = do
     Value.Array xs ->
       pure xs
     _ ->
-      throwError (TypeError exp Type.Array (Value.typeOf v) (Value.display v))
+      throwError (TypeError exp Type.Array (Value.typeOf v) (sexp v))
 
 enforceRecord :: (Ctx m, MonadError Error m) => Exp -> m (HashMap Text Value)
 enforceRecord exp = do
@@ -248,7 +252,7 @@ enforceRecord exp = do
     Value.Record r ->
       pure r
     _ ->
-      throwError (TypeError exp Type.Record (Value.typeOf v) (Value.display v))
+      throwError (TypeError exp Type.Record (Value.typeOf v) (sexp v))
 
 evalApp
   :: (Ctx m, MonadError Error m)
@@ -269,7 +273,72 @@ evalApp name@(ann0 :+ _) =
     go g exps
   -- in every other case something went wrong :-(
   go v _ =
-    throwError (TypeError (ann0 :< Var name) Type.Fun (Value.typeOf v) (Value.display v))
+    throwError (TypeError (ann0 :< Var name) Type.Fun (Value.typeOf v) (sexp v))
+
+data Path = Path
+  { var     :: Ann :+ Name
+  , lookups :: [Lookup]
+  } deriving (Show, Eq)
+
+data Lookup
+  = K (Ann :+ Name)
+  | I (Ann :+ Int64)
+    deriving (Show, Eq)
+
+topLevel :: Ann :+ Name -> Path
+topLevel var = Path {var, lookups = []}
+
+evalLValue :: (Ctx m, MonadError Error m) => Exp -> m (Either (Ann :+ Name) Value, Path)
+evalLValue =
+  map (second (\p -> p {lookups = reverse p.lookups})) . go
+ where
+  go exp =
+    case exp of
+      _ :< Lit _literal ->
+        throwError (NotLValue exp)
+      _ :< If _p _t _f ->
+        throwError (NotLValue exp)
+      _ :< App _name _args -> do
+        throwError (NotLValue exp)
+      _ :< Var name -> do
+        v <- map Right (lookupVar name) `catchError` \_ -> pure (Left name)
+        pure (v, Path {var = name, lookups = []})
+      _ :< Idx exp0 expIdx@(idxAnn :< _) -> do
+        (xs0, path0) <- go exp0
+        idx <- enforceInt expIdx
+        case xs0 of
+          Right (Value.Array xs) -> do
+            let
+              path =
+                path0 {lookups = I (idxAnn :+ idx) : path0.lookups}
+            pure $ case xs !? fromIntegral idx of
+              Nothing -> do
+                let
+                  key =
+                    idxAnn :+ Name (fromString ("[" <> show idx <> "]"))
+                (Left key, path)
+              Just v ->
+                (Right v, path)
+          Right v ->
+            throwError (TypeError exp Type.Record (Value.typeOf v) (sexp v))
+          Left name ->
+            throwError (NotInScope name)
+      _ :< Key exp0 key@(_ :+ key0) -> do
+        (r0, path0) <- go exp0
+        case r0 of
+          Right (Value.Record r) -> do
+            let
+              path =
+                path0 {lookups = K key : path0.lookups}
+            pure $ case HashMap.lookup (fromString (Name.toString key0)) r of
+              Nothing ->
+                (Left key, path)
+              Just v ->
+                (Right v, path)
+          Right v ->
+            throwError (TypeError exp Type.Record (Value.typeOf v) (sexp v))
+          Left name ->
+            throwError (NotInScope name)
 
 lookupVar :: (Ctx m, MonadError Error m) => Ann :+ Name -> m Value
 lookupVar (ann :+ name) = do
@@ -280,16 +349,66 @@ lookupVar (ann :+ name) = do
     Just (_, value) ->
       pure value
 
-insertVar :: Ctx m => Ann :+ Name -> Value -> m ()
-insertVar (_ :+ Name (Text.uncons -> Just ('_', _rest))) _ =
+insertVar :: (Ctx m, MonadError Error m) => Path -> Value -> m ()
+-- assignments to variables which name starts with '_' are ignored
+-- if there are no further lookups; if there are further lookups,
+-- the assignment will likely end in a `NotInScope` error, since
+-- there aren't any variables with the name starting with '_' in the
+-- default scope.
+insertVar Path {var = (_ :+ Name (Text.uncons -> Just ('_', _name))), lookups = []} _v =
   pure ()
-insertVar (ann :+ name) value = do
-  valueQ <- lookup name
-  for_ valueQ $ \(ann', _value) ->
-    warn ann (ShadowedBy ((ann', ann) :+ name))
+insertVar Path {var = (ann :+ name), lookups} v = do
+  -- first, we need to check if the variable is in scope
+  value0Q <- lookup name
+  value <- case value0Q of
+    -- if it isn't, we run `lookups` on `Null`. this will only succeed
+    -- if `lookups` is the empty list, i.e. only simple assignments will
+    -- work, e.g. {% set foo = 4 %}
+    Nothing ->
+      go Value.Null lookups
+    Just (ann', value0) -> do
+      -- if it is, but `lookups` is empty, we are shadowing an existing
+      -- variable and need to issue a warning
+      when (List.null lookups) $
+        warn ann (ShadowedBy ((ann', ann) :+ name))
+      -- and then run the lookups
+      go value0 lookups
+  -- `go` returns a value that we will assign to the variable `name`
+  --  in the current scope.
   modify $ \env' -> env'
     { Rendering.scope = HashMap.insert name (ann, value) env'.scope
     }
+ where
+  -- for each element of the path we ensure the value is of the correct form
+  go (Value.Record r) (K (ann0 :+ key) : path) =
+    case HashMap.lookup (fromString (Name.toString key)) r of
+      Just v1 -> do
+        -- and recurse deeper, until the path is empty.
+        v2 <- go v1 path
+        pure (Value.Record (HashMap.insert (fromString (Name.toString key)) v2 r))
+      Nothing ->
+        -- arrays are fixed size, but records need a bit of special treatment
+        -- if we want to be able to add properties that haven't been defined yet.
+        case path of
+          [] ->
+            pure (Value.Record (HashMap.insert (fromString (Name.toString key)) v r))
+          _ ->
+            throwError (MissingProperty (ann0 :< Lit Null) (sexp (Value.Record r)) (sexp key))
+  go v0 (K (ann0 :+ _key) : _path) =
+    throwError (TypeError (ann0 :< Lit Null) Type.Record (Value.typeOf v0) (sexp v0))
+  go (Value.Array xs) (I (ann0 :+ idx) : path) =
+    -- this is pretty similar to records except the lack of the aforementioned special
+    -- treatment.
+    case xs !? fromIntegral idx of
+      Just v1 -> do
+        v2 <- go v1 path
+        pure (Value.Array (xs // [(fromIntegral idx, v2)]))
+      Nothing ->
+        throwError (OutOfBounds (ann0 :< Lit Null) (sexp xs) (sexp idx))
+  go v0 (I (ann0 :+ _idx) : _path) =
+    throwError (TypeError (ann0 :< Lit Null) Type.Record (Value.typeOf v0) (sexp v0))
+  go _v0 [] =
+    pure v
 
 lookup :: Ctx m => Name -> m (Maybe (Ann, Value))
 lookup name = do

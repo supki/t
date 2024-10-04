@@ -14,6 +14,11 @@ module T.Exp
   , Ann
   , litE
   , litE_
+  , false
+  , true
+  , int
+  , array
+  , record
   , varE
   , ifE
   , ifE_
@@ -22,8 +27,6 @@ module T.Exp
   , idxE
   , idxE_
   , keyE_
-  , falseL
-  , trueL
   ) where
 
 import Data.HashMap.Strict qualified as HashMap
@@ -102,6 +105,26 @@ litE_ :: Literal -> Exp
 litE_ =
   litE emptyAnn
 
+false :: Exp
+false =
+  litE_ (Bool False)
+
+true :: Exp
+true =
+  litE_ (Bool True)
+
+int :: Int64 -> Exp
+int =
+  litE_ . Int
+
+array :: Vector Exp -> Exp
+array =
+  litE_ . Array
+
+record :: HashMap Text Exp -> Exp
+record =
+  litE_ . Record
+
 varE :: Ann :+ Name -> Exp
 varE name@(ann :+ _) =
   ann :< Var name
@@ -166,11 +189,3 @@ instance SExp.To Literal where
     Record xs ->
       SExp.curly
         (concatMap (\(k, v) -> [sexp k, sexp v]) (List.sortOn (\(k, _v) -> k) (HashMap.toList xs)))
-
-falseL :: Literal
-falseL =
-  Bool False
-
-trueL :: Literal
-trueL =
-  Bool True

@@ -13,20 +13,21 @@ import Text.Trifecta qualified as Tri
 import Text.Trifecta.Delta qualified as Tri
 
 import T.Exp (Cofree((:<)), Exp, ExpF(..), (:+)(..), Ann)
+import T.Exp.Ann (emptyAnn)
 import T.Name (Name)
 import T.Prelude
 import T.Type (Type)
+import T.SExp (SExp)
+import T.SExp qualified as SExp
 
 
 data Error
   = NotInScope (Ann :+ Name)
-    -- Ideally, we want a Value here instead of Text,
-    -- but there's neither Show Value nor Eq Value,
-    -- and that makes working with Error annoying too.
-  | OutOfBounds Exp Text Text
-  | MissingProperty Exp Text Text
+  | OutOfBounds Exp SExp SExp
+  | MissingProperty Exp SExp SExp
   | UserError (Ann :+ Name) Text
-  | TypeError Exp Type Type Text
+  | TypeError Exp Type Type SExp
+  | NotLValue Exp
     deriving (Show, Eq)
 
 prettyError :: Error -> Doc AnsiStyle
@@ -60,6 +61,10 @@ prettyError = \case
       PP.indent 2 "expected: " <> PP.pretty (show expected) <> PP.line <>
       PP.indent 2 " but got: " <> PP.pretty value <> " : " <> PP.pretty (show actual) <> PP.line <>
     excerpt ann
+  NotLValue exp@(ann :< _) ->
+    header ann <>
+      "expected an L-Value, but got something else: " <> fromString (show (SExp.render (SExp.sexp exp))) <>
+    excerpt ann
  where
   header (Tri.Span from _to _line) =
     Tri.prettyDelta from <> ": " <>
@@ -71,13 +76,19 @@ data Warning
 
 prettyWarning :: Warning -> Doc AnsiStyle
 prettyWarning = \case
-  ShadowedBy ((shadowed, shadower) :+ name) ->
-    header shadower <>
-    "shadowed binding: " <> PP.pretty name <> PP.line <>
-    "first defined at: " <> PP.line <>
-    excerpt shadowed <> PP.line <>
-    "but then redefined at: " <> PP.line <>
-    excerpt shadower
+  ShadowedBy ((shadowed, shadower) :+ name)
+    | shadowed == emptyAnn ->
+      header shadower <>
+      "shadowed binding: " <> PP.pretty name <> PP.line <>
+      "redefined at: " <> PP.line <>
+      excerpt shadower
+    | otherwise ->
+      header shadower <>
+      "shadowed binding: " <> PP.pretty name <> PP.line <>
+      "first defined at: " <> PP.line <>
+      excerpt shadowed <> PP.line <>
+      "but then redefined at: " <> PP.line <>
+      excerpt shadower
  where
   header (Tri.Span from _to _line) =
     Tri.prettyDelta from <> ": " <>

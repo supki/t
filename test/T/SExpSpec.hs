@@ -28,11 +28,11 @@ spec = do
       rexp2 "{{ 4 }}" `shouldBe` "(exp 4)"
 
     it "set" $
-      rexp2 "{% set foo = 4 bar = 7 %}" `shouldBe` "(set [[foo 4] [bar 7]])"
+      rexp2 "{% set foo = 4 bar = 7 %}" `shouldBe` "(set [[= foo 4] [= bar 7]])"
 
     it "let" $
       rexp2 "{% let foo = 4 bar = 7 %}{{ foo + bar }}{% endlet %}" `shouldBe`
-        "(let [[foo 4] [bar 7]] (exp (+ foo bar)))"
+        "(let [[= foo 4] [= bar 7]] (exp (+ foo bar)))"
 
     it "if" $
       rexp2 "{% if true %}4{% elif false %}7{% endif %}" `shouldBe`

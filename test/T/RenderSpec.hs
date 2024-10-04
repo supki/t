@@ -12,7 +12,7 @@ import Data.HashMap.Strict qualified as HashMap
 import Data.Text.Lazy qualified as Lazy (Text)
 import Test.Hspec
 
-import T.Exp (Literal(..), litE_, appE, varE)
+import T.Exp (Literal(..), litE_, appE, varE, array, int, record)
 import T.Embed (embed0)
 import T.Error (Error(..), Warning(..))
 import T.Name (Name(..))
@@ -23,8 +23,9 @@ import T.Render (Rendered(..), Scope(..), render)
 import T.Stdlib (def)
 import T.Stdlib qualified as Stdlib
 import T.Stdlib.Op qualified as Op
-import T.Value (embedAeson)
+import T.SExp (sexp)
 import T.Type qualified as Type
+import T.Value (embedAeson)
 
 
 spec :: Spec
@@ -66,7 +67,7 @@ spec =
           TypeError (litE_ (Int 4)) Type.Array Type.Int "4"
         r_ "{{ [1,2,3][\"foo\"] }}" `shouldRaise`
           TypeError (litE_ (String "foo")) Type.Int Type.String "\"foo\""
-        r_ "{{ [1,2,3][-1] }}" `shouldRaise` OutOfBounds (litE_ (Int (-1))) "[1,2,3]" "-1"
+        r_ "{{ [1,2,3][-1] }}" `shouldRaise` OutOfBounds (int (-1)) (sexp (array [int 1, int 2, int 3])) "-1"
 
     context "keying" $
       it "examples" $ do
@@ -75,7 +76,7 @@ spec =
         r_ "{{ {foo: [1,{bar: 7},3]}.foo[1].bar }}" `shouldRender` "7"
         r_ "{{ 4.foo }}" `shouldRaise`
           TypeError (litE_ (Int 4)) Type.Record Type.Int "4"
-        r_ "{{ {}.foo }}" `shouldRaise` MissingProperty (litE_ (Record mempty)) "{}" "\"foo\""
+        r_ "{{ {}.foo }}" `shouldRaise` MissingProperty (record mempty) (sexp (record mempty)) "\"foo\""
 
     context "line blocks" $
       it "examples" $ do
@@ -268,7 +269,7 @@ spec =
         r_ "{% for x in 4 %}{% endfor %}" `shouldRaise` TypeError (litE_ (Int 4)) Type.Iterable Type.Int "4"
 
       it "not-renderable" $
-        r_ "{{ [] }}" `shouldRaise` TypeError (litE_ (Array [])) Type.Renderable Type.Array "[]"
+        r_ "{{ [] }}" `shouldRaise` TypeError (array []) Type.Renderable Type.Array (sexp (array []))
 
       it "not-a-function" $
         rWith [aesonQQ|{f: "foo"}|] "{{ f(4) }}" `shouldRaise` TypeError (varE "f") Type.Fun Type.String "\"foo\""
@@ -340,6 +341,26 @@ spec =
           \     author-email =\n\
           \       concat([join(\".\", split(\" \", lower-case(author-name))), \"@\", email-domain])\
           \%}{{ author-email }}{% endlet %}" `shouldRender` "john.smith@example.com"
+
+    context "l-values" $ do
+      it "examples" $ do
+        r_ "{% set foo = {bar: 4} %}{{ foo.bar }}{% set foo.bar = 7 %}{{ foo.bar }}"
+          `shouldRender` "47"
+        r_ "{% set foo = [1,2,3] %}{{ foo[1] }}{% set foo[1] = 5 %}{{ foo[1] }}"
+          `shouldRender` "25"
+        r_ "{% let foo = {bar: 4} %}{{ foo.bar }}{% let foo.bar = 7 %}{{ foo.bar }}{% endlet %}{% endlet %}"
+          `shouldRender` "47"
+        r_ "{% let foo = [1,2,3] %}{{ foo[1] }}{% let foo[1] = 5 %}{{ foo[1] }}{% endlet %}{% endlet %}"
+          `shouldRender` "25"
+
+      it "complex scenario" $ do
+        r_ "{% set foo = {} %}{% set foo.bar = 4 %}{% set foo.baz = 7 %}{{ foo.bar }}{{ foo.baz }}"
+          `shouldRender` "47"
+        r_ "{% let foo = {} \
+                  \foo.bar = 4 \
+                  \foo.baz = 7 \
+           \%}{{ foo.bar + foo.baz }}{% endlet %}"
+          `shouldRender` "11"
 
     context "comments" $
       it "examples" $ do

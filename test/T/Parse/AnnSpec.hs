@@ -38,7 +38,7 @@ spec =
         errorOf "{{ 1.0 <> \"foo\" }}" `shouldBe`
           "(interactive):1:4: error: mismatched types in <>: \n\
           \  expected: String\n\
-          \   but got: 1 : Double\n\
+          \   but got: 1.0 : Double\n\
           \1 | {{ 1.0 <> \"foo\" }}<EOF> \n\
           \  |    ~~~                  "
 
@@ -54,7 +54,7 @@ spec =
         errorOf "{{ /foo/ + 1 }}" `shouldBe`
           "(interactive):1:4: error: mismatched types in +: \n\
           \  expected: Number\n\
-          \   but got: \"<regexp>\" : Regexp\n\
+          \   but got: (regexp \"foo\") : Regexp\n\
           \1 | {{ /foo/ + 1 }}<EOF> \n\
           \  |    ~~~~~             "
 
@@ -62,7 +62,7 @@ spec =
         errorOf "{{ [1,2,3] + 1 }}" `shouldBe`
           "(interactive):1:4: error: mismatched types in +: \n\
           \  expected: Number\n\
-          \   but got: [1,2,3] : Array\n\
+          \   but got: [1 2 3] : Array\n\
           \1 | {{ [1,2,3] + 1 }}<EOF> \n\
           \  |    ~~~~~~~             "
 
@@ -70,7 +70,7 @@ spec =
         errorOf "{{ {foo:4} + 1 }}" `shouldBe`
           "(interactive):1:4: error: mismatched types in +: \n\
           \  expected: Number\n\
-          \   but got: {\"foo\":4} : Record\n\
+          \   but got: {\"foo\" 4} : Record\n\
           \1 | {{ {foo:4} + 1 }}<EOF> \n\
           \  |    ~~~~~~~             "
 
@@ -79,4 +79,4 @@ errorOf str =
   let
     Right parsed = parseText stdlib str
   in
-    either (show . prettyError) (error "not-supposed-to-render") (render (stdlib, mempty) parsed)
+    either (show . prettyError) impossible (render (stdlib, mempty) parsed)

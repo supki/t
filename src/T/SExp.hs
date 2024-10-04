@@ -1,5 +1,5 @@
 module T.SExp
-  ( SExp
+  ( SExp(..)
   , Paren(..)
   , var
   , round
@@ -14,6 +14,7 @@ import Data.Text.Encoding qualified as Text
 import Data.Text.Lazy qualified as Lazy
 import Data.Text.Lazy.Builder (Builder)
 import Data.Text.Lazy.Builder qualified as Builder
+import Prettyprinter (Pretty(..))
 import Text.Regex.PCRE.Light.Base qualified as Pcre
 
 import T.Exp.Ann ((:+)(..))
@@ -29,6 +30,10 @@ data SExp
 instance IsString SExp where
   fromString =
     Var . fromString
+
+instance Pretty SExp where
+  pretty =
+    pretty . Builder.toLazyText . render
 
 data Paren
   = Round
@@ -84,6 +89,14 @@ instance To Name where
 instance name ~ Name => To (ann :+ name) where
   sexp (_ann :+ Name name) =
     sexp name
+
+instance To a => To [a] where
+  sexp =
+    App Square . map sexp
+
+instance To a => To (Vector a) where
+  sexp =
+    sexp . toList
 
 renderLazyText :: To sexp => sexp -> Lazy.Text
 renderLazyText =

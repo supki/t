@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 module T.Parse
   ( ParseError(..)
@@ -117,23 +118,22 @@ parseComment =
 
 parseSet :: (e ~ Stdlib, MonadReader e m, DeltaParsing m) => m Tmpl
 parseSet = do
-  assignments <- blockP "set" . many $ do
-    name <- nameP
-    _ <- symbol "="
-    exp <- expP
-    pure (Tmpl.Assign name exp)
+  assignments <- blockP "set" (many assignP)
   pure (Tmpl.Set assignments)
 
 parseLet :: (MonadFail m, e ~ Stdlib, MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
 parseLet = do
-  assignments <- blockP "let" . many $ do
-    name <- nameP
-    _ <- symbol "="
-    exp <- expP
-    pure (Tmpl.Assign name exp)
+  assignments <- blockP "let" (many assignP)
   tmpl <- parser
   _ <- blockP_ "endlet"
   pure (Tmpl.Let assignments tmpl)
+
+assignP :: (e ~ Stdlib, MonadReader e m, DeltaParsing m) => m Tmpl.Assign
+assignP = do
+  lvalue <- expP
+  _ <- symbol "="
+  rvalue <- expP
+  pure Tmpl.Assign {Tmpl.lvalue, Tmpl.rvalue}
 
 parseIf :: (MonadFail m, e ~ Stdlib, MonadReader e m, DeltaParsing m, LookAheadParsing m) => m Tmpl
 parseIf = do

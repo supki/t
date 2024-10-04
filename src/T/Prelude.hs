@@ -50,7 +50,7 @@ module T.Prelude
   , div
   , either
   , eq1
-  , error
+  , T.Prelude.error
   , filter
   , first
   , flip
@@ -60,6 +60,7 @@ module T.Prelude
   , foldr1
   , for_
   , fromIntegral
+  , impossible
   , map
   , mapMaybe
   , maybe
@@ -68,9 +69,11 @@ module T.Prelude
   , otherwise
   , reverse
   , second
+  , seq
   , toList
   , traverse
   , traverse_
+  , T.Prelude.traceShow
   , uncurry
   , unless
   , when
@@ -99,7 +102,9 @@ import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.String (IsString(..))
 import Data.Vector (Vector)
+import Debug.Trace (traceShow)
 import GHC.Generics (Generic1)
+import GHC.Stack (HasCallStack)
 import Prelude
   ( Applicative(..)
   , Eq(..)
@@ -145,6 +150,7 @@ import Prelude
   , notElem
   , otherwise
   , reverse
+  , seq
   , show
   , traverse
   , uncurry
@@ -153,3 +159,15 @@ import Prelude
 
 map :: Functor f => (a -> b) -> f a -> f b
 map = fmap
+
+impossible :: HasCallStack => a
+impossible =
+  Prelude.error "impossible"
+
+error :: String -> a
+error = Prelude.error
+{-# DEPRECATED error "This function is only intended for debugging and should not normally be used" #-}
+
+traceShow :: Show a => a -> b -> b
+traceShow = Debug.Trace.traceShow
+{-# DEPRECATED traceShow "This function is only intended for debugging and should not normally be used" #-}
