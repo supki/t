@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 module T.Tmpl
   ( Tmpl(..)
   , Assign(..)
@@ -62,9 +63,11 @@ instance SExp.To Tmpl where
     Cat tmpls ->
       SExp.square (map sexp tmpls)
 
-data Assign = Assign (Ann :+ Name) Exp
-    deriving (Show, Eq)
+data Assign = Assign
+  { lvalue :: Exp
+  , rvalue :: Exp
+  } deriving (Show, Eq)
 
 instance SExp.To Assign where
-  sexp (Assign (_ :+ name) exp) =
-    SExp.square [sexp name, sexp exp]
+  sexp assign =
+    SExp.square ["=", sexp assign.lvalue, sexp assign.rvalue]

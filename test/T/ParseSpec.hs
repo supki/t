@@ -74,8 +74,8 @@ spec =
             ])
       "{{ if 4 then \"foo\" else 7 }}" `shouldParseTo`
         Tmpl.Exp (ifE_ (int 4) (string "foo") (int 7))
-      "{% set x = 4 %}" `shouldParseTo` Tmpl.Set [Tmpl.Assign "x" (int 4)]
-      "{% let x = 4 %}foo{% endlet %}" `shouldParseTo` Tmpl.Let [Tmpl.Assign "x" (int 4)] "foo"
+      "{% set x = 4 %}" `shouldParseTo` Tmpl.Set [Tmpl.Assign (var "x") (int 4)]
+      "{% let x = 4 %}foo{% endlet %}" `shouldParseTo` Tmpl.Let [Tmpl.Assign (var "x") (int 4)] "foo"
       "{% if x %}t{% endif %}" `shouldParseTo`
         whenIf (var "x") "t"
       "{% if x %}t{% else %}f{% endif %}" `shouldParseTo`
@@ -159,7 +159,7 @@ spec =
         "{% set\n\
         \     foo =\n\
         \       4\n\
-        \%}" `shouldParseTo` Tmpl.Set [Tmpl.Assign "foo" (int 4)]
+        \%}" `shouldParseTo` Tmpl.Set [Tmpl.Assign (var "foo") (int 4)]
 
     context "multi-*" $ do
       it "multi-sets" $ do
@@ -171,9 +171,9 @@ spec =
         \     baz =\n\
         \       \"foo\"\n\
         \%}" `shouldParseTo` Tmpl.Set
-          [ Tmpl.Assign "foo" (int 4)
-          , Tmpl.Assign "bar" (int 7)
-          , Tmpl.Assign "baz" (string "foo")
+          [ Tmpl.Assign (var "foo") (int 4)
+          , Tmpl.Assign (var "bar") (int 7)
+          , Tmpl.Assign (var "baz") (string "foo")
           ]
 
       it "multi-lets" $ do
@@ -186,9 +186,9 @@ spec =
         \       \"foo\"\n\
         \%}{% endlet %}" `shouldParseTo`
           (Tmpl.Let
-            [ Tmpl.Assign "foo" (int 4)
-            , Tmpl.Assign "bar" (int 7)
-            , Tmpl.Assign "baz" (string "foo")
+            [ Tmpl.Assign (var "foo") (int 4)
+            , Tmpl.Assign (var "bar") (int 7)
+            , Tmpl.Assign (var "baz") (string "foo")
             ]
             (Tmpl.Cat []))
 

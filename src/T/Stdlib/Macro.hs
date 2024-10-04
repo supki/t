@@ -24,9 +24,8 @@ import T.Exp
   , appE
   , appE_
   , ifE
-  , litE_
-  , falseL
-  , trueL
+  , false
+  , true
   )
 import T.Name (Name)
 import T.Parse.Macro
@@ -79,7 +78,7 @@ priorities =
 -- {{ x && y }} -> {{ if x then y else false }}
 and :: Expansion
 and ann [expl, expr] =
-  Right (ifE ann expl expr (litE_ falseL))
+  Right (ifE ann expl expr false)
 and _ann args =
   badArity 2 (List.length args)
 
@@ -88,7 +87,7 @@ and _ann args =
 -- {{ x || y }} -> {{ if x then true else y }}
 or :: Expansion
 or ann [expl, expr] =
-  Right (ifE ann expl (litE_ trueL) expr)
+  Right (ifE ann expl true expr)
 or _ann args =
   badArity 2 (List.length args)
 
