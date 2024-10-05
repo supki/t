@@ -29,7 +29,6 @@ module T.Exp
   , keyE_
   ) where
 
-import Data.HashMap.Strict qualified as HashMap
 import Data.List qualified as List
 import Data.List.NonEmpty qualified as NonEmpty
 import Text.Regex.PCRE.Light qualified as Pcre
@@ -172,10 +171,8 @@ instance SExp.To Literal where
   sexp = \case
     Null ->
       SExp.var "null"
-    Bool False ->
-      SExp.var "false"
-    Bool True ->
-      SExp.var "true"
+    Bool b ->
+      sexp b
     Int n ->
       sexp n
     Double n ->
@@ -185,7 +182,6 @@ instance SExp.To Literal where
     Regexp regexp ->
       SExp.round ["regexp", sexp regexp]
     Array xs ->
-      SExp.square (map sexp (toList xs))
+      sexp xs
     Record xs ->
-      SExp.curly
-        (concatMap (\(k, v) -> [sexp k, sexp v]) (List.sortOn (\(k, _v) -> k) (HashMap.toList xs)))
+      sexp xs

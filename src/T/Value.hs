@@ -10,8 +10,6 @@ module T.Value
 import Data.Aeson qualified as Aeson
 import Data.Aeson.KeyMap qualified as Aeson (fromHashMapText, toHashMapText)
 import Data.ByteString.Lazy qualified as Lazy (ByteString)
-import Data.HashMap.Strict qualified as HashMap
-import Data.List qualified as List
 import Data.Scientific qualified as Scientific
 import Data.Text.Lazy qualified as Text.Lazy
 import Data.Text.Lazy.Encoding qualified as Text.Lazy
@@ -41,10 +39,8 @@ instance SExp.To Value where
   sexp = \case
     Null ->
       SExp.var "null"
-    Bool False ->
-      SExp.var "false"
-    Bool True ->
-      SExp.var "true"
+    Bool b ->
+      sexp b
     Int n ->
       sexp n
     Double n ->
@@ -54,10 +50,9 @@ instance SExp.To Value where
     Regexp regexp ->
       SExp.round ["regexp", sexp regexp]
     Array xs ->
-      SExp.square (map sexp (toList xs))
+      sexp xs
     Record xs ->
-      SExp.curly
-        (concatMap (\(k, v) -> [sexp k, sexp v]) (List.sortOn (\(k, _v) -> k) (HashMap.toList xs)))
+      sexp xs
     Lam _ ->
       SExp.round ["lambda", SExp.square ["_"], "..."]
 

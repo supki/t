@@ -10,6 +10,8 @@ module T.SExp
   , renderLazyText
   ) where
 
+import Data.HashMap.Strict qualified as HashMap
+import Data.List qualified as List
 import Data.Text.Encoding qualified as Text
 import Data.Text.Lazy qualified as Lazy
 import Data.Text.Lazy.Builder (Builder)
@@ -66,6 +68,12 @@ class To a where
 instance To SExp where
   sexp x = x
 
+instance To Bool where
+  sexp =
+    Var . \case
+      False -> "false"
+      True -> "true"
+
 instance To Int64 where
   sexp =
     Var . fromString . show
@@ -97,6 +105,14 @@ instance To a => To [a] where
 instance To a => To (Vector a) where
   sexp =
     sexp . toList
+
+instance (Ord k, To k, To v) => To (HashMap k v) where
+  sexp xs =
+    curly
+      (concatMap (\(k, v) -> [sexp k, sexp v])
+      (List.sortOn
+        (\(k, _v) -> k)
+        (HashMap.toList xs)))
 
 renderLazyText :: To sexp => sexp -> Lazy.Text
 renderLazyText =

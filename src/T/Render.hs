@@ -223,7 +223,7 @@ evalExp = \case
     r <- enforceRecord exp
     case HashMap.lookup key r of
       Nothing ->
-        throwError (MissingProperty exp (sexp (Value.Record r)) (sexp key))
+        throwError (MissingProperty exp (sexp r) (sexp key))
       Just x ->
         pure x
 
@@ -393,7 +393,7 @@ insertVar Path {var = (ann :+ name), lookups} v = do
           [] ->
             pure (Value.Record (HashMap.insert (fromString (Name.toString key)) v r))
           _ ->
-            throwError (MissingProperty (ann0 :< Lit Null) (sexp (Value.Record r)) (sexp key))
+            throwError (MissingProperty (ann0 :< Lit Null) (sexp r) (sexp key))
   go v0 (K (ann0 :+ _key) : _path) =
     throwError (TypeError (ann0 :< Lit Null) Type.Record (Value.typeOf v0) (sexp v0))
   go (Value.Array xs) (I (ann0 :+ idx) : path) =

@@ -100,12 +100,16 @@ spec = do
     it "bool" $ do
       render (sexp (Value.Bool False)) `shouldBe` "false"
       render (sexp (Value.Bool True)) `shouldBe` "true"
+      render (sexp False) `shouldBe` "false"
+      render (sexp True) `shouldBe` "true"
 
-    it "int" $
+    it "int" $ do
       render (sexp (Value.Int 42)) `shouldBe` "42"
+      render (sexp (42 :: Int64)) `shouldBe` "42"
 
-    it "double" $
+    it "double" $ do
       render (sexp (Value.Double 4.2)) `shouldBe` "4.2"
+      render (sexp (4.2 :: Double)) `shouldBe` "4.2"
 
     it "regexp" $ do
       let
@@ -113,14 +117,18 @@ spec = do
           Pcre.compileM "foo" []
       render (sexp (Value.Regexp regexp)) `shouldBe` "(regexp \"foo\")"
 
-    it "string" $
+    it "string" $ do
       render (sexp (Value.String "foo")) `shouldBe` "\"foo\""
+      render (sexp ("foo" :: Text)) `shouldBe` "\"foo\""
 
-    it "array" $
+    it "array" $ do
       render (sexp (Value.Array [Value.Int 1, Value.Int 2, Value.Int 3])) `shouldBe` "[1 2 3]"
+      render (sexp ([1, 2, 3] :: [Int64])) `shouldBe` "[1 2 3]"
 
-    it "record" $
+    it "record" $ do
       render (sexp (Value.Record [("foo", Value.Int 4), ("bar",  Value.Int 7)])) `shouldBe`
+        "{\"bar\" 7 \"foo\" 4}"
+      render (sexp ([("foo", 4), ("bar",  7)] :: HashMap Text Int64)) `shouldBe`
         "{\"bar\" 7 \"foo\" 4}"
 
     it "lam" $
