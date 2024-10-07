@@ -74,7 +74,7 @@ operators =
   , Op "<>" (flip embed0 ((<>) @Text)) Infixr 6
   ]
 
-combineNumbers :: (Int64 -> Int64 -> Int64) -> (Double -> Double -> Double) -> Name -> Value
+combineNumbers :: (Int -> Int -> Int) -> (Double -> Double -> Double) -> Name -> Value
 combineNumbers intOp doubleOp name =
   Lam $ \case
     _ann :+ Int n0 ->
@@ -108,7 +108,7 @@ divide :: Name -> Value
 divide =
   combineNumbers div (/)
 
-predicateNumbers :: (Int64 -> Int64 -> Bool) -> (Double -> Double -> Bool) -> Name -> Value
+predicateNumbers :: (Int -> Int -> Bool) -> (Double -> Double -> Bool) -> Name -> Value
 predicateNumbers intOp doubleOp name =
   Lam $ \case
     _ann :+ Int n0 ->

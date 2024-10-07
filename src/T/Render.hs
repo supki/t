@@ -214,7 +214,7 @@ evalExp = \case
   _ :< Idx exp expIdx -> do
     xs <- enforceArray exp
     idx <- enforceInt expIdx
-    case xs !? fromIntegral idx of
+    case xs !? idx of
       Nothing ->
         throwError (OutOfBounds expIdx (sexp xs) (sexp idx))
       Just x ->
@@ -227,7 +227,7 @@ evalExp = \case
       Just x ->
         pure x
 
-enforceInt :: (Ctx m, MonadError Error m) => Exp -> m Int64
+enforceInt :: (Ctx m, MonadError Error m) => Exp -> m Int
 enforceInt exp = do
   v <- evalExp exp
   case v of
@@ -282,7 +282,7 @@ data Path = Path
 
 data Lookup
   = K (Ann :+ Name)
-  | I (Ann :+ Int64)
+  | I (Ann :+ Int)
     deriving (Show, Eq)
 
 topLevel :: Ann :+ Name -> Path
@@ -311,7 +311,7 @@ evalLValue =
             let
               path =
                 path0 {lookups = I (idxAnn :+ idx) : path0.lookups}
-            pure $ case xs !? fromIntegral idx of
+            pure $ case xs !? idx of
               Nothing -> do
                 let
                   key =
@@ -399,10 +399,10 @@ insertVar Path {var = (ann :+ name), lookups} v = do
   go (Value.Array xs) (I (ann0 :+ idx) : path) =
     -- this is pretty similar to records except the lack of the aforementioned special
     -- treatment.
-    case xs !? fromIntegral idx of
+    case xs !? idx of
       Just v1 -> do
         v2 <- go v1 path
-        pure (Value.Array (xs // [(fromIntegral idx, v2)]))
+        pure (Value.Array (xs // [(idx, v2)]))
       Nothing ->
         throwError (OutOfBounds (ann0 :< Lit Null) (sexp xs) (sexp idx))
   go v0 (I (ann0 :+ _idx) : _path) =
@@ -432,8 +432,8 @@ build chunk =
 loopRecord :: Maybe Text -> Int -> Int -> Value
 loopRecord key len idx =
   Value.Record $ HashMap.fromList
-    [ ("length", Value.Int (fromIntegral len))
-    , ("index", Value.Int (fromIntegral idx))
+    [ ("length", Value.Int len)
+    , ("index", Value.Int idx)
     , ("first", Value.Bool (idx == 0))
     , ("last", Value.Bool (idx == len - 1))
     , ("key", maybe Value.Null Value.String key)

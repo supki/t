@@ -26,7 +26,6 @@ module T.Prelude
   , FilePath
   , HashMap
   , Int
-  , Int64
   , IO
   , Maybe(..)
   , NonEmpty(..)
@@ -95,7 +94,6 @@ import Data.Foldable
 import Data.Functor.Classes (Eq1(..), eq1)
 import Data.HashMap.Strict (HashMap)
 import Data.Hashable (Hashable)
-import Data.Int (Int64)
 import Data.List (foldl')
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe (mapMaybe)

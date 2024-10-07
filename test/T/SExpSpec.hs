@@ -105,7 +105,7 @@ spec = do
 
     it "int" $ do
       render (sexp (Value.Int 42)) `shouldBe` "42"
-      render (sexp (42 :: Int64)) `shouldBe` "42"
+      render (sexp (42 :: Int)) `shouldBe` "42"
 
     it "double" $ do
       render (sexp (Value.Double 4.2)) `shouldBe` "4.2"
@@ -123,12 +123,12 @@ spec = do
 
     it "array" $ do
       render (sexp (Value.Array [Value.Int 1, Value.Int 2, Value.Int 3])) `shouldBe` "[1 2 3]"
-      render (sexp ([1, 2, 3] :: [Int64])) `shouldBe` "[1 2 3]"
+      render (sexp ([1, 2, 3] :: [Int])) `shouldBe` "[1 2 3]"
 
     it "record" $ do
       render (sexp (Value.Record [("foo", Value.Int 4), ("bar",  Value.Int 7)])) `shouldBe`
         "{\"bar\" 7 \"foo\" 4}"
-      render (sexp ([("foo", 4), ("bar",  7)] :: HashMap Text Int64)) `shouldBe`
+      render (sexp ([("foo", 4), ("bar",  7)] :: HashMap Text Int)) `shouldBe`
         "{\"bar\" 7 \"foo\" 4}"
 
     it "lam" $

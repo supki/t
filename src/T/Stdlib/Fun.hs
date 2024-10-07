@@ -35,10 +35,10 @@ functions =
   [ Fun "empty?" nullB
   , Fun "length" lengthB
 
-  , Fun "floor" (flip embed0 (floor @Double @Int64))
-  , Fun "ceiling" (flip embed0 (ceiling @Double @Int64))
-  , Fun "round" (flip embed0 (round @Double @Int64))
-  , Fun "int->double" (flip embed0 (fromIntegral @Int64 @Double))
+  , Fun "floor" (flip embed0 (floor @Double @Int))
+  , Fun "ceiling" (flip embed0 (ceiling @Double @Int))
+  , Fun "round" (flip embed0 (round @Double @Int))
+  , Fun "int->double" (flip embed0 (fromIntegral @Int @Double))
 
   , Fun "upper-case" (flip embed0 Text.toUpper)
   , Fun "lower-case" (flip embed0 Text.toLower)

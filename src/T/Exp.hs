@@ -112,7 +112,7 @@ true :: Exp
 true =
   litE_ (Bool True)
 
-int :: Int64 -> Exp
+int :: Int -> Exp
 int =
   litE_ . Int
 
@@ -159,7 +159,7 @@ keyE_ exp key =
 data Literal
   = Null
   | Bool Bool
-  | Int Int64
+  | Int Int
   | Double Double
   | String Text
   | Regexp Pcre.Regex

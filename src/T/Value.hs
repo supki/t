@@ -27,7 +27,7 @@ import T.Type qualified as Type
 data Value
   = Null
   | Bool Bool
-  | Int Int64
+  | Int Int
   | Double Double
   | String Text
   | Regexp Pcre.Regex

@@ -208,7 +208,7 @@ true :: Exp
 true =
   litE_ (Bool True)
 
-int :: Int64 -> Exp
+int :: Int -> Exp
 int =
   litE_ . Int
 

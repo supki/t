@@ -294,6 +294,9 @@ litP = do
       , Bool True <$ symbol "true"
       ]
   numberP =
+    -- here, `fromIntegral` is slightly problematic because it can
+    -- truncate (enormous) Integer values nonsensically, e.g. to 0
+    -- for large enough Integers.
     map (either (Int . fromIntegral) Double) integerOrDouble
   stringP =
     map String stringLiteral

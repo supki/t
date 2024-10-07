@@ -36,10 +36,6 @@ instance Embed Bool where
   embed _name = Bool
 
 instance Embed Int where
-  embed _name =
-    Int . fromIntegral
-
-instance Embed Int64 where
   embed _name = Int
 
 instance Embed Double where
@@ -80,13 +76,6 @@ instance Eject Bool where
       Left (TypeError (varE name) Type.Bool (typeOf value) (sexp value))
 
 instance Eject Int where
-  eject name = \case
-    Int n ->
-      pure (fromIntegral n)
-    value ->
-      Left (TypeError (varE name) Type.Int (typeOf value) (sexp value))
-
-instance Eject Int64 where
   eject name = \case
     Int n ->
       pure n

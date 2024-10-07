@@ -74,7 +74,7 @@ instance To Bool where
       False -> "false"
       True -> "true"
 
-instance To Int64 where
+instance To Int where
   sexp =
     Var . fromString . show
 
