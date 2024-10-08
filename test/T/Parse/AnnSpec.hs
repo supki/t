@@ -8,7 +8,7 @@ import T.Prelude
 
 spec :: Spec
 spec =
-  describe "annotations" $
+  describe "annotations" $ do
     context "literals" $ do
       it "null" $
         errorOf "{{ null + 1 }}" `shouldBe`
@@ -73,6 +73,15 @@ spec =
           \   but got: {\"foo\" 4} : Record\n\
           \1 | {{ {foo:4} + 1 }}<EOF> \n\
           \  |    ~~~~~~~             "
+
+    context "property access" $ do
+      it "record" $ do
+        errorOf "{% set foo = {} foo.bar = [] %}{{ foo.bar }}" `shouldBe`
+          "(interactive):1:38: error: mismatched types:\n\
+          \  expected: Renderable\n\
+          \   but got: [] : Array\n\
+          \1 | {% set foo = {} foo.bar = [] %}{{ foo.bar }}<EOF> \n\
+          \  |                                      ~~~~         "
 
 errorOf :: Text -> String
 errorOf str =
