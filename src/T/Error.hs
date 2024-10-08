@@ -58,6 +58,7 @@ prettyError = \case
     excerpt ann
   TypeError (ann :< _) expected actual value ->
     header ann <>
+    "mismatched types:" <> PP.line <>
       PP.indent 2 "expected: " <> PP.pretty (show expected) <> PP.line <>
       PP.indent 2 " but got: " <> PP.pretty value <> " : " <> PP.pretty (show actual) <> PP.line <>
     excerpt ann

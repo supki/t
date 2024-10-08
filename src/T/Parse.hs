@@ -236,17 +236,11 @@ accessOp =
   Postfix (chainl1 (idxP <|> dotP) (pure (flip (.))))
  where
   idxP = do
-    ann :+ expIdx <- anned $ do
-      _ <- symbol "["
-      expIdx <- expP
-      _ <- symbol "]"
-      pure expIdx
+    ann :+ expIdx <- anned (between (symbol "[") (symbol "]") expP)
     pure (\exp -> ann :< Idx exp expIdx)
   dotP = do
-    ann :+ key <- anned $ do
-      _ <- symbol "."
-      nameP
-    pure (\exp -> ann :< Key exp key)
+    ann0 :+ (ann1 :+ key) <- anned (symbol "." *> nameP_) <* spaces
+    pure (\exp -> ann0 :< Key exp (ann1 :+ key))
 
 infixOp :: DeltaParsing m => String -> Operator m Exp
 infixOp name =
@@ -365,7 +359,11 @@ varP =
 
 nameP :: DeltaParsing m => m (Ann :+ Name)
 nameP =
-  anned (map fromString (liftA2 (:) firstL (many restL))) <* spaces
+  nameP_ <* spaces
+
+nameP_ :: DeltaParsing m => m (Ann :+ Name)
+nameP_ =
+  anned (map fromString (liftA2 (:) firstL (many restL)))
  where
   firstL =
     letter <|> char '_'
