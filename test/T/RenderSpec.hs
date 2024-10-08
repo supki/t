@@ -76,7 +76,7 @@ spec =
         r_ "{{ {foo: [1,{bar: 7},3]}.foo[1].bar }}" `shouldRender` "7"
         r_ "{{ 4.foo }}" `shouldRaise`
           TypeError (litE_ (Int 4)) Type.Record Type.Int "4"
-        r_ "{{ {}.foo }}" `shouldRaise` MissingProperty (record mempty) (sexp (record mempty)) "\"foo\""
+        r_ "{{ {}.foo }}" `shouldRaise` MissingProperty (record mempty) (sexp (record mempty)) "foo"
 
     context "line blocks" $
       it "examples" $ do

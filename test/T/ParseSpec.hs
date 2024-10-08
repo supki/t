@@ -67,6 +67,7 @@ spec =
           (int 7))
       "{{ {} }}" `shouldParseTo` Tmpl.Exp (record [])
       "{{ {x: 4} }}" `shouldParseTo` Tmpl.Exp (record [("x", int 4)])
+      "{{ {x->y: 4} }}" `shouldParseTo` Tmpl.Exp (record [("x->y", int 4)])
       "{{ {x: 4, y: \"foo\"} }}" `shouldParseTo`
         Tmpl.Exp
           (record
@@ -258,7 +259,7 @@ array :: [Exp] -> Exp
 array =
   litE_ . Array . Vector.fromList
 
-record :: [(Text, Exp)] -> Exp
+record :: [(Name, Exp)] -> Exp
 record =
   litE_ . Record . HashMap.fromList
 

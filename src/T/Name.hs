@@ -3,6 +3,7 @@
 module T.Name
   ( Name(..)
   , toString
+  , toText
   ) where
 
 
@@ -32,3 +33,7 @@ instance Pretty Name where
 toString :: Name -> String
 toString name =
   Text.unpack name.unName
+
+toText :: Name -> Text
+toText name =
+  name.unName

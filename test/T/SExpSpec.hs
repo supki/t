@@ -9,6 +9,7 @@ import T.Parse (parseText)
 import T.Prelude
 import T.Exp (Exp)
 import T.SExp (render, sexp)
+import T.Name (Name)
 import T.Stdlib qualified as Stdlib
 import T.Tmpl (Tmpl)
 import T.Tmpl qualified as Tmpl
@@ -73,7 +74,7 @@ spec = do
         rexp "{{ [false, 42] }}" `shouldBe` "[false 42]"
 
       it "record" $
-        rexp "{{ {foo: 42, bar: 4.2} }}" `shouldBe` "{\"bar\" 4.2 \"foo\" 42}"
+        rexp "{{ {foo: 42, bar: 4.2} }}" `shouldBe` "{bar 4.2 foo 42}"
 
     it "var" $
       rexp "{{ foo }}" `shouldBe` "foo"
@@ -127,9 +128,9 @@ spec = do
 
     it "record" $ do
       render (sexp (Value.Record [("foo", Value.Int 4), ("bar",  Value.Int 7)])) `shouldBe`
-        "{\"bar\" 7 \"foo\" 4}"
-      render (sexp ([("foo", 4), ("bar",  7)] :: HashMap Text Int)) `shouldBe`
-        "{\"bar\" 7 \"foo\" 4}"
+        "{bar 7 foo 4}"
+      render (sexp ([("foo", 4), ("bar",  7)] :: HashMap Name Int)) `shouldBe`
+        "{bar 7 foo 4}"
 
     it "lam" $
       render (sexp (Value.Lam (\_ -> pure Value.Null))) `shouldBe` "(lambda [_] ...)"

@@ -70,7 +70,7 @@ spec =
         errorOf "{{ {foo:4} + 1 }}" `shouldBe`
           "(interactive):1:4: error: mismatched types in +: \n\
           \  expected: Number\n\
-          \   but got: {\"foo\" 4} : Record\n\
+          \   but got: {foo 4} : Record\n\
           \1 | {{ {foo:4} + 1 }}<EOF> \n\
           \  |    ~~~~~~~             "
 

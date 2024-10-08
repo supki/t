@@ -302,7 +302,7 @@ litP = do
       (braces (spaces *> Unspaced (sepBy kv (symbol ","))))
    where
     kv = do
-      k <- map fromString (some letter)
+      _ :+ k <- nameP
       _ <- symbol ":"
       v <- expP
       pure (k, v)

@@ -120,7 +120,7 @@ array :: Vector Exp -> Exp
 array =
   litE_ . Array
 
-record :: HashMap Text Exp -> Exp
+record :: HashMap Name Exp -> Exp
 record =
   litE_ . Record
 
@@ -164,7 +164,7 @@ data Literal
   | String Text
   | Regexp Pcre.Regex
   | Array (Vector Exp)
-  | Record (HashMap Text Exp)
+  | Record (HashMap Name Exp)
     deriving (Show, Eq)
 
 instance SExp.To Literal where

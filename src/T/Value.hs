@@ -10,6 +10,7 @@ module T.Value
 import Data.Aeson qualified as Aeson
 import Data.Aeson.KeyMap qualified as Aeson (fromHashMapText, toHashMapText)
 import Data.ByteString.Lazy qualified as Lazy (ByteString)
+import Data.HashMap.Strict qualified as HashMap
 import Data.Scientific qualified as Scientific
 import Data.Text.Lazy qualified as Text.Lazy
 import Data.Text.Lazy.Encoding qualified as Text.Lazy
@@ -17,6 +18,8 @@ import Text.Regex.PCRE.Light qualified as Pcre
 
 import T.Error (Error)
 import T.Exp ((:+)(..), Ann)
+import T.Name (Name(..))
+import T.Name qualified as Name
 import T.Prelude
 import T.SExp (sexp)
 import T.SExp qualified as SExp
@@ -32,7 +35,7 @@ data Value
   | String Text
   | Regexp Pcre.Regex
   | Array (Vector Value)
-  | Record (HashMap Text Value)
+  | Record (HashMap Name Value)
   | Lam (Ann :+ Value -> Either Error Value)
 
 instance SExp.To Value where
@@ -86,7 +89,7 @@ displayWith f =
     Array xs ->
       Aeson.Array (map ejectAeson xs)
     Record r ->
-      Aeson.Object (Aeson.fromHashMapText (map ejectAeson r))
+      Aeson.Object (Aeson.fromHashMapText (HashMap.mapKeys Name.toText (map ejectAeson r)))
     Lam _f ->
       Aeson.String "<lambda>"
 
@@ -115,4 +118,4 @@ embedAeson = \case
   Aeson.Array xs ->
     Array (map embedAeson xs)
   Aeson.Object xs ->
-    Record (Aeson.toHashMapText (map embedAeson xs))
+    Record (HashMap.mapKeys Name (Aeson.toHashMapText (map embedAeson xs)))

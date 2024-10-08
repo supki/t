@@ -219,7 +219,7 @@ evalExp = \case
         throwError (OutOfBounds expIdx (sexp xs) (sexp idx))
       Just x ->
         pure x
-  _ :< Key exp (_ :+ Name key) -> do
+  _ :< Key exp (_ :+ key) -> do
     r <- enforceRecord exp
     case HashMap.lookup key r of
       Nothing ->
@@ -245,7 +245,7 @@ enforceArray exp = do
     _ ->
       throwError (TypeError exp Type.Array (Value.typeOf v) (sexp v))
 
-enforceRecord :: (Ctx m, MonadError Error m) => Exp -> m (HashMap Text Value)
+enforceRecord :: (Ctx m, MonadError Error m) => Exp -> m (HashMap Name Value)
 enforceRecord exp = do
   v <- evalExp exp
   case v of
@@ -429,12 +429,12 @@ build :: MonadState Rendering m => Builder -> m ()
 build chunk =
   modify (\env -> env {Rendering.result = env.result <> chunk})
 
-loopRecord :: Maybe Text -> Int -> Int -> Value
+loopRecord :: Maybe Name -> Int -> Int -> Value
 loopRecord key len idx =
   Value.Record $ HashMap.fromList
     [ ("length", Value.Int len)
     , ("index", Value.Int idx)
     , ("first", Value.Bool (idx == 0))
     , ("last", Value.Bool (idx == len - 1))
-    , ("key", maybe Value.Null Value.String key)
+    , ("key", maybe Value.Null (Value.String . Name.toText) key)
     ]
