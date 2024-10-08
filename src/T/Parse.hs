@@ -69,7 +69,7 @@ parseBytes stdlib =
 
 parseDelta :: Stdlib -> Delta -> ByteString -> Either ParseError Tmpl
 parseDelta stdlib delta str =
-  case parseByteString (runReaderT parser stdlib) delta str of
+  case parseByteString (runReaderT (parser <* eof) stdlib) delta str of
     Failure err ->
       Left (ParseError err._errDoc)
     Success tmpl ->
@@ -383,7 +383,7 @@ parseRaw =
            -- Attempt to fish for a line block.
       , do _ <- lookAhead (try (spacesExceptNewline *> string "{%" *> manyTill anyChar (try (string "%}")) *> spacesExceptNewline *> newline))
            pure acc
-           -- Attempt to fish for a inline block.
+           -- Attempt to fish for an inline block.
       , do _ <- lookAhead (string "{{" <|> string "{%")
            pure acc
       , do x <- anyChar

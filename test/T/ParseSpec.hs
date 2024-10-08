@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 module T.ParseSpec (spec) where
 
+import Data.Either (isLeft)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Vector qualified as Vector
 import Test.Hspec
@@ -192,6 +193,9 @@ spec =
             ]
             (Tmpl.Cat []))
 
+    it "fake block" $
+      parse "{% fake %}" `shouldSatisfy` isLeft
+
 var :: Name -> Exp
 var name =
   varE (noann name)
@@ -238,4 +242,8 @@ whenIf p thenTmpl =
 
 shouldParseTo :: HasCallStack => Text -> Tmpl -> Expectation
 tmpl `shouldParseTo` res =
-  first show (parseText Stdlib.def tmpl) `shouldBe` Right res
+  parse tmpl `shouldBe` Right res
+
+parse :: Text -> Either String Tmpl
+parse tmpl =
+  first show (parseText Stdlib.def tmpl)
