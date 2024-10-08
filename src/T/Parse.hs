@@ -296,10 +296,10 @@ litP = do
     map String stringLiteral
   arrayP =
     map (Array . Vector.fromList)
-      (brackets (Unspaced (sepBy expP (symbol ","))))
+      (brackets (spaces *> Unspaced (sepBy expP (symbol ","))))
   recordP =
     map (Record . HashMap.fromList)
-      (braces (Unspaced (sepBy kv (symbol ","))))
+      (braces (spaces *> Unspaced (sepBy kv (symbol ","))))
    where
     kv = do
       k <- map fromString (some letter)

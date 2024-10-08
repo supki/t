@@ -161,6 +161,36 @@ spec =
         \     foo =\n\
         \       4\n\
         \%}" `shouldParseTo` Tmpl.Set [Tmpl.Assign (var "foo") (int 4)]
+        "{% set\n\
+        \     arr =\n\
+        \       [ 4\n\
+        \       , 7\n\
+        \       , 42\n\
+        \       ]\n\
+        \%}" `shouldParseTo` Tmpl.Set
+          [ Tmpl.Assign
+              (var "arr")
+              (array
+                [ int 4
+                , int 7
+                , int 42
+                ])
+          ]
+        "{% set\n\
+        \     rec =\n\
+        \       { foo: 4\n\
+        \       , bar: 7\n\
+        \       , baz: 42\n\
+        \       }\n\
+        \%}" `shouldParseTo` Tmpl.Set
+          [ Tmpl.Assign
+              (var "rec")
+              (record
+                [ ("foo", int 4)
+                , ("bar", int 7)
+                , ("baz", int 42)
+                ])
+          ]
 
     context "multi-*" $ do
       it "multi-sets" $ do
