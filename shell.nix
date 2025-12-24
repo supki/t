@@ -1,9 +1,7 @@
 { pkgs ? import <nixpkgs> {}
-, ghc ? pkgs.haskell.compiler.ghc965
+, ghc ? pkgs.haskell.compiler.ghc984
 }:
 pkgs.mkShell rec {
-  LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath buildInputs;
-
   buildInputs = with pkgs; [
     ghc
     stack
