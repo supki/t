@@ -108,11 +108,11 @@ instance (k ~ Name, v ~ Value) => Eject (HashMap k v) where
     Record o ->
       pure o
     value ->
-      Left (TypeError (varE name) Type.Record (typeOf value) (sexp value))
+      Left (TypeError (varE name) (Type.Record (error "fields")) (typeOf value) (sexp value))
 
 instance Eject a => Eject [a] where
   eject name = \case
     Array xs ->
       map toList (traverse (eject name) xs)
     value ->
-      Left (TypeError (varE name) Type.Array (typeOf value) (sexp value))
+      Left (TypeError (varE name) (Type.Array (error "element")) (typeOf value) (sexp value))

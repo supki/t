@@ -90,7 +90,7 @@ combineNumbers intOp doubleOp name =
         ann :+ n ->
           Left (TypeError (varE (ann :+ name)) Type.Double (typeOf n) (sexp n))
     ann :+ n ->
-      Left (TypeError (varE (ann :+ name)) Type.Number (typeOf n) (sexp n))
+      Left (TypeError (varE (ann :+ name)) (error "Type.Number") (typeOf n) (sexp n))
 
 add :: Name -> Value
 add =
@@ -124,7 +124,7 @@ predicateNumbers intOp doubleOp name =
         ann :+ n ->
           Left (TypeError (varE (ann :+ name)) Type.Double (typeOf n) (sexp n))
     ann :+ n ->
-      Left (TypeError (varE (ann :+ name)) Type.Number (typeOf n) (sexp n))
+      Left (TypeError (varE (ann :+ name)) (error "Type.Number") (typeOf n) (sexp n))
 
 lt :: Name -> Value
 lt =

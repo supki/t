@@ -26,8 +26,7 @@ import Text.Parser.Token.Style (emptyOps)
 import Text.Regex.PCRE.Light qualified as Pcre
 
 import T.Exp
-  ( Cofree(..)
-  , Exp
+  ( Exp
   , ExpF(..)
   , Literal(..)
   , (:+)(..)

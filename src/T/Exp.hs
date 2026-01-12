@@ -1,4 +1,6 @@
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -7,7 +9,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 module T.Exp
   ( Exp
-  , Cofree(..)
   , ExpF(..)
   , Literal(..)
   , (:+)(..)
@@ -40,14 +41,6 @@ import T.SExp (sexp)
 import T.SExp qualified as SExp
 
 
-data Cofree f a = a :< f (Cofree f a)
-
-deriving instance (Show a, Show (f (Cofree f a))) => Show (Cofree f a)
-
-instance Eq1 f => Eq (Cofree f a) where
-  (_ :< f) == (_ :< g) =
-    eq1 f g
-
 type Exp = Cofree ExpF Ann
 
 data ExpF a
@@ -63,7 +56,7 @@ data ExpF a
     -- ^ array index access: xs[0]
   | Key a (Ann :+ Name)
     -- ^ record property access: foo.bar
-    deriving (Show, Eq, Generic1)
+    deriving (Show, Eq, Generic1, Functor, Foldable, Traversable)
 
 instance SExp.To Exp where
   sexp = \case

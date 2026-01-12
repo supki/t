@@ -64,7 +64,7 @@ spec =
         r_ "{{ [1,2,3][0] }}" `shouldRender` "1"
         r_ "{{ [[1,2],[3]][0][1] }}" `shouldRender` "2"
         r_ "{{ 4[0] }}" `shouldRaise`
-          TypeError (litE_ (Int 4)) Type.Array Type.Int "4"
+          error "TypeError" (litE_ (Int 4)) Type.Array Type.Int "4"
         r_ "{{ [1,2,3][\"foo\"] }}" `shouldRaise`
           TypeError (litE_ (String "foo")) Type.Int Type.String "\"foo\""
         r_ "{{ [1,2,3][-1] }}" `shouldRaise` OutOfBounds (int (-1)) (sexp (array [int 1, int 2, int 3])) "-1"
@@ -75,7 +75,7 @@ spec =
         r_ "{{ {foo: [1,2,3]}.foo[0] }}" `shouldRender` "1"
         r_ "{{ {foo: [1,{bar: 7},3]}.foo[1].bar }}" `shouldRender` "7"
         r_ "{{ 4.foo }}" `shouldRaise`
-          TypeError (litE_ (Int 4)) Type.Record Type.Int "4"
+          error "TypeError" (litE_ (Int 4)) "Type.Record" Type.Int "4"
         r_ "{{ {}.foo }}" `shouldRaise` MissingProperty (record mempty) (sexp (record mempty)) "foo"
 
     context "line blocks" $
@@ -266,13 +266,13 @@ spec =
         r_ "{{ \"Foo\" =~ /foo/i }}" `shouldRender` "true"
 
       it "not-iterable" $
-        r_ "{% for x in 4 %}{% endfor %}" `shouldRaise` TypeError (litE_ (Int 4)) Type.Iterable Type.Int "4"
+        r_ "{% for x in 4 %}{% endfor %}" `shouldRaise` error "TypeError" (litE_ (Int 4)) "Type.Iterable" Type.Int "4"
 
       it "not-renderable" $
-        r_ "{{ [] }}" `shouldRaise` TypeError (array []) Type.Renderable Type.Array (sexp (array []))
+        r_ "{{ [] }}" `shouldRaise` error "TypeError" (array []) error "Type.Renderable" "Type.Array" (sexp (array []))
 
       it "not-a-function" $
-        rWith [aesonQQ|{f: "foo"}|] "{{ f(4) }}" `shouldRaise` TypeError (varE "f") Type.Fun Type.String "\"foo\""
+        rWith [aesonQQ|{f: "foo"}|] "{{ f(4) }}" `shouldRaise` error "TypeError" (varE "f") "Type.Fun" Type.String "\"foo\""
 
       it "type errors" $
         r_ "{{ bool01(\"foo\") }}" `shouldRaise` TypeError (varE "bool01") Type.Bool Type.String "\"foo\""
