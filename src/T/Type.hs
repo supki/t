@@ -1,11 +1,11 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 module T.Type
   ( Type(..)
   , infer
   , TypeError
+  , extractType
   ) where
 
 import Control.Monad (foldM)
@@ -19,6 +19,8 @@ import T.Exp (Exp, (:+)(..))
 import T.Exp qualified as Exp
 import T.Name (Name)
 import T.Prelude
+import T.SExp (sexp)
+import T.SExp qualified as SExp
 
 
 data Type
@@ -33,6 +35,29 @@ data Type
   | Fun (NonEmpty Type) Type
   | Var Int
     deriving (Show, Eq)
+
+instance SExp.To Type where
+  sexp = \case
+    Unit ->
+      "unit"
+    Bool ->
+      "bool"
+    Int ->
+      "int"
+    Double ->
+      "double"
+    String ->
+      "string"
+    Regexp ->
+      "regexp"
+    Array t ->
+      SExp.square [sexp t]
+    Record fs ->
+      SExp.curly (concatMap (\(k, v) -> [sexp k, sexp v]) (HashMap.toList fs))
+    Fun args r ->
+      SExp.round ["->", SExp.square (toList (map sexp args)), sexp r]
+    Var n ->
+      fromString ('#' : show n)
 
 type TypedExp = Cofree Exp.ExpF (Exp.Ann, Type)
 
@@ -60,6 +85,7 @@ data TypeError
   | NotARecord Type
   | TypeMismatch Type Type
   | OccursCheck Int Type
+    deriving (Show, Eq)
 
 runInferenceT :: Γ -> Σ -> InferenceT m a -> m (Either TypeError (a, Σ))
 runInferenceT ctx subst (InferenceT m) =
@@ -67,8 +93,8 @@ runInferenceT ctx subst (InferenceT m) =
 
 infer :: Exp -> Either TypeError TypedExp
 infer exp = do
-  (te, Σ {subst}) <- runIdentity (runInferenceT mempty emptyΣ (inferExp exp))
-  pure (finalize subst te)
+  (te, finalΣ) <- runIdentity (runInferenceT mempty emptyΣ (inferExp exp))
+  pure (finalize finalΣ.subst te)
 
 inferExp :: Monad m => Exp -> InferenceT m TypedExp
 inferExp (ann :< e) = do
@@ -228,7 +254,8 @@ inferLiteral = \case
 
 generalize :: Monad m => [Type] -> InferenceT m Type
 generalize = \case
-  [] -> freshVar
+  [] ->
+    freshVar
   t : ts ->
     foldM unify t ts
 
