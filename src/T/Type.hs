@@ -13,6 +13,8 @@ import Control.Monad.Reader (ReaderT, MonadReader, runReaderT, ask)
 import Control.Monad.State (StateT, MonadState, runStateT, gets, modify)
 import Control.Monad.Except (ExceptT, MonadError, runExceptT, throwError)
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.HashMap.Strict qualified as HashMap
 
 import T.Exp (Exp, (:+)(..))
@@ -21,6 +23,7 @@ import T.Name (Name)
 import T.Prelude
 import T.SExp (sexp)
 import T.SExp qualified as SExp
+import T.Tmpl (Tmpl(..))
 
 
 data Type
@@ -59,12 +62,15 @@ instance SExp.To Type where
     Var n ->
       fromString ('#' : show n)
 
+data Scheme = Forall (Set Int) Type
+    deriving (Show, Eq)
+
 type TypedExp = Cofree Exp.ExpF (Exp.Ann, Type)
 
 newtype InferenceT m a = InferenceT (ReaderT Γ (StateT Σ (ExceptT TypeError m)) a)
     deriving (Functor, Applicative, Monad, MonadReader Γ, MonadState Σ, MonadError TypeError)
 
-type Γ = HashMap Name Type
+type Γ = HashMap Name Scheme
 
 data Σ = Σ
   { subst   :: Subst
@@ -96,6 +102,16 @@ infer exp = do
   (te, finalΣ) <- runIdentity (runInferenceT mempty emptyΣ (inferExp exp))
   pure (finalize finalΣ.subst te)
 
+inferTmpl :: Monad m => Tmpl -> InferenceT m ()
+inferTmpl = \case
+  Raw _text ->
+    pure ()
+  Comment _text ->
+    pure ()
+  Exp exp -> do
+    _texp <- inferExp exp
+    pure ()
+
 inferExp :: Monad m => Exp -> InferenceT m TypedExp
 inferExp (ann :< e) = do
   te <- traverse inferExp e
@@ -118,7 +134,42 @@ inferExp (ann :< e) = do
 lookupCtx :: Monad m => Name -> InferenceT m Type
 lookupCtx name = do
   ctx <- ask
-  maybe (throwError (MissingVar name)) pure (HashMap.lookup name ctx)
+  maybe (throwError (MissingVar name)) instantiate (HashMap.lookup name ctx)
+
+generalize :: Γ -> Type -> Scheme
+generalize ctx t = do
+  let
+    fvs =
+      freeVarsType t
+    ctxvs =
+      foldMap freeVarsScheme ctx
+    qs =
+      Set.difference fvs ctxvs
+  Forall qs t
+
+freeVarsType :: Type -> Set Int
+freeVarsType = \case
+  Var n ->
+    Set.singleton n
+  Array t ->
+    freeVarsType t
+  Record r ->
+    foldMap freeVarsType r
+  Fun args r ->
+    foldMap freeVarsType args <> freeVarsType r
+  _ ->
+    Set.empty
+
+freeVarsScheme :: Scheme -> Set Int
+freeVarsScheme (Forall qs t) =
+  Set.difference (freeVarsType t) qs
+
+instantiate :: Monad m => Scheme -> InferenceT m Type
+instantiate (Forall vars t) = do
+  fvs <- for (toList vars) $ \v -> do
+    fv <- freshVar
+    pure (v, fv)
+  pure (substitute (HashMap.fromList fvs) t)
 
 extractType :: TypedExp -> Type
 extractType ((_ann, t) :< _e) = t
@@ -128,9 +179,9 @@ unify t1 t2 = do
   s <- gets (.subst)
   let
     t1' =
-      applySubst s t1
+      substitute s t1
     t2' =
-      applySubst s t2
+      substitute s t2
   case (t1', t2') of
     (a, b)
       | a == b ->
@@ -156,7 +207,7 @@ unify t1 t2 = do
 
 occurs :: Int -> Type -> Subst -> Bool
 occurs n t subst =
-  case applySubst subst t of
+  case substitute subst t of
     Var m ->
       n == m
     Array arr ->
@@ -168,21 +219,9 @@ occurs n t subst =
     _ ->
       False
 
-applySubst :: Subst -> Type -> Type
-applySubst subst t =
+substitute :: Subst -> Type -> Type
+substitute subst t =
   case t of
-    Var n ->
-      case HashMap.lookup n subst of
-        Just nt ->
-          applySubst subst nt
-        Nothing ->
-          Var n
-    Array arr ->
-      Array (applySubst subst arr)
-    Record r ->
-      Record (map (applySubst subst) r)
-    Fun args r ->
-      Fun (map (applySubst subst) args) (applySubst subst r)
     Unit ->
       Unit
     Bool ->
@@ -195,6 +234,18 @@ applySubst subst t =
       String
     Regexp ->
       Regexp
+    Array arr ->
+      Array (substitute subst arr)
+    Record r ->
+      Record (map (substitute subst) r)
+    Fun args r ->
+      Fun (map (substitute subst) args) (substitute subst r)
+    Var n ->
+      case HashMap.lookup n subst of
+        Nothing ->
+          Var n
+        Just nt ->
+          substitute subst nt
 
 extendSubst :: Monad m => Int -> Type -> InferenceT m ()
 extendSubst n t =
@@ -246,19 +297,27 @@ inferLiteral = \case
   Exp.Regexp _ -> pure Regexp
   Exp.Array xs -> do
     ys <- traverse inferExp xs
-    y <- generalize (toList (map extractType ys))
-    pure (Array y)
+    t <- case toList (map extractType ys) of
+      [] ->
+        freshVar
+      z : zs ->
+        foldM unify z zs
+    pure (Array t)
   Exp.Record r -> do
     ts <- traverse inferExp r
     pure (Record (map extractType ts))
 
-generalize :: Monad m => [Type] -> InferenceT m Type
-generalize = \case
-  [] ->
-    freshVar
-  t : ts ->
-    foldM unify t ts
-
 finalize :: Subst -> TypedExp -> TypedExp
 finalize subst cofree =
-  map (\(ann, t) -> (ann, applySubst subst t)) cofree
+  map (\(ann, t) -> (ann, defaultType (substitute subst t))) cofree
+
+defaultType :: Type -> Type
+defaultType = \case
+  Var _ ->
+    Unit
+  Array t ->
+    Array (defaultType t)
+  Record r ->
+    Record (map defaultType r)
+  t ->
+    t

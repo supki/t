@@ -67,6 +67,7 @@ module T.Prelude
   , foldr
   , foldM_
   , foldr1
+  , for
   , for_
   , fromIntegral
   , impossible
@@ -114,6 +115,9 @@ import Data.List (foldl')
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
+import Data.Traversable
+  ( for
+  )
 import Data.String (IsString(..))
 import Data.Vector (Vector)
 import Debug.Trace (traceShow)
@@ -157,6 +161,7 @@ import Prelude
   , error
   , filter
   , flip
+  , foldMap
   , foldr
   , foldr1
   , fromIntegral
