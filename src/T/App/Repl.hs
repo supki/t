@@ -90,7 +90,7 @@ inferExp str = liftIO $
     Left err ->
       warn err
     Right (T.Exp exp) ->
-      case Type.infer exp of
+      case Type.infer (Stdlib.typingCtx Stdlib.def) exp of
         Left te ->
           warn te
         Right texp ->

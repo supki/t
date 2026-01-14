@@ -70,6 +70,7 @@ module T.Prelude
   , for
   , for_
   , fromIntegral
+  , fromMaybe
   , impossible
   , map
   , mapMaybe
@@ -113,7 +114,7 @@ import Data.HashMap.Strict (HashMap)
 import Data.Hashable (Hashable)
 import Data.List (foldl')
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.Maybe (mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Traversable
   ( for

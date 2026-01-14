@@ -2,7 +2,12 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 module T.Type
-  ( Type(..)
+  ( Γ
+  , Type(..)
+  , Scheme(..)
+  , forall
+  , fun1
+  , fun2
   , infer
   , TypeError
   , extractType
@@ -65,6 +70,18 @@ instance SExp.To Type where
 data Scheme = Forall (Set Int) Type
     deriving (Show, Eq)
 
+forall :: [Int] -> Type -> Scheme
+forall qs t =
+  Forall (Set.fromList qs) t
+
+fun1 :: Type -> Type -> Type
+fun1 a1 r =
+  Fun (a1 :| []) r
+
+fun2 :: (Type, Type) -> Type -> Type
+fun2 (a1, a2) r =
+  Fun (a1 :| a2 : []) r
+
 type TypedExp = Cofree Exp.ExpF (Exp.Ann, Type)
 
 newtype InferenceT m a = InferenceT (ReaderT Γ (StateT Σ (ExceptT TypeError m)) a)
@@ -97,9 +114,9 @@ runInferenceT :: Γ -> Σ -> InferenceT m a -> m (Either TypeError (a, Σ))
 runInferenceT ctx subst (InferenceT m) =
   runExceptT (runStateT (runReaderT m ctx) subst)
 
-infer :: Exp -> Either TypeError TypedExp
-infer exp = do
-  (te, finalΣ) <- runIdentity (runInferenceT mempty emptyΣ (inferExp exp))
+infer :: Γ -> Exp -> Either TypeError TypedExp
+infer ctx exp = do
+  (te, finalΣ) <- runIdentity (runInferenceT ctx emptyΣ (inferExp exp))
   pure (finalize finalΣ.subst te)
 
 inferTmpl :: Monad m => Tmpl -> InferenceT m ()
@@ -169,7 +186,35 @@ instantiate (Forall vars t) = do
   fvs <- for (toList vars) $ \v -> do
     fv <- freshVar
     pure (v, fv)
-  pure (substitute (HashMap.fromList fvs) t)
+  pure (minisubstitute (HashMap.fromList fvs) t)
+
+-- | 'minisubstitute' is a variant of 'substitute' that doesn't
+-- do deep substitution; this is necessary separate the namespaces
+-- of quantified variables and unitification variables which is
+-- useful for e.g. stdlib definitions
+minisubstitute :: Subst -> Type -> Type
+minisubstitute subst t =
+  case t of
+    Unit ->
+      Unit
+    Bool ->
+      Bool
+    Int ->
+      Int
+    Double ->
+      Double
+    String ->
+      String
+    Regexp ->
+      Regexp
+    Array arr ->
+      Array (minisubstitute subst arr)
+    Record r ->
+      Record (map (minisubstitute subst) r)
+    Fun args r ->
+      Fun (map (minisubstitute subst) args) (minisubstitute subst r)
+    Var n ->
+      fromMaybe (Var n) (HashMap.lookup n subst)
 
 extractType :: TypedExp -> Type
 extractType ((_ann, t) :< _e) = t
@@ -308,8 +353,8 @@ inferLiteral = \case
     pure (Record (map extractType ts))
 
 finalize :: Subst -> TypedExp -> TypedExp
-finalize subst cofree =
-  map (\(ann, t) -> (ann, defaultType (substitute subst t))) cofree
+finalize subst =
+  map (\(ann, t) -> (ann, defaultType (substitute subst t)))
 
 defaultType :: Type -> Type
 defaultType = \case

@@ -6,6 +6,7 @@ module T.Stdlib.Op
   , PriorityMap
   , Fixity(..)
   , bindings
+  , typingCtx
   , priorities
   , operators
   ) where
@@ -25,12 +26,14 @@ import T.Exp.Ann ((:+)(..))
 import T.Name (Name)
 import T.Prelude
 import T.SExp (sexp)
+import T.Type (Γ, forall, fun1, fun2)
 import T.Type qualified as Type
 import T.Value (Value(..), typeOf)
 
 
 data Op = Op
   { name     :: Name
+  , ascribed :: Type.Scheme
   , binding  :: Name -> Value
   , fixity   :: Fixity
   , priority :: Int
@@ -49,29 +52,59 @@ bindings :: [Op] -> [(Name, Value)]
 bindings =
   map (\op -> (op.name, op.binding op.name))
 
+typingCtx :: [Op] -> Γ
+typingCtx =
+  HashMap.fromList . map (\op -> (op.name, op.ascribed))
+
 priorities :: [Op] -> PriorityMap
 priorities =
   Map.fromListWith (<>) . map (\op -> (op.priority, [(op.name, op.fixity)]))
 
 operators :: [Op]
 operators =
-  [ Op "!" (flip embed0 not) Prefix 8
+  [ Op "!"
+      (forall [] (Type.Bool `fun1` Type.Bool))
+      (flip embed0 not) Prefix 8
 
-  , Op "==" (flip embed0 eq) Infix 4
-  , Op "!=" (flip embed0 neq) Infix 4
-  , Op "=~" (flip embed0 match) Infix 4
+  , Op "=="
+      (forall [0] ((Type.Var 0, Type.Var 0) `fun2` Type.Bool)) -- more polymorphic than we'd like
+      (flip embed0 eq) Infix 4
+  , Op "!="
+      (forall [0] ((Type.Var 0, Type.Var 0) `fun2` Type.Bool)) -- more polymorphic than we'd like
+      (flip embed0 neq) Infix 4
+  , Op "=~"
+      (forall [0] ((Type.String, Type.Regexp) `fun2` Type.Bool))
+      (flip embed0 match) Infix 4
 
-  , Op "+" add Infixl 6
-  , Op "-" subtract Infixl 6
-  , Op "*" multiply Infixl 7
-  , Op "/" divide Infixl 7
+  , Op "+"
+      (forall [] ((Type.Int, Type.Int) `fun2` Type.Int)) -- less polymorphic than we'd like
+      add Infixl 6
+  , Op "-"
+      (forall [] ((Type.Int, Type.Int) `fun2` Type.Int)) -- less polymorphic than we'd like
+      subtract Infixl 6
+  , Op "*"
+      (forall [] ((Type.Int, Type.Int) `fun2` Type.Int)) -- less polymorphic than we'd like
+      multiply Infixl 7
+  , Op "/"
+      (forall [] ((Type.Int, Type.Int) `fun2` Type.Int)) -- less polymorphic than we'd like
+      divide Infixl 7
 
-  , Op "<" lt Infix 4
-  , Op "<=" le Infix 4
-  , Op ">" gt Infix 4
-  , Op ">=" ge Infix 4
+  , Op "<"
+      (forall [] ((Type.Int, Type.Int) `fun2` Type.Bool)) -- less polymorphic than we'd like
+      lt Infix 4
+  , Op "<="
+      (forall [] ((Type.Int, Type.Int) `fun2` Type.Bool)) -- less polymorphic than we'd like
+      le Infix 4
+  , Op ">"
+      (forall [] ((Type.Int, Type.Int) `fun2` Type.Bool)) -- less polymorphic than we'd like
+      gt Infix 4
+  , Op ">="
+      (forall [] ((Type.Int, Type.Int) `fun2` Type.Bool)) -- less polymorphic than we'd like
+      ge Infix 4
 
-  , Op "<>" (flip embed0 ((<>) @Text)) Infixr 6
+  , Op "<>"
+      (forall [] ((Type.String, Type.String) `fun2` Type.String))
+      (flip embed0 ((<>) @Text)) Infixr 6
   ]
 
 combineNumbers :: (Int -> Int -> Int) -> (Double -> Double -> Double) -> Name -> Value
