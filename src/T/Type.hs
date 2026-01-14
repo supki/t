@@ -82,6 +82,55 @@ fun2 :: (Type, Type) -> Type -> Type
 fun2 (a1, a2) r =
   Fun (a1 :| a2 : []) r
 
+data Constraint
+  = Num
+  | Eq
+  | Show
+  | Sizeable
+  | Iterable
+    deriving (Show, Eq, Ord)
+
+satisfies :: Constraint -> Type -> Bool
+satisfies Num = \case
+  Int -> True
+  Double -> True
+  _ -> False
+satisfies Eq = \case
+  Unit ->
+    True
+  Bool ->
+    True
+  Int ->
+    True
+  Double ->
+    True
+  String ->
+    True
+  Regexp ->
+    True
+  Array t ->
+    satisfies Eq t
+  Record fs ->
+    all (satisfies Eq) fs
+  _ ->
+    False
+satisfies Show = \case
+  Unit -> True
+  Bool -> True
+  Int -> True
+  Double -> True
+  String -> True
+  _ -> False
+satisfies Sizeable = \case
+  String -> True
+  Array _ -> True
+  Record _ -> True
+  _ -> False
+satisfies Iterable = \case
+  Array _ -> True
+  Record _ -> True
+  _ -> False
+
 type TypedExp = Cofree Exp.ExpF (Exp.Ann, Type)
 
 newtype InferenceT m a = InferenceT (ReaderT Γ (StateT Σ (ExceptT TypeError m)) a)
@@ -90,8 +139,9 @@ newtype InferenceT m a = InferenceT (ReaderT Γ (StateT Σ (ExceptT TypeError m)
 type Γ = HashMap Name Scheme
 
 data Σ = Σ
-  { subst   :: Subst
-  , counter :: Int
+  { subst       :: Subst
+  , constraints :: HashMap Int (Set Constraint)
+  , counter     :: Int
   } deriving (Show, Eq)
 
 type Subst = HashMap Int Type
@@ -99,6 +149,7 @@ type Subst = HashMap Int Type
 emptyΣ :: Σ
 emptyΣ = Σ
   { subst = mempty
+  , constraints = mempty
   , counter = 0
   }
 
@@ -107,6 +158,7 @@ data TypeError
   | MissingVar Name
   | NotARecord Type
   | TypeMismatch Type Type
+  | ConstraintViolation Constraint Type
   | OccursCheck Int Type
     deriving (Show, Eq)
 
@@ -202,7 +254,7 @@ replaceOnce subst t =
     Fun args r ->
       Fun (map (replaceOnce subst) args) (replaceOnce subst r)
     Var n ->
-      fromMaybe (Var n) (HashMap.lookup n subst)
+      HashMap.findWithDefault (Var n) n subst
     _ ->
       t
 
@@ -217,15 +269,9 @@ unify t1 t2 = do
       | a == b ->
         pure a
     (Var n, t) -> do
-      when (occurs n t s) $
-        throwError (OccursCheck n t)
-      extendSubst n t
-      pure t
+      unifyVar s n t
     (t, Var n) -> do
-      when (occurs n t s) $
-        throwError (OccursCheck n t)
-      extendSubst n t
-      pure t
+      unifyVar s n t
     (Array a, Array b) ->
       map Array (unify a b)
     (Record m1, Record m2) -> do
@@ -235,6 +281,24 @@ unify t1 t2 = do
         liftA2 Fun (sequence (NonEmpty.zipWith unify args1 args2)) (unify ret1 ret2)
     (a, b) ->
       throwError (TypeMismatch a b)
+
+unifyVar :: Monad m => Subst -> Int -> Type -> InferenceT m Type
+unifyVar s n t = do
+  when (occurs n t s) (throwError (OccursCheck n t))
+  cs <- gets (HashMap.findWithDefault Set.empty n . (.constraints))
+  checkConstraints cs t
+  extendSubst n t
+  pure t
+
+checkConstraints :: Monad m => Set Constraint -> Type -> InferenceT m ()
+checkConstraints cs t0 = do
+  subst <- gets (.subst)
+  case replace subst t0 of
+    Var m ->
+      modify (\s -> s {constraints = HashMap.insertWith Set.union m cs s.constraints})
+    t ->
+      for_ cs $ \c ->
+        unless (satisfies c t) (throwError (ConstraintViolation c t))
 
 occurs :: Int -> Type -> Subst -> Bool
 occurs n t subst =

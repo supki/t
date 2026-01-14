@@ -51,6 +51,7 @@ module T.Prelude
   , (-)
   , (*)
   , (/)
+  , all
   , any
   , asum
   , bool
@@ -70,7 +71,6 @@ module T.Prelude
   , for
   , for_
   , fromIntegral
-  , fromMaybe
   , impossible
   , map
   , mapMaybe
@@ -101,6 +101,7 @@ import Data.Bifunctor (first, second)
 import Data.ByteString (ByteString)
 import Data.Foldable
   ( Foldable
+  , all
   , any
   , asum
   , for_
@@ -114,7 +115,7 @@ import Data.HashMap.Strict (HashMap)
 import Data.Hashable (Hashable)
 import Data.List (foldl')
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Traversable
   ( for
