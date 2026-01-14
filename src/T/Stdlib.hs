@@ -18,8 +18,6 @@ module T.Stdlib
   , Macro.macroOp
   ) where
 
-import Data.HashMap.Strict qualified as HashMap
-
 import T.Name (Name)
 import T.Prelude
 import T.Stdlib.Fun (Fun(..))
@@ -47,7 +45,7 @@ with ops funs macros = Stdlib {..}
 
 bindings :: Stdlib -> HashMap Name Value
 bindings stdlib =
-  HashMap.fromList (Op.bindings stdlib.ops <> Fun.bindings stdlib.funs)
+  Op.bindings stdlib.ops <> Fun.bindings stdlib.funs
 
 typingCtx :: Stdlib -> Γ
 typingCtx stdlib =

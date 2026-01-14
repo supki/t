@@ -409,17 +409,17 @@ opExt :: [Stdlib.Op]
 opExt =
   [ Stdlib.Op "<+>"
       (forall [] ((Type.String, Type.String) `fun2` Type.String))
-      (flip embed0 (\str0 str1 -> str0 <> "+" <> str1 :: Text)) Stdlib.Infixr 6
+      (embed0 (\str0 str1 -> str0 <> "+" <> str1 :: Text)) Stdlib.Infixr 6
   ]
 
 funExt :: [Stdlib.Fun]
 funExt =
   [ Stdlib.Fun "bool01"
       (forall [] (Type.Bool `fun1` Type.Int))
-      (flip embed0 (bool @Int 0 1))
+      (embed0 (bool @Int 0 1))
   , Stdlib.Fun "const"
       (forall [] (Type.Bool `fun1` Type.String))
-      (flip embed0 (const @Bool @Text))
+      (embed0 (const @Bool @Text))
   ]
 
 macroExt :: [Stdlib.Macro]

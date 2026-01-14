@@ -30,9 +30,9 @@ data Fun = Fun
   , binding  :: Name -> Value
   }
 
-bindings :: [Fun] -> [(Name, Value)]
+bindings :: [Fun] -> HashMap Name Value
 bindings =
-  map (\fun -> (fun.name, fun.binding fun.name))
+  HashMap.fromList . map (\fun -> (fun.name, fun.binding fun.name))
 
 typingCtx :: [Fun] -> Γ
 typingCtx =
@@ -49,39 +49,39 @@ functions =
 
   , Fun "floor"
       (forall [] (Type.Double `fun1` Type.Int))
-      (flip embed0 (floor @Double @Int))
+      (embed0 (floor @Double @Int))
   , Fun "ceiling"
       (forall [] (Type.Double `fun1` Type.Int))
-      (flip embed0 (ceiling @Double @Int))
+      (embed0 (ceiling @Double @Int))
   , Fun "round"
       (forall [] (Type.Double `fun1` Type.Int))
-      (flip embed0 (round @Double @Int))
+      (embed0 (round @Double @Int))
   , Fun "int->double"
       (forall [] (Type.Int `fun1` Type.Double))
-      (flip embed0 (fromIntegral @Int @Double))
+      (embed0 (fromIntegral @Int @Double))
 
   , Fun "upper-case"
       (forall [] (Type.String `fun1` Type.String))
-      (flip embed0 Text.toUpper)
+      (embed0 Text.toUpper)
   , Fun "lower-case"
       (forall [] (Type.String `fun1` Type.String))
-      (flip embed0 Text.toLower)
+      (embed0 Text.toLower)
   , Fun "title-case"
       (forall [] (Type.String `fun1` Type.String))
-      (flip embed0 Text.toTitle)
+      (embed0 Text.toTitle)
 
   , Fun "split"
       (forall [] ((Type.String, Type.String) `fun2` Type.Array Type.String))
-      (flip embed0 Text.splitOn)
+      (embed0 Text.splitOn)
   , Fun "join"
       (forall [] ((Type.String, Type.Array Type.String) `fun2` Type.String))
-      (flip embed0 Text.intercalate)
+      (embed0 Text.intercalate)
   , Fun "concat"
       (forall [] (Type.Array Type.String `fun1` Type.String))
-      (flip embed0 Text.concat)
+      (embed0 Text.concat)
   , Fun "chunks-of"
       (forall [] ((Type.Int, Type.String) `fun2` Type.Array Type.String))
-      (flip embed0 Text.chunksOf)
+      (embed0 Text.chunksOf)
 
   , Fun "die"
       (forall [0] (Type.String `fun1` Type.Var 0))
@@ -89,10 +89,10 @@ functions =
 
   , Fun "show"
       (forall [0] (Type.Var 0 `fun1` Type.String))
-      (flip embed0 showB)
+      (embed0 showB)
   , Fun "pp"
       (forall [0] (Type.Var 0 `fun1` Type.String))
-      (flip embed0 ppB)
+      (embed0 ppB)
   ]
 
 nullB :: Name -> Value

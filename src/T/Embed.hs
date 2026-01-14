@@ -58,8 +58,8 @@ instance (Eject a, Embed b) => Embed (a -> b) where
 
 -- Some embeddings do not have a useful annotation to attach to, such as
 -- stdlib definitions. This is a helper for them.
-embed0 :: Embed t => Name -> t -> Value
-embed0 name t =
+embed0 :: Embed t => t -> Name -> Value
+embed0 t name =
   embed (emptyAnn :+ name) t
 
 class Eject t where

@@ -48,9 +48,9 @@ data Fixity
   | Infixr
     deriving (Show, Eq)
 
-bindings :: [Op] -> [(Name, Value)]
+bindings :: [Op] -> HashMap Name Value
 bindings =
-  map (\op -> (op.name, op.binding op.name))
+  HashMap.fromList . map (\op -> (op.name, op.binding op.name))
 
 typingCtx :: [Op] -> Γ
 typingCtx =
@@ -64,17 +64,17 @@ operators :: [Op]
 operators =
   [ Op "!"
       (forall [] (Type.Bool `fun1` Type.Bool))
-      (flip embed0 not) Prefix 8
+      (embed0 not) Prefix 8
 
   , Op "=="
       (forall [0] ((Type.Var 0, Type.Var 0) `fun2` Type.Bool)) -- more polymorphic than we'd like
-      (flip embed0 eq) Infix 4
+      (embed0 eq) Infix 4
   , Op "!="
       (forall [0] ((Type.Var 0, Type.Var 0) `fun2` Type.Bool)) -- more polymorphic than we'd like
-      (flip embed0 neq) Infix 4
+      (embed0 neq) Infix 4
   , Op "=~"
       (forall [0] ((Type.String, Type.Regexp) `fun2` Type.Bool))
-      (flip embed0 match) Infix 4
+      (embed0 match) Infix 4
 
   , Op "+"
       (forall [] ((Type.Int, Type.Int) `fun2` Type.Int)) -- less polymorphic than we'd like
@@ -104,7 +104,7 @@ operators =
 
   , Op "<>"
       (forall [] ((Type.String, Type.String) `fun2` Type.String))
-      (flip embed0 ((<>) @Text)) Infixr 6
+      (embed0 ((<>) @Text)) Infixr 6
   ]
 
 combineNumbers :: (Int -> Int -> Int) -> (Double -> Double -> Double) -> Name -> Value
