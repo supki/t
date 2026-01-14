@@ -186,35 +186,25 @@ instantiate (Forall vars t) = do
   fvs <- for (toList vars) $ \v -> do
     fv <- freshVar
     pure (v, fv)
-  pure (minisubstitute (HashMap.fromList fvs) t)
+  pure (replaceOnce (HashMap.fromList fvs) t)
 
--- | 'minisubstitute' is a variant of 'substitute' that doesn't
+-- | 'replaceOnce' is a variant of 'replace' that doesn't
 -- do deep substitution; this is necessary separate the namespaces
 -- of quantified variables and unitification variables which is
 -- useful for e.g. stdlib definitions
-minisubstitute :: Subst -> Type -> Type
-minisubstitute subst t =
+replaceOnce :: Subst -> Type -> Type
+replaceOnce subst t =
   case t of
-    Unit ->
-      Unit
-    Bool ->
-      Bool
-    Int ->
-      Int
-    Double ->
-      Double
-    String ->
-      String
-    Regexp ->
-      Regexp
     Array arr ->
-      Array (minisubstitute subst arr)
+      Array (replaceOnce subst arr)
     Record r ->
-      Record (map (minisubstitute subst) r)
+      Record (map (replaceOnce subst) r)
     Fun args r ->
-      Fun (map (minisubstitute subst) args) (minisubstitute subst r)
+      Fun (map (replaceOnce subst) args) (replaceOnce subst r)
     Var n ->
       fromMaybe (Var n) (HashMap.lookup n subst)
+    _ ->
+      t
 
 extractType :: TypedExp -> Type
 extractType ((_ann, t) :< _e) = t
@@ -222,12 +212,7 @@ extractType ((_ann, t) :< _e) = t
 unify :: Monad m => Type -> Type -> InferenceT m Type
 unify t1 t2 = do
   s <- gets (.subst)
-  let
-    t1' =
-      substitute s t1
-    t2' =
-      substitute s t2
-  case (t1', t2') of
+  case (replace s t1, replace s t2) of
     (a, b)
       | a == b ->
         pure a
@@ -245,14 +230,15 @@ unify t1 t2 = do
       map Array (unify a b)
     (Record m1, Record m2) -> do
       map Record (sequence (HashMap.intersectionWith unify m1 m2))
-    (Fun args1 ret1, Fun args2 ret2) ->
-      liftA2 Fun (sequence (NonEmpty.zipWith unify args1 args2)) (unify ret1 ret2)
-    _ ->
-      throwError (TypeMismatch t1' t2')
+    (Fun args1 ret1, Fun args2 ret2)
+      | NonEmpty.length args1 == NonEmpty.length args2 ->
+        liftA2 Fun (sequence (NonEmpty.zipWith unify args1 args2)) (unify ret1 ret2)
+    (a, b) ->
+      throwError (TypeMismatch a b)
 
 occurs :: Int -> Type -> Subst -> Bool
 occurs n t subst =
-  case substitute subst t of
+  case replace subst t of
     Var m ->
       n == m
     Array arr ->
@@ -264,33 +250,23 @@ occurs n t subst =
     _ ->
       False
 
-substitute :: Subst -> Type -> Type
-substitute subst t =
+replace :: Subst -> Type -> Type
+replace subst t =
   case t of
-    Unit ->
-      Unit
-    Bool ->
-      Bool
-    Int ->
-      Int
-    Double ->
-      Double
-    String ->
-      String
-    Regexp ->
-      Regexp
     Array arr ->
-      Array (substitute subst arr)
+      Array (replace subst arr)
     Record r ->
-      Record (map (substitute subst) r)
+      Record (map (replace subst) r)
     Fun args r ->
-      Fun (map (substitute subst) args) (substitute subst r)
+      Fun (map (replace subst) args) (replace subst r)
     Var n ->
       case HashMap.lookup n subst of
         Nothing ->
           Var n
         Just nt ->
-          substitute subst nt
+          replace subst nt
+    _ ->
+      t
 
 extendSubst :: Monad m => Int -> Type -> InferenceT m ()
 extendSubst n t =
@@ -354,7 +330,7 @@ inferLiteral = \case
 
 finalize :: Subst -> TypedExp -> TypedExp
 finalize subst =
-  map (\(ann, t) -> (ann, defaultType (substitute subst t)))
+  map (\(ann, t) -> (ann, defaultType (replace subst t)))
 
 defaultType :: Type -> Type
 defaultType = \case
