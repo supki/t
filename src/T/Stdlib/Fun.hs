@@ -19,7 +19,7 @@ import T.Error (Error(..))
 import T.Exp.Ann ((:+)(..), unann)
 import T.Name (Name)
 import T.Prelude
-import T.Type (Γ, forall, fun1, fun2)
+import T.Type (Γ, forall, forall_, fun1, fun2)
 import T.Type qualified as Type
 import T.Value (Value(..), display, displayWith)
 
@@ -41,57 +41,57 @@ typingCtx =
 functions :: [Fun]
 functions =
   [ Fun "empty?"
-      (forall [0] (Type.Array (Type.Var 0) `fun1` Type.Bool)) -- less polymorphic than we'd like
+      (forall [0] [(0, Type.Sizeable)] (Type.Var 0 `fun1` Type.Bool))
       nullB
   , Fun "length"
-      (forall [0] (fun1 (Type.Array (Type.Var 0)) Type.Int)) -- less polymorphic than we'd like
+      (forall [0] [(0, Type.Sizeable)] (Type.Var 0 `fun1` Type.Int))
       lengthB
 
   , Fun "floor"
-      (forall [] (Type.Double `fun1` Type.Int))
+      (forall_ (Type.Double `fun1` Type.Int))
       (embed0 (floor @Double @Int))
   , Fun "ceiling"
-      (forall [] (Type.Double `fun1` Type.Int))
+      (forall_ (Type.Double `fun1` Type.Int))
       (embed0 (ceiling @Double @Int))
   , Fun "round"
-      (forall [] (Type.Double `fun1` Type.Int))
+      (forall_ (Type.Double `fun1` Type.Int))
       (embed0 (round @Double @Int))
   , Fun "int->double"
-      (forall [] (Type.Int `fun1` Type.Double))
+      (forall_ (Type.Int `fun1` Type.Double))
       (embed0 (fromIntegral @Int @Double))
 
   , Fun "upper-case"
-      (forall [] (Type.String `fun1` Type.String))
+      (forall_ (Type.String `fun1` Type.String))
       (embed0 Text.toUpper)
   , Fun "lower-case"
-      (forall [] (Type.String `fun1` Type.String))
+      (forall_ (Type.String `fun1` Type.String))
       (embed0 Text.toLower)
   , Fun "title-case"
-      (forall [] (Type.String `fun1` Type.String))
+      (forall_ (Type.String `fun1` Type.String))
       (embed0 Text.toTitle)
 
   , Fun "split"
-      (forall [] ((Type.String, Type.String) `fun2` Type.Array Type.String))
+      (forall_ ((Type.String, Type.String) `fun2` Type.Array Type.String))
       (embed0 Text.splitOn)
   , Fun "join"
-      (forall [] ((Type.String, Type.Array Type.String) `fun2` Type.String))
+      (forall_ ((Type.String, Type.Array Type.String) `fun2` Type.String))
       (embed0 Text.intercalate)
   , Fun "concat"
-      (forall [] (Type.Array Type.String `fun1` Type.String))
+      (forall_ (Type.Array Type.String `fun1` Type.String))
       (embed0 Text.concat)
   , Fun "chunks-of"
-      (forall [] ((Type.Int, Type.String) `fun2` Type.Array Type.String))
+      (forall_ ((Type.Int, Type.String) `fun2` Type.Array Type.String))
       (embed0 Text.chunksOf)
 
   , Fun "die"
-      (forall [0] (Type.String `fun1` Type.Var 0))
+      (forall [0] [] (Type.String `fun1` Type.Var 0))
       dieB
 
   , Fun "show"
-      (forall [0] (Type.Var 0 `fun1` Type.String))
+      (forall [0] [(0, Type.Display)] (Type.Var 0 `fun1` Type.String))
       (embed0 showB)
   , Fun "pp"
-      (forall [0] (Type.Var 0 `fun1` Type.String))
+      (forall [0] [(0, Type.Display)] (Type.Var 0 `fun1` Type.String))
       (embed0 ppB)
   ]
 

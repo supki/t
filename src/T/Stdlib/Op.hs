@@ -26,7 +26,7 @@ import T.Exp.Ann ((:+)(..))
 import T.Name (Name)
 import T.Prelude
 import T.SExp (sexp)
-import T.Type (Γ, forall, fun1, fun2)
+import T.Type (Γ, forall, forall_, fun1, fun2)
 import T.Type qualified as Type
 import T.Value (Value(..), typeOf)
 
@@ -63,47 +63,47 @@ priorities =
 operators :: [Op]
 operators =
   [ Op "!"
-      (forall [] (Type.Bool `fun1` Type.Bool))
+      (forall_ (Type.Bool `fun1` Type.Bool))
       (embed0 not) Prefix 8
 
   , Op "=="
-      (forall [0] ((Type.Var 0, Type.Var 0) `fun2` Type.Bool)) -- more polymorphic than we'd like
+      (forall [0] [(0, Type.Eq)] ((Type.Var 0, Type.Var 0) `fun2` Type.Bool))
       (embed0 eq) Infix 4
   , Op "!="
-      (forall [0] ((Type.Var 0, Type.Var 0) `fun2` Type.Bool)) -- more polymorphic than we'd like
+      (forall [0] [(0, Type.Eq)] ((Type.Var 0, Type.Var 0) `fun2` Type.Bool))
       (embed0 neq) Infix 4
   , Op "=~"
-      (forall [0] ((Type.String, Type.Regexp) `fun2` Type.Bool))
+      (forall_ ((Type.String, Type.Regexp) `fun2` Type.Bool))
       (embed0 match) Infix 4
 
   , Op "+"
-      (forall [] ((Type.Int, Type.Int) `fun2` Type.Int)) -- less polymorphic than we'd like
+      (forall [0] [(0, Type.Num)] ((Type.Var 0, Type.Var 0) `fun2` Type.Var 0))
       add Infixl 6
   , Op "-"
-      (forall [] ((Type.Int, Type.Int) `fun2` Type.Int)) -- less polymorphic than we'd like
+      (forall [0] [(0, Type.Num)] ((Type.Var 0, Type.Var 0) `fun2` Type.Var 0))
       subtract Infixl 6
   , Op "*"
-      (forall [] ((Type.Int, Type.Int) `fun2` Type.Int)) -- less polymorphic than we'd like
+      (forall [0] [(0, Type.Num)] ((Type.Var 0, Type.Var 0) `fun2` Type.Var 0))
       multiply Infixl 7
   , Op "/"
-      (forall [] ((Type.Int, Type.Int) `fun2` Type.Int)) -- less polymorphic than we'd like
+      (forall [0] [(0, Type.Num)] ((Type.Var 0, Type.Var 0) `fun2` Type.Var 0))
       divide Infixl 7
 
   , Op "<"
-      (forall [] ((Type.Int, Type.Int) `fun2` Type.Bool)) -- less polymorphic than we'd like
+      (forall [0] [(0, Type.Num)] ((Type.Var 0, Type.Var 0) `fun2` Type.Bool))
       lt Infix 4
   , Op "<="
-      (forall [] ((Type.Int, Type.Int) `fun2` Type.Bool)) -- less polymorphic than we'd like
+      (forall [0] [(0, Type.Num)] ((Type.Var 0, Type.Var 0) `fun2` Type.Bool))
       le Infix 4
   , Op ">"
-      (forall [] ((Type.Int, Type.Int) `fun2` Type.Bool)) -- less polymorphic than we'd like
+      (forall [0] [(0, Type.Num)] ((Type.Var 0, Type.Var 0) `fun2` Type.Bool))
       gt Infix 4
   , Op ">="
-      (forall [] ((Type.Int, Type.Int) `fun2` Type.Bool)) -- less polymorphic than we'd like
+      (forall [0] [(0, Type.Num)] ((Type.Var 0, Type.Var 0) `fun2` Type.Bool))
       ge Infix 4
 
   , Op "<>"
-      (forall [] ((Type.String, Type.String) `fun2` Type.String))
+      (forall_ ((Type.String, Type.String) `fun2` Type.String))
       (embed0 ((<>) @Text)) Infixr 6
   ]
 

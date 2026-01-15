@@ -5,7 +5,9 @@ module T.Type
   ( Γ
   , Type(..)
   , Scheme(..)
+  , Constraint(..)
   , forall
+  , forall_
   , fun1
   , fun2
   , infer
@@ -67,12 +69,19 @@ instance SExp.To Type where
     Var n ->
       fromString ('#' : show n)
 
-data Scheme = Forall (Set Int) Type
+data Scheme = Forall (Set Int) (HashMap Int (Set Constraint)) Type
     deriving (Show, Eq)
 
-forall :: [Int] -> Type -> Scheme
-forall qs t =
-  Forall (Set.fromList qs) t
+forall :: [Int] -> [(Int, Constraint)] -> Type -> Scheme
+forall qs cs t = do
+  let
+    cm =
+      HashMap.fromListWith Set.union (map (\(n, c) -> (n, Set.singleton c)) cs)
+  Forall (Set.fromList qs) cm t
+
+forall_ :: Type -> Scheme
+forall_ =
+  forall [] []
 
 fun1 :: Type -> Type -> Type
 fun1 a1 r =
@@ -85,51 +94,49 @@ fun2 (a1, a2) r =
 data Constraint
   = Num
   | Eq
-  | Show
+  | Display
   | Sizeable
   | Iterable
     deriving (Show, Eq, Ord)
 
 satisfies :: Constraint -> Type -> Bool
-satisfies Num = \case
-  Int -> True
-  Double -> True
-  _ -> False
-satisfies Eq = \case
-  Unit ->
-    True
-  Bool ->
-    True
-  Int ->
-    True
-  Double ->
-    True
-  String ->
-    True
-  Regexp ->
-    True
-  Array t ->
-    satisfies Eq t
-  Record fs ->
-    all (satisfies Eq) fs
-  _ ->
-    False
-satisfies Show = \case
-  Unit -> True
-  Bool -> True
-  Int -> True
-  Double -> True
-  String -> True
-  _ -> False
-satisfies Sizeable = \case
-  String -> True
-  Array _ -> True
-  Record _ -> True
-  _ -> False
-satisfies Iterable = \case
-  Array _ -> True
-  Record _ -> True
-  _ -> False
+satisfies = \case
+  Num -> \case
+    Int -> True
+    Double -> True
+    _ -> False
+  Eq -> \case
+    Unit -> True
+    Bool -> True
+    Int -> True
+    Double -> True
+    String -> True
+    Regexp -> True
+    Array t ->
+      satisfies Eq t
+    Record fs ->
+      all (satisfies Eq) fs
+    _ -> False
+  Display -> \case
+    Unit -> True
+    Bool -> True
+    Int -> True
+    Double -> True
+    String -> True
+    Array t ->
+      satisfies Display t
+    Record fs ->
+      all (satisfies Display) fs
+    _ -> False
+  Sizeable -> \case
+    String -> True
+    Array _ -> True
+    Record _ -> True
+    _ -> False
+  Iterable -> \case
+    Array _ -> True
+    Record _ -> True
+    _ -> False
 
 type TypedExp = Cofree Exp.ExpF (Exp.Ann, Type)
 
@@ -205,8 +212,9 @@ lookupCtx name = do
   ctx <- ask
   maybe (throwError (MissingVar name)) instantiate (HashMap.lookup name ctx)
 
-generalize :: Γ -> Type -> Scheme
+generalize :: Monad m => Γ -> Type -> InferenceT m Scheme
 generalize ctx t = do
+  constraints <- gets (.constraints)
   let
     fvs =
       freeVarsType t
@@ -214,7 +222,9 @@ generalize ctx t = do
       foldMap freeVarsScheme ctx
     qs =
       Set.difference fvs ctxvs
-  Forall qs t
+    cs =
+      HashMap.filterWithKey (\k _ -> k `Set.member` qs) constraints
+  pure (Forall qs cs t)
 
 freeVarsType :: Type -> Set Int
 freeVarsType = \case
@@ -230,15 +240,23 @@ freeVarsType = \case
     Set.empty
 
 freeVarsScheme :: Scheme -> Set Int
-freeVarsScheme (Forall qs t) =
+freeVarsScheme (Forall qs _cs t) =
   Set.difference (freeVarsType t) qs
 
 instantiate :: Monad m => Scheme -> InferenceT m Type
-instantiate (Forall vars t) = do
-  fvs <- for (toList vars) $ \v -> do
+instantiate (Forall qs cs t) = do
+  fvs <- for (toList qs) $ \q -> do
     fv <- freshVar
-    pure (v, fv)
-  pure (replaceOnce (HashMap.fromList fvs) t)
+    pure (q, fv)
+  let
+    localSubst = HashMap.fromList fvs
+  for_ (HashMap.toList cs) $ \(q, cs) ->
+    case HashMap.lookup q localSubst of
+      Just (Var n) ->
+        modify (\s -> s {constraints = HashMap.insertWith Set.union n cs s.constraints})
+      _ ->
+        pure ()
+  pure (replaceOnce localSubst t)
 
 -- | 'replaceOnce' is a variant of 'replace' that doesn't
 -- do deep substitution; this is necessary separate the namespaces
