@@ -6,10 +6,11 @@ module T.Type
   , Type(..)
   , Scheme(..)
   , Constraint(..)
-  , forall
-  , forall_
+  , forAll
+  , forAll_
   , fun1
   , fun2
+  , tyVar
   , infer
   , TypeError
   , extractType
@@ -19,10 +20,12 @@ import Control.Monad (foldM)
 import Control.Monad.Reader (ReaderT, MonadReader, runReaderT, ask)
 import Control.Monad.State (StateT, MonadState, runStateT, gets, modify)
 import Control.Monad.Except (ExceptT, MonadError, runExceptT, throwError)
+import Data.List qualified as List
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.HashMap.Strict qualified as HashMap
+import Text.Printf (printf)
 
 import T.Exp (Exp, (:+)(..))
 import T.Exp qualified as Exp
@@ -43,7 +46,7 @@ data Type
   | Array Type
   | Record (HashMap Name Type)
   | Fun (NonEmpty Type) Type
-  | Var Int
+  | Var Int (Set Constraint)
     deriving (Show, Eq)
 
 instance SExp.To Type where
@@ -66,22 +69,37 @@ instance SExp.To Type where
       SExp.curly (concatMap (\(k, v) -> [sexp k, sexp v]) (HashMap.toList fs))
     Fun args r ->
       SExp.round ["->", SExp.square (toList (map sexp args)), sexp r]
-    Var n ->
-      fromString ('#' : show n)
+    Var n cs ->
+      fromString (printf "#%d{%s}" n (List.intercalate ", " (map show (toList cs))))
 
-data Scheme = Forall (Set Int) (HashMap Int (Set Constraint)) Type
+data Scheme = Forall (Set Int) Type
     deriving (Show, Eq)
 
-forall :: [Int] -> [(Int, Constraint)] -> Type -> Scheme
-forall qs cs t = do
+forAll :: [Int] -> [(Int, Constraint)] -> Type -> Scheme
+forAll qs cs t = do
   let
     cm =
-      HashMap.fromListWith Set.union (map (\(n, c) -> (n, Set.singleton c)) cs)
-  Forall (Set.fromList qs) cm t
+      HashMap.fromListWith Set.union (map (\(i, c) -> (i, Set.singleton c)) cs)
+  Forall (Set.fromList qs) (injectConstraints cm t)
 
-forall_ :: Type -> Scheme
-forall_ =
-  forall [] []
+injectConstraints :: HashMap Int (Set Constraint) -> Type -> Type
+injectConstraints cm t = case t of
+  Var n cs -> do
+    let
+      extra = HashMap.findWithDefault Set.empty n cm
+    Var n (cs <> extra)
+  Array arr ->
+    Array (injectConstraints cm arr)
+  Record r ->
+    Record (map (injectConstraints cm) r)
+  Fun args r ->
+    Fun (map (injectConstraints cm) args) (injectConstraints cm r)
+  _ ->
+    t
+
+forAll_ :: Type -> Scheme
+forAll_ =
+  forAll [] []
 
 fun1 :: Type -> Type -> Type
 fun1 a1 r =
@@ -90,6 +108,10 @@ fun1 a1 r =
 fun2 :: (Type, Type) -> Type -> Type
 fun2 (a1, a2) r =
   Fun (a1 :| a2 : []) r
+
+tyVar :: Int -> Type
+tyVar n =
+  Var n mempty
 
 data Constraint
   = Num
@@ -104,6 +126,7 @@ satisfies = \case
   Num -> \case
     Int -> True
     Double -> True
+    Var _n cs -> Num `Set.member` cs
     _ -> False
   Eq -> \case
     Unit -> True
@@ -116,6 +139,7 @@ satisfies = \case
       satisfies Eq t
     Record fs ->
       all (satisfies Eq) fs
+    Var _n cs -> Eq `Set.member` cs
     _ -> False
   Display -> \case
     Unit -> True
@@ -127,15 +151,18 @@ satisfies = \case
       satisfies Display t
     Record fs ->
       all (satisfies Display) fs
+    Var _n cs -> Display `Set.member` cs
     _ -> False
   Sizeable -> \case
     String -> True
     Array _ -> True
     Record _ -> True
+    Var _n cs -> Sizeable `Set.member` cs
     _ -> False
   Iterable -> \case
     Array _ -> True
     Record _ -> True
+    Var _n cs -> Iterable `Set.member` cs
     _ -> False
 
 type TypedExp = Cofree Exp.ExpF (Exp.Ann, Type)
@@ -146,9 +173,8 @@ newtype InferenceT m a = InferenceT (ReaderT Γ (StateT Σ (ExceptT TypeError m)
 type Γ = HashMap Name Scheme
 
 data Σ = Σ
-  { subst       :: Subst
-  , constraints :: HashMap Int (Set Constraint)
-  , counter     :: Int
+  { subst   :: Subst
+  , counter :: Int
   } deriving (Show, Eq)
 
 type Subst = HashMap Int Type
@@ -156,7 +182,6 @@ type Subst = HashMap Int Type
 emptyΣ :: Σ
 emptyΣ = Σ
   { subst = mempty
-  , constraints = mempty
   , counter = 0
   }
 
@@ -214,7 +239,6 @@ lookupCtx name = do
 
 generalize :: Monad m => Γ -> Type -> InferenceT m Scheme
 generalize ctx t = do
-  constraints <- gets (.constraints)
   let
     fvs =
       freeVarsType t
@@ -222,13 +246,11 @@ generalize ctx t = do
       foldMap freeVarsScheme ctx
     qs =
       Set.difference fvs ctxvs
-    cs =
-      HashMap.filterWithKey (\k _ -> k `Set.member` qs) constraints
-  pure (Forall qs cs t)
+  pure (Forall qs t)
 
 freeVarsType :: Type -> Set Int
 freeVarsType = \case
-  Var n ->
+  Var n _cs ->
     Set.singleton n
   Array t ->
     freeVarsType t
@@ -240,23 +262,15 @@ freeVarsType = \case
     Set.empty
 
 freeVarsScheme :: Scheme -> Set Int
-freeVarsScheme (Forall qs _cs t) =
+freeVarsScheme (Forall qs t) =
   Set.difference (freeVarsType t) qs
 
 instantiate :: Monad m => Scheme -> InferenceT m Type
-instantiate (Forall qs cs t) = do
+instantiate (Forall qs t) = do
   fvs <- for (toList qs) $ \q -> do
     fv <- freshVar
     pure (q, fv)
-  let
-    localSubst = HashMap.fromList fvs
-  for_ (HashMap.toList cs) $ \(q, cs) ->
-    case HashMap.lookup q localSubst of
-      Just (Var n) ->
-        modify (\s -> s {constraints = HashMap.insertWith Set.union n cs s.constraints})
-      _ ->
-        pure ()
-  pure (replaceOnce localSubst t)
+  pure (replaceOnce (HashMap.fromList fvs) t)
 
 -- | 'replaceOnce' is a variant of 'replace' that doesn't
 -- do deep substitution; this is necessary separate the namespaces
@@ -271,8 +285,14 @@ replaceOnce subst t =
       Record (map (replaceOnce subst) r)
     Fun args r ->
       Fun (map (replaceOnce subst) args) (replaceOnce subst r)
-    Var n ->
-      HashMap.findWithDefault (Var n) n subst
+    Var n cs ->
+      case HashMap.lookup n subst of
+        Nothing ->
+          Var n cs
+        Just (Var m ds) ->
+          Var m (Set.union cs ds)
+        Just x ->
+          applyConstraints cs x
     _ ->
       t
 
@@ -286,10 +306,10 @@ unify t1 t2 = do
     (a, b)
       | a == b ->
         pure a
-    (Var n, t) -> do
-      unifyVar s n t
-    (t, Var n) -> do
-      unifyVar s n t
+    (Var n cs, t) -> do
+      unifyVar s n cs t
+    (t, Var n cs) -> do
+      unifyVar s n cs t
     (Array a, Array b) ->
       map Array (unify a b)
     (Record m1, Record m2) -> do
@@ -300,28 +320,25 @@ unify t1 t2 = do
     (a, b) ->
       throwError (TypeMismatch a b)
 
-unifyVar :: Monad m => Subst -> Int -> Type -> InferenceT m Type
-unifyVar s n t = do
-  when (occurs n t s) (throwError (OccursCheck n t))
-  cs <- gets (HashMap.findWithDefault Set.empty n . (.constraints))
-  checkConstraints cs t
+unifyVar :: Monad m => Subst -> Int -> Set Constraint -> Type -> InferenceT m Type
+unifyVar s n cs t0 = do
+  when (occurs n t0 s) (throwError (OccursCheck n t0))
+  checkConstraints cs t0
+  let
+    t =
+      applyConstraints cs t0
   extendSubst n t
   pure t
 
 checkConstraints :: Monad m => Set Constraint -> Type -> InferenceT m ()
-checkConstraints cs t0 = do
-  subst <- gets (.subst)
-  case replace subst t0 of
-    Var m ->
-      modify (\s -> s {constraints = HashMap.insertWith Set.union m cs s.constraints})
-    t ->
-      for_ cs $ \c ->
-        unless (satisfies c t) (throwError (ConstraintViolation c t))
+checkConstraints cs t = do
+  for_ cs $ \c ->
+    unless (satisfies c t) (throwError (ConstraintViolation c t))
 
 occurs :: Int -> Type -> Subst -> Bool
 occurs n t subst =
   case replace subst t of
-    Var m ->
+    Var m _cs ->
       n == m
     Array arr ->
       occurs n arr subst
@@ -341,14 +358,21 @@ replace subst t =
       Record (map (replace subst) r)
     Fun args r ->
       Fun (map (replace subst) args) (replace subst r)
-    Var n ->
+    Var n cs ->
       case HashMap.lookup n subst of
         Nothing ->
-          Var n
+          Var n cs
         Just nt ->
-          replace subst nt
+          applyConstraints cs (replace subst nt)
     _ ->
       t
+
+applyConstraints :: Set Constraint -> Type -> Type
+applyConstraints cs = \case
+  Var n vcs ->
+    Var n (Set.union vcs cs)
+  t ->
+    t
 
 extendSubst :: Monad m => Int -> Type -> InferenceT m ()
 extendSubst n t =
@@ -372,7 +396,7 @@ freshVar :: Monad m => InferenceT m Type
 freshVar = do
   n <- gets (.counter)
   modify (\s -> s { counter = s.counter + 1 })
-  pure (Var n)
+  pure (Var n mempty)
 
 checkKey :: Monad m => TypedExp -> Name -> InferenceT m Type
 checkKey r name = do
@@ -383,9 +407,9 @@ checkKey r name = do
           pure t
         Nothing ->
           throwError (MissingKey name)
-    Var n -> do
+    var@(Var _n _cs) -> do
       v <- freshVar
-      _ <- unify (Var n) (Record (HashMap.singleton name v))
+      _ <- unify var (Record (HashMap.singleton name v))
       pure v
     _ ->
       throwError (NotARecord (extractType r))
@@ -416,7 +440,7 @@ finalize subst =
 
 defaultType :: Type -> Type
 defaultType = \case
-  Var _ ->
+  Var {} ->
     Unit
   Array t ->
     Array (defaultType t)

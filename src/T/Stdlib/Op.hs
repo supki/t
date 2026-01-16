@@ -26,7 +26,7 @@ import T.Exp.Ann ((:+)(..))
 import T.Name (Name)
 import T.Prelude
 import T.SExp (sexp)
-import T.Type (Γ, forall, forall_, fun1, fun2)
+import T.Type (Γ, forAll, forAll_, fun1, fun2, tyVar)
 import T.Type qualified as Type
 import T.Value (Value(..), typeOf)
 
@@ -63,47 +63,47 @@ priorities =
 operators :: [Op]
 operators =
   [ Op "!"
-      (forall_ (Type.Bool `fun1` Type.Bool))
+      (forAll_ (Type.Bool `fun1` Type.Bool))
       (embed0 not) Prefix 8
 
   , Op "=="
-      (forall [0] [(0, Type.Eq)] ((Type.Var 0, Type.Var 0) `fun2` Type.Bool))
+      (forAll [0] [(0, Type.Eq)] ((tyVar 0, tyVar 0) `fun2` Type.Bool))
       (embed0 eq) Infix 4
   , Op "!="
-      (forall [0] [(0, Type.Eq)] ((Type.Var 0, Type.Var 0) `fun2` Type.Bool))
+      (forAll [0] [(0, Type.Eq)] ((tyVar 0, tyVar 0) `fun2` Type.Bool))
       (embed0 neq) Infix 4
   , Op "=~"
-      (forall_ ((Type.String, Type.Regexp) `fun2` Type.Bool))
+      (forAll_ ((Type.String, Type.Regexp) `fun2` Type.Bool))
       (embed0 match) Infix 4
 
   , Op "+"
-      (forall [0] [(0, Type.Num)] ((Type.Var 0, Type.Var 0) `fun2` Type.Var 0))
+      (forAll [0] [(0, Type.Num)] ((tyVar 0, tyVar 0) `fun2` tyVar 0))
       add Infixl 6
   , Op "-"
-      (forall [0] [(0, Type.Num)] ((Type.Var 0, Type.Var 0) `fun2` Type.Var 0))
+      (forAll [0] [(0, Type.Num)] ((tyVar 0, tyVar 0) `fun2` tyVar 0))
       subtract Infixl 6
   , Op "*"
-      (forall [0] [(0, Type.Num)] ((Type.Var 0, Type.Var 0) `fun2` Type.Var 0))
+      (forAll [0] [(0, Type.Num)] ((tyVar 0, tyVar 0) `fun2` tyVar 0))
       multiply Infixl 7
   , Op "/"
-      (forall [0] [(0, Type.Num)] ((Type.Var 0, Type.Var 0) `fun2` Type.Var 0))
+      (forAll [0] [(0, Type.Num)] ((tyVar 0, tyVar 0) `fun2` tyVar 0))
       divide Infixl 7
 
   , Op "<"
-      (forall [0] [(0, Type.Num)] ((Type.Var 0, Type.Var 0) `fun2` Type.Bool))
+      (forAll [0] [(0, Type.Num)] ((tyVar 0, tyVar 0) `fun2` Type.Bool))
       lt Infix 4
   , Op "<="
-      (forall [0] [(0, Type.Num)] ((Type.Var 0, Type.Var 0) `fun2` Type.Bool))
+      (forAll [0] [(0, Type.Num)] ((tyVar 0, tyVar 0) `fun2` Type.Bool))
       le Infix 4
   , Op ">"
-      (forall [0] [(0, Type.Num)] ((Type.Var 0, Type.Var 0) `fun2` Type.Bool))
+      (forAll [0] [(0, Type.Num)] ((tyVar 0, tyVar 0) `fun2` Type.Bool))
       gt Infix 4
   , Op ">="
-      (forall [0] [(0, Type.Num)] ((Type.Var 0, Type.Var 0) `fun2` Type.Bool))
+      (forAll [0] [(0, Type.Num)] ((tyVar 0, tyVar 0) `fun2` Type.Bool))
       ge Infix 4
 
   , Op "<>"
-      (forall_ ((Type.String, Type.String) `fun2` Type.String))
+      (forAll_ ((Type.String, Type.String) `fun2` Type.String))
       (embed0 ((<>) @Text)) Infixr 6
   ]
 

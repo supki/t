@@ -24,7 +24,7 @@ import T.Stdlib (def)
 import T.Stdlib qualified as Stdlib
 import T.Stdlib.Op qualified as Op
 import T.SExp (sexp)
-import T.Type (forall_, fun1, fun2)
+import T.Type (forAll_, fun1, fun2)
 import T.Type qualified as Type
 import T.Value (embedAeson)
 
@@ -408,17 +408,17 @@ rWith json tmplStr = do
 opExt :: [Stdlib.Op]
 opExt =
   [ Stdlib.Op "<+>"
-      (forall_ ((Type.String, Type.String) `fun2` Type.String))
+      (forAll_ ((Type.String, Type.String) `fun2` Type.String))
       (embed0 (\str0 str1 -> str0 <> "+" <> str1 :: Text)) Stdlib.Infixr 6
   ]
 
 funExt :: [Stdlib.Fun]
 funExt =
   [ Stdlib.Fun "bool01"
-      (forall_ (Type.Bool `fun1` Type.Int))
+      (forAll_ (Type.Bool `fun1` Type.Int))
       (embed0 (bool @Int 0 1))
   , Stdlib.Fun "const"
-      (forall_ (Type.Bool `fun1` Type.String))
+      (forAll_ (Type.Bool `fun1` Type.String))
       (embed0 (const @Bool @Text))
   ]
 
