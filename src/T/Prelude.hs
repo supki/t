@@ -64,10 +64,7 @@ module T.Prelude
   , filter
   , first
   , flip
-  , foldl'
-  , foldr
   , foldM_
-  , foldr1
   , for
   , for_
   , fromIntegral
@@ -83,7 +80,6 @@ module T.Prelude
   , second
   , seq
   , sequence
-  , toList
   , traverse
   , traverse_
   , T.Prelude.traceShow

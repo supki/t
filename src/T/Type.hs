@@ -6,74 +6,33 @@ module T.Type
   , Type(..)
   , Scheme(..)
   , Constraint(..)
+  , infer
+  , TypeError(..)
+  -- * stdlib helpers
   , forAll
   , forAll_
   , fun1
   , fun2
   , tyVar
-  , infer
-  , TypeError
-  , extractType
   ) where
 
-import Control.Monad (foldM)
-import Control.Monad.Reader (ReaderT, MonadReader, runReaderT, ask)
-import Control.Monad.State (StateT, MonadState, runStateT, gets, modify)
-import Control.Monad.Except (ExceptT, MonadError, runExceptT, throwError)
-import Data.List qualified as List
-import Data.List.NonEmpty qualified as NonEmpty
+import Data.HashMap.Strict qualified as HashMap
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.HashMap.Strict qualified as HashMap
-import Text.Printf (printf)
 
-import T.Exp (Exp, (:+)(..))
-import T.Exp qualified as Exp
-import T.Name (Name)
 import T.Prelude
-import T.SExp (sexp)
-import T.SExp qualified as SExp
-import T.Tmpl (Tmpl(..))
+import T.Type.Vocab
+  ( InferenceT(..)
+  , Γ
+  , TypeError(..)
+  , Type(..)
+  , freeVarsType
+  , Scheme(..)
+  , freeVarsScheme
+  , Constraint(..)
+  )
+import T.Type.Infer (infer)
 
-
-data Type
-  = Unit
-  | Bool
-  | Int
-  | Double
-  | String
-  | Regexp
-  | Array Type
-  | Record (HashMap Name Type)
-  | Fun (NonEmpty Type) Type
-  | Var Int (Set Constraint)
-    deriving (Show, Eq)
-
-instance SExp.To Type where
-  sexp = \case
-    Unit ->
-      "unit"
-    Bool ->
-      "bool"
-    Int ->
-      "int"
-    Double ->
-      "double"
-    String ->
-      "string"
-    Regexp ->
-      "regexp"
-    Array t ->
-      SExp.square [sexp t]
-    Record fs ->
-      SExp.curly (concatMap (\(k, v) -> [sexp k, sexp v]) (HashMap.toList fs))
-    Fun args r ->
-      SExp.round ["->", SExp.square (toList (map sexp args)), sexp r]
-    Var n cs ->
-      fromString (printf "#%d{%s}" n (List.intercalate ", " (map show (toList cs))))
-
-data Scheme = Forall (Set Int) Type
-    deriving (Show, Eq)
 
 forAll :: [Int] -> [(Int, Constraint)] -> Type -> Scheme
 forAll qs cs t = do
@@ -84,10 +43,8 @@ forAll qs cs t = do
 
 injectConstraints :: HashMap Int (Set Constraint) -> Type -> Type
 injectConstraints cm t = case t of
-  Var n cs -> do
-    let
-      extra = HashMap.findWithDefault Set.empty n cm
-    Var n (cs <> extra)
+  Var n cs ->
+    Var n (cs <> HashMap.findWithDefault Set.empty n cm)
   Array arr ->
     Array (injectConstraints cm arr)
   Record r ->
@@ -113,130 +70,6 @@ tyVar :: Int -> Type
 tyVar n =
   Var n mempty
 
-data Constraint
-  = Num
-  | Eq
-  | Display
-  | Sizeable
-  | Iterable
-    deriving (Show, Eq, Ord)
-
-satisfies :: Constraint -> Type -> Bool
-satisfies = \case
-  Num -> \case
-    Int -> True
-    Double -> True
-    Var _n cs -> Num `Set.member` cs
-    _ -> False
-  Eq -> \case
-    Unit -> True
-    Bool -> True
-    Int -> True
-    Double -> True
-    String -> True
-    Regexp -> True
-    Array t ->
-      satisfies Eq t
-    Record fs ->
-      all (satisfies Eq) fs
-    Var _n cs -> Eq `Set.member` cs
-    _ -> False
-  Display -> \case
-    Unit -> True
-    Bool -> True
-    Int -> True
-    Double -> True
-    String -> True
-    Array t ->
-      satisfies Display t
-    Record fs ->
-      all (satisfies Display) fs
-    Var _n cs -> Display `Set.member` cs
-    _ -> False
-  Sizeable -> \case
-    String -> True
-    Array _ -> True
-    Record _ -> True
-    Var _n cs -> Sizeable `Set.member` cs
-    _ -> False
-  Iterable -> \case
-    Array _ -> True
-    Record _ -> True
-    Var _n cs -> Iterable `Set.member` cs
-    _ -> False
-
-type TypedExp = Cofree Exp.ExpF (Exp.Ann, Type)
-
-newtype InferenceT m a = InferenceT (ReaderT Γ (StateT Σ (ExceptT TypeError m)) a)
-    deriving (Functor, Applicative, Monad, MonadReader Γ, MonadState Σ, MonadError TypeError)
-
-type Γ = HashMap Name Scheme
-
-data Σ = Σ
-  { subst   :: Subst
-  , counter :: Int
-  } deriving (Show, Eq)
-
-type Subst = HashMap Int Type
-
-emptyΣ :: Σ
-emptyΣ = Σ
-  { subst = mempty
-  , counter = 0
-  }
-
-data TypeError
-  = MissingKey Name
-  | MissingVar Name
-  | NotARecord Type
-  | TypeMismatch Type Type
-  | ConstraintViolation Constraint Type
-  | OccursCheck Int Type
-    deriving (Show, Eq)
-
-runInferenceT :: Γ -> Σ -> InferenceT m a -> m (Either TypeError (a, Σ))
-runInferenceT ctx subst (InferenceT m) =
-  runExceptT (runStateT (runReaderT m ctx) subst)
-
-infer :: Γ -> Exp -> Either TypeError TypedExp
-infer ctx exp = do
-  (te, finalΣ) <- runIdentity (runInferenceT ctx emptyΣ (inferExp exp))
-  pure (finalize finalΣ.subst te)
-
-inferTmpl :: Monad m => Tmpl -> InferenceT m ()
-inferTmpl = \case
-  Raw _text ->
-    pure ()
-  Comment _text ->
-    pure ()
-  Exp exp -> do
-    _texp <- inferExp exp
-    pure ()
-
-inferExp :: Monad m => Exp -> InferenceT m TypedExp
-inferExp (ann :< e) = do
-  te <- traverse inferExp e
-  inferredType <- case te of
-    Exp.Lit l ->
-      inferLiteral l
-    Exp.Var (_ann :+ name) ->
-      lookupCtx name
-    Exp.If b t f -> do
-      _ <- unify (extractType b) Bool
-      unify (extractType t) (extractType f)
-    Exp.App (_ann :+ name) args ->
-      checkApp name args
-    Exp.Idx arr idx ->
-      checkIdx arr idx
-    Exp.Key r (_ann :+ name) ->
-      checkKey r name
-  pure ((ann, inferredType) :< te)
-
-lookupCtx :: Monad m => Name -> InferenceT m Type
-lookupCtx name = do
-  ctx <- ask
-  maybe (throwError (MissingVar name)) instantiate (HashMap.lookup name ctx)
-
 generalize :: Monad m => Γ -> Type -> InferenceT m Scheme
 generalize ctx t = do
   let
@@ -247,204 +80,3 @@ generalize ctx t = do
     qs =
       Set.difference fvs ctxvs
   pure (Forall qs t)
-
-freeVarsType :: Type -> Set Int
-freeVarsType = \case
-  Var n _cs ->
-    Set.singleton n
-  Array t ->
-    freeVarsType t
-  Record r ->
-    foldMap freeVarsType r
-  Fun args r ->
-    foldMap freeVarsType args <> freeVarsType r
-  _ ->
-    Set.empty
-
-freeVarsScheme :: Scheme -> Set Int
-freeVarsScheme (Forall qs t) =
-  Set.difference (freeVarsType t) qs
-
-instantiate :: Monad m => Scheme -> InferenceT m Type
-instantiate (Forall qs t) = do
-  fvs <- for (toList qs) $ \q -> do
-    fv <- freshVar
-    pure (q, fv)
-  pure (replaceOnce (HashMap.fromList fvs) t)
-
--- | 'replaceOnce' is a variant of 'replace' that doesn't
--- do deep substitution; this is necessary separate the namespaces
--- of quantified variables and unitification variables which is
--- useful for e.g. stdlib definitions
-replaceOnce :: Subst -> Type -> Type
-replaceOnce subst t =
-  case t of
-    Array arr ->
-      Array (replaceOnce subst arr)
-    Record r ->
-      Record (map (replaceOnce subst) r)
-    Fun args r ->
-      Fun (map (replaceOnce subst) args) (replaceOnce subst r)
-    Var n cs ->
-      case HashMap.lookup n subst of
-        Nothing ->
-          Var n cs
-        Just (Var m ds) ->
-          Var m (Set.union cs ds)
-        Just x ->
-          applyConstraints cs x
-    _ ->
-      t
-
-extractType :: TypedExp -> Type
-extractType ((_ann, t) :< _e) = t
-
-unify :: Monad m => Type -> Type -> InferenceT m Type
-unify t1 t2 = do
-  s <- gets (.subst)
-  case (replace s t1, replace s t2) of
-    (a, b)
-      | a == b ->
-        pure a
-    (Var n cs, t) -> do
-      unifyVar s n cs t
-    (t, Var n cs) -> do
-      unifyVar s n cs t
-    (Array a, Array b) ->
-      map Array (unify a b)
-    (Record m1, Record m2) -> do
-      map Record (sequence (HashMap.intersectionWith unify m1 m2))
-    (Fun args1 ret1, Fun args2 ret2)
-      | NonEmpty.length args1 == NonEmpty.length args2 ->
-        liftA2 Fun (sequence (NonEmpty.zipWith unify args1 args2)) (unify ret1 ret2)
-    (a, b) ->
-      throwError (TypeMismatch a b)
-
-unifyVar :: Monad m => Subst -> Int -> Set Constraint -> Type -> InferenceT m Type
-unifyVar s n cs t0 = do
-  when (occurs n t0 s) (throwError (OccursCheck n t0))
-  checkConstraints cs t0
-  let
-    t =
-      applyConstraints cs t0
-  extendSubst n t
-  pure t
-
-checkConstraints :: Monad m => Set Constraint -> Type -> InferenceT m ()
-checkConstraints cs t = do
-  for_ cs $ \c ->
-    unless (satisfies c t) (throwError (ConstraintViolation c t))
-
-occurs :: Int -> Type -> Subst -> Bool
-occurs n t subst =
-  case replace subst t of
-    Var m _cs ->
-      n == m
-    Array arr ->
-      occurs n arr subst
-    Record r ->
-      any (\t' -> occurs n t' subst) r
-    Fun args r ->
-      any (\a -> occurs n a subst) args || occurs n r subst
-    _ ->
-      False
-
-replace :: Subst -> Type -> Type
-replace subst t =
-  case t of
-    Array arr ->
-      Array (replace subst arr)
-    Record r ->
-      Record (map (replace subst) r)
-    Fun args r ->
-      Fun (map (replace subst) args) (replace subst r)
-    Var n cs ->
-      case HashMap.lookup n subst of
-        Nothing ->
-          Var n cs
-        Just nt ->
-          applyConstraints cs (replace subst nt)
-    _ ->
-      t
-
-applyConstraints :: Set Constraint -> Type -> Type
-applyConstraints cs = \case
-  Var n vcs ->
-    Var n (Set.union vcs cs)
-  t ->
-    t
-
-extendSubst :: Monad m => Int -> Type -> InferenceT m ()
-extendSubst n t =
-  modify (\s -> s { subst = HashMap.insert n t s.subst })
-
-checkApp :: Monad m => Name -> NonEmpty TypedExp -> InferenceT m Type
-checkApp name args = do
-  ft <- lookupCtx name
-  r <- freshVar
-  _ <- unify ft (Fun (map extractType args) r)
-  pure r
-
-checkIdx :: Monad m => TypedExp -> TypedExp -> InferenceT m Type
-checkIdx arr idx = do
-  e <- freshVar
-  _ <- unify (extractType arr) (Array e)
-  _ <- unify (extractType idx) Int
-  pure e
-
-freshVar :: Monad m => InferenceT m Type
-freshVar = do
-  n <- gets (.counter)
-  modify (\s -> s { counter = s.counter + 1 })
-  pure (Var n mempty)
-
-checkKey :: Monad m => TypedExp -> Name -> InferenceT m Type
-checkKey r name = do
-  case extractType r of
-    Record fields ->
-      case HashMap.lookup name fields of
-        Just t ->
-          pure t
-        Nothing ->
-          throwError (MissingKey name)
-    var@(Var _n _cs) -> do
-      v <- freshVar
-      _ <- unify var (Record (HashMap.singleton name v))
-      pure v
-    _ ->
-      throwError (NotARecord (extractType r))
-
-inferLiteral :: Monad m => Exp.Literal -> InferenceT m Type
-inferLiteral = \case
-  Exp.Null -> pure Unit
-  Exp.Bool _ -> pure Bool
-  Exp.Int _ -> pure Int
-  Exp.Double _ -> pure Double
-  Exp.String _ -> pure String
-  Exp.Regexp _ -> pure Regexp
-  Exp.Array xs -> do
-    ys <- traverse inferExp xs
-    t <- case toList (map extractType ys) of
-      [] ->
-        freshVar
-      z : zs ->
-        foldM unify z zs
-    pure (Array t)
-  Exp.Record r -> do
-    ts <- traverse inferExp r
-    pure (Record (map extractType ts))
-
-finalize :: Subst -> TypedExp -> TypedExp
-finalize subst =
-  map (\(ann, t) -> (ann, defaultType (replace subst t)))
-
-defaultType :: Type -> Type
-defaultType = \case
-  Var {} ->
-    Unit
-  Array t ->
-    Array (defaultType t)
-  Record r ->
-    Record (map defaultType r)
-  t ->
-    t

@@ -101,9 +101,12 @@ typeOf = \case
   Double _ -> Type.Double
   String _ -> Type.String
   Regexp _ -> Type.Regexp
-  Array _ -> Type.Array (error "element")
-  Record _ -> Type.Record (error "fields")
-  Lam _ -> Type.Fun (error "args") (error "result")
+  Array _ ->
+    Type.Array (error "element")
+  Record fields ->
+    Type.Record (map typeOf fields)
+  Lam _ ->
+    Type.Fun (error "args") (error "result")
 
 embedAeson :: Aeson.Value -> Value
 embedAeson = \case

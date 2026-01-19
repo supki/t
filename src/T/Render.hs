@@ -243,7 +243,7 @@ enforceArray exp = do
     Value.Array xs ->
       pure xs
     _ ->
-      throwError (TypeError exp (error "Type.Array") (Value.typeOf v) (sexp v))
+      throwError (TypeError exp (Type.Array (Type.tyVar 0)) (Value.typeOf v) (sexp v))
 
 enforceRecord :: (Ctx m, MonadError Error m) => Exp -> m (HashMap Name Value)
 enforceRecord exp = do
@@ -320,7 +320,7 @@ evalLValue =
               Just v ->
                 (Right v, path)
           Right v ->
-            throwError (TypeError exp (error "Type.Array") (Value.typeOf v) (sexp v))
+            throwError (TypeError exp (Type.Array (Type.tyVar 0)) (Value.typeOf v) (sexp v))
           Left name ->
             throwError (NotInScope name)
       _ :< Key exp0 key@(_ :+ key0) -> do
