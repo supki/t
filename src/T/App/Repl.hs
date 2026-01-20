@@ -18,6 +18,7 @@ import T qualified
 import T.SExp (sexp)
 import T.SExp qualified as SExp
 import T.Stdlib qualified as Stdlib
+import T.Type qualified as Type
 
 
 run :: IO ()
@@ -45,6 +46,9 @@ run = do
             loop (fromMaybe scope0 scope)
           ParseTmpl str -> do
             parseTmpl str
+            loop scope0
+          InferExp str -> do
+            inferExp str
             loop scope0
 
 header :: IO ()
@@ -80,10 +84,25 @@ parseTmpl str = liftIO $
     Right tmpl ->
       Text.Lazy.putStrLn (SExp.renderLazyText (sexp tmpl))
 
+inferExp :: MonadIO m => Text -> m ()
+inferExp str = liftIO $
+  case T.parseText Stdlib.def str of
+    Left err ->
+      warn err
+    Right (T.Exp exp) ->
+      case Type.infer (Stdlib.typingCtx Stdlib.def) exp of
+        Left te ->
+          warn te
+        Right texp ->
+          Text.Lazy.putStrLn (SExp.renderLazyText (sexp (Type.extractType texp)))
+    Right _ ->
+      error "wow"
+
 data Cmd
   = Quit
   | EvalTmpl Text
   | ParseTmpl Text
+  | InferExp Text
     deriving (Show, Eq)
 
 prompt :: IO Text
@@ -100,5 +119,7 @@ parseInput input
     EvalTmpl rest
   | Just rest <- Text.stripPrefix ":parse-tmpl " input =
     ParseTmpl rest
+  | Just rest <- Text.stripPrefix ":infer-exp " input =
+    InferExp rest
   | otherwise =
     EvalTmpl input

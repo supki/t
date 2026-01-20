@@ -26,8 +26,7 @@ import Text.Parser.Token.Style (emptyOps)
 import Text.Regex.PCRE.Light qualified as Pcre
 
 import T.Exp
-  ( Cofree(..)
-  , Exp
+  ( Exp
   , ExpF(..)
   , Literal(..)
   , (:+)(..)
@@ -43,7 +42,7 @@ import T.Exp.Ann (anning, anned)
 import T.Name (Name(..))
 import T.Name qualified as Name
 import T.Parse.Macro qualified as Macro
-import T.Prelude
+import T.Prelude hiding (for)
 import T.Tmpl (Tmpl)
 import T.Tmpl qualified as Tmpl
 import T.Stdlib (Stdlib(..))

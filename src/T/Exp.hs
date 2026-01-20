@@ -1,4 +1,6 @@
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -7,7 +9,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 module T.Exp
   ( Exp
-  , Cofree(..)
   , ExpF(..)
   , Literal(..)
   , (:+)(..)
@@ -40,30 +41,22 @@ import T.SExp (sexp)
 import T.SExp qualified as SExp
 
 
-data Cofree f a = a :< f (Cofree f a)
+type Exp = Cofree (ExpF Ann) Ann
 
-deriving instance (Show a, Show (f (Cofree f a))) => Show (Cofree f a)
-
-instance Eq1 f => Eq (Cofree f a) where
-  (_ :< f) == (_ :< g) =
-    eq1 f g
-
-type Exp = Cofree ExpF Ann
-
-data ExpF a
+data ExpF ann a
   = Lit Literal
     -- ^ literals: 4, [1,2,3], {foo: 4}
-  | Var (Ann :+ Name)
+  | Var (ann :+ Name)
     -- ^ variable lookup: foo
   | If a a a
     -- ^ if-expression: if ... then ... else ...
-  | App (Ann :+ Name) (NonEmpty a)
+  | App (ann :+ Name) (NonEmpty a)
     -- ^ application: f(x)
   | Idx a a
     -- ^ array index access: xs[0]
-  | Key a (Ann :+ Name)
+  | Key a (ann :+ Name)
     -- ^ record property access: foo.bar
-    deriving (Show, Eq, Generic1)
+    deriving (Show, Eq, Generic1, Functor, Foldable, Traversable)
 
 instance SExp.To Exp where
   sexp = \case
@@ -80,7 +73,7 @@ instance SExp.To Exp where
     _ :< Key exp key ->
       SExp.round ["at-key", sexp key, sexp exp]
 
-instance Eq1 ExpF where
+instance Eq1 (ExpF ann) where
   liftEq _ (Lit l0) (Lit l1) =
     l0 == l1
   liftEq _ (Var v0) (Var v1) =

@@ -1,5 +1,5 @@
 module T
-  ( Tmpl
+  ( Tmpl(..)
   , Scope(..)
   , Exp
   , Value
@@ -21,6 +21,8 @@ module T
   , stdlib
   , emptyScope
 
+  , TypeError
+
   , Embed(..)
   , Eject(..)
   ) where
@@ -34,7 +36,7 @@ import T.Error
   )
 import T.Exp (Exp)
 import T.Name (Name(..))
-import T.Tmpl (Tmpl)
+import T.Tmpl (Tmpl(..))
 import T.Parse
   ( ParseError(..)
   , parseFile
@@ -44,6 +46,7 @@ import T.Parse
 import T.Prelude
 import T.Render (Rendered(..), Scope(..), render)
 import T.Stdlib (Stdlib, def)
+import T.Type (TypeError)
 import T.Value (Value, embedAeson)
 
 

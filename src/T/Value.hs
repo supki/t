@@ -95,15 +95,22 @@ displayWith f =
 
 typeOf :: Value -> Type
 typeOf = \case
-  Null -> Type.Null
+  Null -> Type.Unit
   Bool _ -> Type.Bool
   Int _ -> Type.Int
   Double _ -> Type.Double
   String _ -> Type.String
   Regexp _ -> Type.Regexp
-  Array _ -> Type.Array
-  Record _ -> Type.Record
-  Lam _ -> Type.Fun
+  Array xs ->
+    case toList xs of
+      [] ->
+        Type.Array (Type.tyVar 0)
+      x : _xs ->
+        Type.Array (typeOf x)
+  Record fields ->
+    Type.Record (map typeOf fields)
+  Lam _ ->
+    Type.Fun (error "args") (error "result")
 
 embedAeson :: Aeson.Value -> Value
 embedAeson = \case

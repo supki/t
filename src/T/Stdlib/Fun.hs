@@ -4,6 +4,7 @@
 module T.Stdlib.Fun
   ( Fun(..)
   , bindings
+  , typingCtx
   , functions
   ) where
 
@@ -18,41 +19,80 @@ import T.Error (Error(..))
 import T.Exp.Ann ((:+)(..), unann)
 import T.Name (Name)
 import T.Prelude
+import T.Type (Γ, forAll, forAll_, fun1, fun2, tyVar)
+import T.Type qualified as Type
 import T.Value (Value(..), display, displayWith)
 
 
 data Fun = Fun
-  { name    :: Name
-  , binding :: Name -> Value
+  { name     :: Name
+  , ascribed :: Type.Scheme
+  , binding  :: Name -> Value
   }
 
-bindings :: [Fun] -> [(Name, Value)]
+bindings :: [Fun] -> HashMap Name Value
 bindings =
-  map (\fun -> (fun.name, fun.binding fun.name))
+  HashMap.fromList . map (\fun -> (fun.name, fun.binding fun.name))
+
+typingCtx :: [Fun] -> Γ
+typingCtx =
+  HashMap.fromList . map (\fun -> (fun.name, fun.ascribed))
 
 functions :: [Fun]
 functions =
-  [ Fun "empty?" nullB
-  , Fun "length" lengthB
+  [ Fun "empty?"
+      (forAll [0] [(0, Type.Sizeable)] (tyVar 0 `fun1` Type.Bool))
+      nullB
+  , Fun "length"
+      (forAll [0] [(0, Type.Sizeable)] (tyVar 0 `fun1` Type.Int))
+      lengthB
 
-  , Fun "floor" (flip embed0 (floor @Double @Int))
-  , Fun "ceiling" (flip embed0 (ceiling @Double @Int))
-  , Fun "round" (flip embed0 (round @Double @Int))
-  , Fun "int->double" (flip embed0 (fromIntegral @Int @Double))
+  , Fun "floor"
+      (forAll_ (Type.Double `fun1` Type.Int))
+      (embed0 (floor @Double @Int))
+  , Fun "ceiling"
+      (forAll_ (Type.Double `fun1` Type.Int))
+      (embed0 (ceiling @Double @Int))
+  , Fun "round"
+      (forAll_ (Type.Double `fun1` Type.Int))
+      (embed0 (round @Double @Int))
+  , Fun "int->double"
+      (forAll_ (Type.Int `fun1` Type.Double))
+      (embed0 (fromIntegral @Int @Double))
 
-  , Fun "upper-case" (flip embed0 Text.toUpper)
-  , Fun "lower-case" (flip embed0 Text.toLower)
-  , Fun "title-case" (flip embed0 Text.toTitle)
+  , Fun "upper-case"
+      (forAll_ (Type.String `fun1` Type.String))
+      (embed0 Text.toUpper)
+  , Fun "lower-case"
+      (forAll_ (Type.String `fun1` Type.String))
+      (embed0 Text.toLower)
+  , Fun "title-case"
+      (forAll_ (Type.String `fun1` Type.String))
+      (embed0 Text.toTitle)
 
-  , Fun "split" (flip embed0 Text.splitOn)
-  , Fun "join" (flip embed0 Text.intercalate)
-  , Fun "concat" (flip embed0 Text.concat)
-  , Fun "chunks-of" (flip embed0 Text.chunksOf)
+  , Fun "split"
+      (forAll_ ((Type.String, Type.String) `fun2` Type.Array Type.String))
+      (embed0 Text.splitOn)
+  , Fun "join"
+      (forAll_ ((Type.String, Type.Array Type.String) `fun2` Type.String))
+      (embed0 Text.intercalate)
+  , Fun "concat"
+      (forAll_ (Type.Array Type.String `fun1` Type.String))
+      (embed0 Text.concat)
+  , Fun "chunks-of"
+      (forAll_ ((Type.Int, Type.String) `fun2` Type.Array Type.String))
+      (embed0 Text.chunksOf)
 
-  , Fun "die" dieB
+  , Fun "die"
+      (forAll [0] [] (Type.String `fun1` tyVar 0))
+      dieB
 
-  , Fun "show" (\_ -> showB)
-  , Fun "pp" (\_ -> ppB)
+  , Fun "show"
+      (forAll [0] [(0, Type.Display)] (tyVar 0 `fun1` Type.String))
+      (embed0 showB)
+  , Fun "pp"
+      (forAll [0] [(0, Type.Display)] (tyVar 0 `fun1` Type.String))
+      (embed0 ppB)
   ]
 
 nullB :: Name -> Value
