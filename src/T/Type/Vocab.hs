@@ -112,8 +112,20 @@ instance SExp.To Type where
       SExp.curly (concatMap (\(k, v) -> [sexp k, sexp v]) (HashMap.toList fs))
     Fun args r ->
       SExp.round ["->", SExp.square (toList (map sexp args)), sexp r]
-    Var n cs ->
-      fromString (printf "#%d{%s}" n (List.intercalate ", " (map show (toList cs))))
+    Var n cs
+      | Set.null cs ->
+        fromString (printf "#%d" n)
+      | otherwise ->
+        fromString (printf "#%d{%s}" n (List.intercalate ", " (map showConstraint (toList cs))))
+   where
+    showConstraint = \case
+      Num -> "num" :: String
+      Eq -> "eq"
+      Render -> "render"
+      Display -> "display"
+      Sizeable -> "sizeable"
+      Iterable -> "iterable"
+
 
 data Scheme = Forall (Set Int) Type
     deriving (Show, Eq)
@@ -138,7 +150,8 @@ freeVarsScheme (Forall qs t) =
 data Constraint
   = Num
   | Eq
-  | Display
+  | Render -- can be rendered directly as the value of a {{ }} chunk
+  | Display -- i.e. Show
   | Sizeable
   | Iterable
     deriving (Show, Eq, Ord)
@@ -162,6 +175,14 @@ satisfies = \case
     Record fs ->
       all (satisfies Eq) fs
     Var _n cs -> Eq `Set.member` cs
+    _ -> False
+  Render -> \case
+    Unit -> True
+    Bool -> True
+    Int -> True
+    Double -> True
+    String -> True
+    Var _n cs -> Render `Set.member` cs
     _ -> False
   Display -> \case
     Unit -> True

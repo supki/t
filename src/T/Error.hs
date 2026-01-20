@@ -5,6 +5,7 @@ module T.Error
   , prettyWarning
   ) where
 
+import Data.Text.Internal.Builder qualified as Builder
 import Prettyprinter (Doc)
 import Prettyprinter qualified as PP
 import Prettyprinter.Render.Terminal (AnsiStyle)
@@ -53,18 +54,18 @@ prettyError = \case
   TagMismatch (ann :< Var (_ann :+ name)) expected actual value ->
     header ann <>
     "mismatched [rendertime] types in " <> PP.pretty name <> ": " <> PP.line <>
-      PP.indent 2 "expected: " <> PP.pretty (show expected) <> PP.line <>
-      PP.indent 2 " but got: " <> PP.pretty value <> " : " <> PP.pretty (show actual) <> PP.line <>
+      PP.indent 2 "expected: " <> PP.pretty (Builder.toLazyText (SExp.render expected)) <> PP.line <>
+      PP.indent 2 " but got: " <> PP.pretty value <> " : " <> PP.pretty (Builder.toLazyText (SExp.render actual)) <> PP.line <>
     excerpt ann
   TagMismatch (ann :< _) expected actual value ->
     header ann <>
     "mismatched [rendertime] types:" <> PP.line <>
-      PP.indent 2 "expected: " <> PP.pretty (show expected) <> PP.line <>
-      PP.indent 2 " but got: " <> PP.pretty value <> " : " <> PP.pretty (show actual) <> PP.line <>
+      PP.indent 2 "expected: " <> PP.pretty (Builder.toLazyText (SExp.render expected)) <> PP.line <>
+      PP.indent 2 " but got: " <> PP.pretty value <> " : " <> PP.pretty (Builder.toLazyText (SExp.render actual)) <> PP.line <>
     excerpt ann
   NotLValue exp@(ann :< _) ->
     header ann <>
-      "expected an L-Value, but got something else: " <> fromString (show (SExp.render (SExp.sexp exp))) <>
+      "expected an L-Value, but got something else: " <> fromString (show (SExp.render exp)) <>
     excerpt ann
  where
   header (Tri.Span from _to _line) =

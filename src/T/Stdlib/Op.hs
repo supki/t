@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeApplications #-}
@@ -123,7 +124,7 @@ combineNumbers intOp doubleOp name =
         ann :+ n ->
           Left (TagMismatch (varE (ann :+ name)) Type.Double (typeOf n) (sexp n))
     ann :+ n ->
-      Left (TagMismatch (varE (ann :+ name)) (error "Type.Number") (typeOf n) (sexp n))
+      Left (TagMismatch (varE (ann :+ name)) (Type.Var 0 [Type.Num]) (typeOf n) (sexp n))
 
 add :: Name -> Value
 add =
@@ -157,7 +158,7 @@ predicateNumbers intOp doubleOp name =
         ann :+ n ->
           Left (TagMismatch (varE (ann :+ name)) Type.Double (typeOf n) (sexp n))
     ann :+ n ->
-      Left (TagMismatch (varE (ann :+ name)) (error "Type.Number") (typeOf n) (sexp n))
+      Left (TagMismatch (varE (ann :+ name)) (Type.Var 0 [Type.Num]) (typeOf n) (sexp n))
 
 lt :: Name -> Value
 lt =

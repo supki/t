@@ -101,8 +101,12 @@ typeOf = \case
   Double _ -> Type.Double
   String _ -> Type.String
   Regexp _ -> Type.Regexp
-  Array _ ->
-    Type.Array (error "element")
+  Array xs ->
+    case toList xs of
+      [] ->
+        Type.Array (Type.tyVar 0)
+      x : _xs ->
+        Type.Array (typeOf x)
   Record fields ->
     Type.Record (map typeOf fields)
   Lam _ ->

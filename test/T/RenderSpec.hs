@@ -272,7 +272,7 @@ spec =
 
       it "not-renderable" $
         r_ "{{ [] }}" `shouldRaise`
-          TagMismatch (array []) (Type.Var 0 [Type.Display]) (Type.Array (Type.tyVar 0)) (sexp (array []))
+          TagMismatch (array []) (Type.Var 0 [Type.Render]) (Type.Array (Type.tyVar 0)) (sexp (array []))
 
       it "not-a-function" $
         rWith [aesonQQ|{f: "foo"}|] "{{ f(4) }}" `shouldRaise`

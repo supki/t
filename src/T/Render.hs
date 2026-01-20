@@ -131,7 +131,7 @@ renderTmpl = \case
                   (HashMap.toList o))
         pure (bool (Just xs) Nothing (List.null xs))
       _ ->
-        throwError (TagMismatch exp (error "Type.Iterable") (Value.typeOf value) (sexp value))
+        throwError (TagMismatch exp (Type.Var 0 (Set.fromList [Type.Iterable])) (Value.typeOf value) (sexp value))
     case itemsQ of
       Nothing ->
         maybe (pure ()) renderTmpl elseTmpl
@@ -169,7 +169,7 @@ renderExp exp = do
     Value.String str ->
       pure str
     _ ->
-      throwError (TagMismatch exp (error "Type.Renderable") (Value.typeOf value) (sexp value))
+      throwError (TagMismatch exp (Type.Var 0 (Set.fromList [Type.Render])) (Value.typeOf value) (sexp value))
 
 evalExp :: (Ctx m, MonadError Error m) => Exp -> m Value
 evalExp = \case
@@ -273,7 +273,7 @@ evalApp name@(ann0 :+ _) =
     go g exps
   -- in every other case something went wrong :-(
   go v _ =
-    throwError (TagMismatch (ann0 :< Var name) (error "Type.Fun") (Value.typeOf v) (sexp v))
+    throwError (TagMismatch (ann0 :< Var name) (Type.tyVar 0 `Type.fun1` Type.tyVar 1) (Value.typeOf v) (sexp v))
 
 data Path = Path
   { var     :: Ann :+ Name
