@@ -10,6 +10,7 @@ module T.Type.Vocab
   , freshVar
   , TypeError(..)
   , TypedExp
+  , Ann(..)
   , Type(..)
   , freeVarsType
   , Scheme(..)
@@ -26,6 +27,7 @@ import Data.List qualified as List
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Text.Printf (printf)
+import Text.Trifecta (Span)
 
 import T.Exp qualified as Exp
 import T.Name (Name)
@@ -71,7 +73,12 @@ data TypeError
   | OccursCheck Int Type
     deriving (Show, Eq)
 
-type TypedExp = Cofree Exp.ExpF (Exp.Ann, Type)
+type TypedExp = Cofree (Exp.ExpF Ann) Ann
+
+data Ann = Ann
+  { spanned :: Span
+  , typed   :: Type
+  } deriving (Show, Eq)
 
 data Type
   = Unit

@@ -63,6 +63,9 @@ library
       T.Stdlib.Op
       T.Tmpl
       T.Type
+      T.Type.Infer
+      T.Type.Unify
+      T.Type.Vocab
       T.Value
       Meta_t
   other-modules:

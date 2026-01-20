@@ -19,6 +19,7 @@ import T.Type.Vocab
   , Σ(..)
   , Subst
   , TypedExp
+  , Ann(..)
   , Type(..)
   , TypeError(..)
   , Constraint
@@ -127,11 +128,11 @@ applyConstraints cs = \case
 
 extendSubst :: Monad m => Int -> Type -> InferenceT m ()
 extendSubst n t =
-  modify (\s -> s { subst = HashMap.insert n t s.subst })
+  modify (\s -> s {subst = HashMap.insert n t s.subst})
 
 finalize :: Subst -> TypedExp -> TypedExp
 finalize subst =
-  map (\(ann, t) -> (ann, defaultType (replace subst t)))
+  map (\ann -> ann {typed = defaultType (replace subst ann.typed)})
 
 defaultType :: Type -> Type
 defaultType = \case

@@ -22,6 +22,7 @@ import T.Type.Vocab
   , freshVar
   , TypeError(..)
   , TypedExp
+  , Ann(..)
   , Type(..)
   , Scheme(..)
   )
@@ -48,23 +49,42 @@ inferTmpl = \case
     pure ()
 
 inferExp :: Monad m => Exp -> InferenceT m TypedExp
-inferExp (ann :< e) = do
-  te <- traverse inferExp e
-  inferredType <- case te of
-    Exp.Lit l ->
-      inferLiteral l
-    Exp.Var (_ann :+ name) ->
-      lookupCtx name
-    Exp.If b t f -> do
-      _ <- unify (extractType b) Bool
-      unify (extractType t) (extractType f)
-    Exp.App (_ann :+ name) args ->
-      checkApp name args
-    Exp.Idx arr idx ->
-      checkIdx arr idx
-    Exp.Key r (_ann :+ name) ->
-      checkKey r name
-  pure ((ann, inferredType) :< te)
+inferExp (ann0 :< e) =
+  case e of
+    Exp.Lit l -> do
+      t <- inferLiteral l
+      pure (annOf t :< Exp.Lit l)
+
+    Exp.Var (ann :+ name) -> do
+      t <- lookupCtx name
+      pure (annOf t :< Exp.Var (Ann {spanned = ann, typed = t} :+ name))
+
+    Exp.If b0 t0 f0 -> do
+      b1@(tb :< _) <- inferExp b0
+      _ <- unify tb.typed Bool
+      t1@(tt :< _) <- inferExp t0
+      f1@(tf :< _) <- inferExp f0
+      tu <- unify tt.typed tf.typed
+      pure (annOf tu :< Exp.If b1 t1 f1)
+
+    Exp.App (ann :+ name) args0 -> do
+      args1 <- traverse inferExp args0
+      t <- checkApp name args1
+      pure (annOf t :< Exp.App (Ann {spanned = ann, typed = t} :+ name) args1)
+
+    Exp.Idx arr0 idx0 -> do
+      arr1 <- inferExp arr0
+      idx1 <- inferExp idx0
+      t <- checkIdx arr1 idx1
+      pure (annOf t :< Exp.Idx arr1 idx1)
+
+    Exp.Key r0 (ann :+ name) -> do
+      r1 <- inferExp r0
+      t <- checkKey r1 name
+      pure (annOf t :< Exp.Key r1 (Ann {spanned = ann, typed = t} :+ name))
+ where
+  annOf inferred =
+    Ann {spanned = ann0, typed = inferred}
 
 checkApp :: Monad m => Name -> NonEmpty TypedExp -> InferenceT m Type
 checkApp name args = do
@@ -129,4 +149,4 @@ instantiate (Forall qs t) = do
   pure (replaceOnce (HashMap.fromList fvs) t)
 
 extractType :: TypedExp -> Type
-extractType ((_ann, t) :< _e) = t
+extractType (ann :< _e) = ann.typed
