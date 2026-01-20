@@ -131,7 +131,7 @@ renderTmpl = \case
                   (HashMap.toList o))
         pure (bool (Just xs) Nothing (List.null xs))
       _ ->
-        throwError (TypeError exp (error "Type.Iterable") (Value.typeOf value) (sexp value))
+        throwError (TagMismatch exp (error "Type.Iterable") (Value.typeOf value) (sexp value))
     case itemsQ of
       Nothing ->
         maybe (pure ()) renderTmpl elseTmpl
@@ -169,7 +169,7 @@ renderExp exp = do
     Value.String str ->
       pure str
     _ ->
-      throwError (TypeError exp (error "Type.Renderable") (Value.typeOf value) (sexp value))
+      throwError (TagMismatch exp (error "Type.Renderable") (Value.typeOf value) (sexp value))
 
 evalExp :: (Ctx m, MonadError Error m) => Exp -> m Value
 evalExp = \case
@@ -223,7 +223,7 @@ evalExp = \case
     r <- enforceRecord exp
     case HashMap.lookup key r of
       Nothing ->
-        throwError (MissingProperty exp (sexp r) (sexp key))
+        throwError (MissingField exp (sexp r) (sexp key))
       Just x ->
         pure x
 
@@ -234,7 +234,7 @@ enforceInt exp = do
     Value.Int xs ->
       pure xs
     _ ->
-      throwError (TypeError exp Type.Int (Value.typeOf v) (sexp v))
+      throwError (TagMismatch exp Type.Int (Value.typeOf v) (sexp v))
 
 enforceArray :: (Ctx m, MonadError Error m) => Exp -> m (Vector Value)
 enforceArray exp = do
@@ -243,7 +243,7 @@ enforceArray exp = do
     Value.Array xs ->
       pure xs
     _ ->
-      throwError (TypeError exp (Type.Array (Type.tyVar 0)) (Value.typeOf v) (sexp v))
+      throwError (TagMismatch exp (Type.Array (Type.tyVar 0)) (Value.typeOf v) (sexp v))
 
 enforceRecord :: (Ctx m, MonadError Error m) => Exp -> m (HashMap Name Value)
 enforceRecord exp = do
@@ -252,7 +252,7 @@ enforceRecord exp = do
     Value.Record r ->
       pure r
     _ ->
-      throwError (TypeError exp (Type.Record mempty) (Value.typeOf v) (sexp v))
+      throwError (TagMismatch exp (Type.Record mempty) (Value.typeOf v) (sexp v))
 
 evalApp
   :: (Ctx m, MonadError Error m)
@@ -273,7 +273,7 @@ evalApp name@(ann0 :+ _) =
     go g exps
   -- in every other case something went wrong :-(
   go v _ =
-    throwError (TypeError (ann0 :< Var name) (error "Type.Fun") (Value.typeOf v) (sexp v))
+    throwError (TagMismatch (ann0 :< Var name) (error "Type.Fun") (Value.typeOf v) (sexp v))
 
 data Path = Path
   { var     :: Ann :+ Name
@@ -320,7 +320,7 @@ evalLValue =
               Just v ->
                 (Right v, path)
           Right v ->
-            throwError (TypeError exp (Type.Array (Type.tyVar 0)) (Value.typeOf v) (sexp v))
+            throwError (TagMismatch exp (Type.Array (Type.tyVar 0)) (Value.typeOf v) (sexp v))
           Left name ->
             throwError (NotInScope name)
       _ :< Key exp0 key@(_ :+ key0) -> do
@@ -336,7 +336,7 @@ evalLValue =
               Just v ->
                 (Right v, path)
           Right v ->
-            throwError (TypeError exp (Type.Record mempty) (Value.typeOf v) (sexp v))
+            throwError (TagMismatch exp (Type.Record mempty) (Value.typeOf v) (sexp v))
           Left name ->
             throwError (NotInScope name)
 
@@ -393,9 +393,9 @@ insertVar Path {var = (ann :+ name), lookups} v = do
           [] ->
             pure (Value.Record (HashMap.insert (fromString (Name.toString key)) v r))
           _ ->
-            throwError (MissingProperty (ann0 :< Lit Null) (sexp r) (sexp key))
+            throwError (MissingField (ann0 :< Lit Null) (sexp r) (sexp key))
   go v0 (K (ann0 :+ _key) : _path) =
-    throwError (TypeError (ann0 :< Lit Null) (Type.Record mempty) (Value.typeOf v0) (sexp v0))
+    throwError (TagMismatch (ann0 :< Lit Null) (Type.Record mempty) (Value.typeOf v0) (sexp v0))
   go (Value.Array xs) (I (ann0 :+ idx) : path) =
     -- this is pretty similar to records except the lack of the aforementioned special
     -- treatment.
@@ -406,7 +406,7 @@ insertVar Path {var = (ann :+ name), lookups} v = do
       Nothing ->
         throwError (OutOfBounds (ann0 :< Lit Null) (sexp xs) (sexp idx))
   go v0 (I (ann0 :+ _idx) : _path) =
-    throwError (TypeError (ann0 :< Lit Null) (Type.Record mempty) (Value.typeOf v0) (sexp v0))
+    throwError (TagMismatch (ann0 :< Lit Null) (Type.Record mempty) (Value.typeOf v0) (sexp v0))
   go _v0 [] =
     pure v
 

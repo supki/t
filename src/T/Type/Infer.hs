@@ -108,13 +108,13 @@ checkKey r name = do
         Just t ->
           pure t
         Nothing ->
-          throwError (MissingKey name)
+          throwError (MissingField name)
     var@(Var _n _cs) -> do
       v <- freshVar
       _ <- unify var (Record (HashMap.singleton name v))
       pure v
-    _ ->
-      throwError (NotARecord (extractType r))
+    t ->
+      throwError (TypeMismatch (Record mempty) t)
 
 inferLiteral :: Monad m => Exp.Literal -> InferenceT m Type
 inferLiteral = \case
@@ -139,7 +139,7 @@ inferLiteral = \case
 lookupCtx :: Monad m => Name -> InferenceT m Type
 lookupCtx name = do
   ctx <- ask
-  maybe (throwError (MissingVar name)) instantiate (HashMap.lookup name ctx)
+  maybe (throwError (NotInScope name)) instantiate (HashMap.lookup name ctx)
 
 instantiate :: Monad m => Scheme -> InferenceT m Type
 instantiate (Forall qs t) = do

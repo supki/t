@@ -24,9 +24,9 @@ import T.SExp qualified as SExp
 data Error
   = NotInScope (Ann :+ Name)
   | OutOfBounds Exp SExp SExp
-  | MissingProperty Exp SExp SExp
+  | MissingField Exp SExp SExp
   | UserError (Ann :+ Name) Text
-  | TypeError Exp Type Type SExp
+  | TagMismatch Exp Type Type SExp
   | NotLValue Exp
     deriving (Show, Eq)
 
@@ -41,7 +41,7 @@ prettyError = \case
     "index: " <> PP.pretty idx <> PP.line <>
     "is out of bounds for array: " <> PP.pretty array <> PP.line <>
     excerpt ann
-  MissingProperty (ann :< _) r key ->
+  MissingField (ann :< _) r key ->
     header ann <>
     "key: " <> PP.pretty key <> PP.line <>
     "is missing from the record: " <> PP.pretty r <> PP.line <>
@@ -50,15 +50,15 @@ prettyError = \case
     header ann <>
     PP.pretty name <> ": " <> PP.pretty text <> PP.line <>
     excerpt ann
-  TypeError (ann :< Var (_ann :+ name)) expected actual value ->
+  TagMismatch (ann :< Var (_ann :+ name)) expected actual value ->
     header ann <>
-    "mismatched types in " <> PP.pretty name <> ": " <> PP.line <>
+    "mismatched [rendertime] types in " <> PP.pretty name <> ": " <> PP.line <>
       PP.indent 2 "expected: " <> PP.pretty (show expected) <> PP.line <>
       PP.indent 2 " but got: " <> PP.pretty value <> " : " <> PP.pretty (show actual) <> PP.line <>
     excerpt ann
-  TypeError (ann :< _) expected actual value ->
+  TagMismatch (ann :< _) expected actual value ->
     header ann <>
-    "mismatched types:" <> PP.line <>
+    "mismatched [rendertime] types:" <> PP.line <>
       PP.indent 2 "expected: " <> PP.pretty (show expected) <> PP.line <>
       PP.indent 2 " but got: " <> PP.pretty value <> " : " <> PP.pretty (show actual) <> PP.line <>
     excerpt ann

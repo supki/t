@@ -65,9 +65,8 @@ freshVar = do
   pure (Var n mempty)
 
 data TypeError
-  = MissingKey Name
-  | MissingVar Name
-  | NotARecord Type
+  = NotInScope Name
+  | MissingField Name
   | TypeMismatch Type Type
   | ConstraintViolation Constraint Type
   | OccursCheck Int Type

@@ -73,46 +73,46 @@ instance Eject Bool where
     Bool b ->
       pure b
     value ->
-      Left (TypeError (varE name) Type.Bool (typeOf value) (sexp value))
+      Left (TagMismatch (varE name) Type.Bool (typeOf value) (sexp value))
 
 instance Eject Int where
   eject name = \case
     Int n ->
       pure n
     value ->
-      Left (TypeError (varE name) Type.Int (typeOf value) (sexp value))
+      Left (TagMismatch (varE name) Type.Int (typeOf value) (sexp value))
 
 instance Eject Double where
   eject name = \case
     Double n ->
       pure n
     value ->
-      Left (TypeError (varE name) Type.Double (typeOf value) (sexp value))
+      Left (TagMismatch (varE name) Type.Double (typeOf value) (sexp value))
 
 instance Eject Text where
   eject name = \case
     String str ->
       pure str
     value ->
-      Left (TypeError (varE name) Type.String (typeOf value) (sexp value))
+      Left (TagMismatch (varE name) Type.String (typeOf value) (sexp value))
 
 instance Eject Pcre.Regex where
   eject name = \case
     Regexp regexp ->
       pure regexp
     value ->
-      Left (TypeError (varE name) Type.Regexp (typeOf value) (sexp value))
+      Left (TagMismatch (varE name) Type.Regexp (typeOf value) (sexp value))
 
 instance (k ~ Name, v ~ Value) => Eject (HashMap k v) where
   eject name = \case
     Record o ->
       pure o
     value ->
-      Left (TypeError (varE name) (Type.Record (error "fields")) (typeOf value) (sexp value))
+      Left (TagMismatch (varE name) (Type.Record (error "fields")) (typeOf value) (sexp value))
 
 instance Eject a => Eject [a] where
   eject name = \case
     Array xs ->
       map toList (traverse (eject name) xs)
     value ->
-      Left (TypeError (varE name) (Type.Array (error "element")) (typeOf value) (sexp value))
+      Left (TagMismatch (varE name) (Type.Array (error "element")) (typeOf value) (sexp value))
