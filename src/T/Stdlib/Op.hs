@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeApplications #-}
@@ -6,6 +7,7 @@ module T.Stdlib.Op
   , PriorityMap
   , Fixity(..)
   , bindings
+  , typingCtx
   , priorities
   , operators
   ) where
@@ -25,12 +27,14 @@ import T.Exp.Ann ((:+)(..))
 import T.Name (Name)
 import T.Prelude
 import T.SExp (sexp)
+import T.Type (Γ, forAll, forAll_, fun1, fun2, tyVar)
 import T.Type qualified as Type
 import T.Value (Value(..), typeOf)
 
 
 data Op = Op
   { name     :: Name
+  , ascribed :: Type.Scheme
   , binding  :: Name -> Value
   , fixity   :: Fixity
   , priority :: Int
@@ -45,9 +49,13 @@ data Fixity
   | Infixr
     deriving (Show, Eq)
 
-bindings :: [Op] -> [(Name, Value)]
+bindings :: [Op] -> HashMap Name Value
 bindings =
-  map (\op -> (op.name, op.binding op.name))
+  HashMap.fromList . map (\op -> (op.name, op.binding op.name))
+
+typingCtx :: [Op] -> Γ
+typingCtx =
+  HashMap.fromList . map (\op -> (op.name, op.ascribed))
 
 priorities :: [Op] -> PriorityMap
 priorities =
@@ -55,23 +63,49 @@ priorities =
 
 operators :: [Op]
 operators =
-  [ Op "!" (flip embed0 not) Prefix 8
+  [ Op "!"
+      (forAll_ (Type.Bool `fun1` Type.Bool))
+      (embed0 not) Prefix 8
 
-  , Op "==" (flip embed0 eq) Infix 4
-  , Op "!=" (flip embed0 neq) Infix 4
-  , Op "=~" (flip embed0 match) Infix 4
+  , Op "=="
+      (forAll [0] [(0, Type.Eq)] ((tyVar 0, tyVar 0) `fun2` Type.Bool))
+      (embed0 eq) Infix 4
+  , Op "!="
+      (forAll [0] [(0, Type.Eq)] ((tyVar 0, tyVar 0) `fun2` Type.Bool))
+      (embed0 neq) Infix 4
+  , Op "=~"
+      (forAll_ ((Type.String, Type.Regexp) `fun2` Type.Bool))
+      (embed0 match) Infix 4
 
-  , Op "+" add Infixl 6
-  , Op "-" subtract Infixl 6
-  , Op "*" multiply Infixl 7
-  , Op "/" divide Infixl 7
+  , Op "+"
+      (forAll [0] [(0, Type.Num)] ((tyVar 0, tyVar 0) `fun2` tyVar 0))
+      add Infixl 6
+  , Op "-"
+      (forAll [0] [(0, Type.Num)] ((tyVar 0, tyVar 0) `fun2` tyVar 0))
+      subtract Infixl 6
+  , Op "*"
+      (forAll [0] [(0, Type.Num)] ((tyVar 0, tyVar 0) `fun2` tyVar 0))
+      multiply Infixl 7
+  , Op "/"
+      (forAll [0] [(0, Type.Num)] ((tyVar 0, tyVar 0) `fun2` tyVar 0))
+      divide Infixl 7
 
-  , Op "<" lt Infix 4
-  , Op "<=" le Infix 4
-  , Op ">" gt Infix 4
-  , Op ">=" ge Infix 4
+  , Op "<"
+      (forAll [0] [(0, Type.Num)] ((tyVar 0, tyVar 0) `fun2` Type.Bool))
+      lt Infix 4
+  , Op "<="
+      (forAll [0] [(0, Type.Num)] ((tyVar 0, tyVar 0) `fun2` Type.Bool))
+      le Infix 4
+  , Op ">"
+      (forAll [0] [(0, Type.Num)] ((tyVar 0, tyVar 0) `fun2` Type.Bool))
+      gt Infix 4
+  , Op ">="
+      (forAll [0] [(0, Type.Num)] ((tyVar 0, tyVar 0) `fun2` Type.Bool))
+      ge Infix 4
 
-  , Op "<>" (flip embed0 ((<>) @Text)) Infixr 6
+  , Op "<>"
+      (forAll_ ((Type.String, Type.String) `fun2` Type.String))
+      (embed0 ((<>) @Text)) Infixr 6
   ]
 
 combineNumbers :: (Int -> Int -> Int) -> (Double -> Double -> Double) -> Name -> Value
@@ -82,15 +116,15 @@ combineNumbers intOp doubleOp name =
         _ann :+ Int n1 ->
           pure (Int (n0 `intOp` n1))
         ann :+ n ->
-          Left (TypeError (varE (ann :+ name)) Type.Int (typeOf n) (sexp n))
+          Left (TagMismatch (varE (ann :+ name)) Type.Int (typeOf n) (sexp n))
     _ann :+ Double n0 ->
       pure . Lam $ \case
         _ann :+ Double n1 ->
           pure (Double (n0 `doubleOp` n1))
         ann :+ n ->
-          Left (TypeError (varE (ann :+ name)) Type.Double (typeOf n) (sexp n))
+          Left (TagMismatch (varE (ann :+ name)) Type.Double (typeOf n) (sexp n))
     ann :+ n ->
-      Left (TypeError (varE (ann :+ name)) Type.Number (typeOf n) (sexp n))
+      Left (TagMismatch (varE (ann :+ name)) (Type.Var 0 [Type.Num]) (typeOf n) (sexp n))
 
 add :: Name -> Value
 add =
@@ -116,15 +150,15 @@ predicateNumbers intOp doubleOp name =
         _ann :+ Int n1 ->
           pure (Bool (n0 `intOp` n1))
         ann :+ n ->
-          Left (TypeError (varE (ann :+ name)) Type.Int (typeOf n) (sexp n))
+          Left (TagMismatch (varE (ann :+ name)) Type.Int (typeOf n) (sexp n))
     _ann :+ Double n0 ->
       pure . Lam $ \case
         _ann :+ Double n1 ->
           pure (Bool (n0 `doubleOp` n1))
         ann :+ n ->
-          Left (TypeError (varE (ann :+ name)) Type.Double (typeOf n) (sexp n))
+          Left (TagMismatch (varE (ann :+ name)) Type.Double (typeOf n) (sexp n))
     ann :+ n ->
-      Left (TypeError (varE (ann :+ name)) Type.Number (typeOf n) (sexp n))
+      Left (TagMismatch (varE (ann :+ name)) (Type.Var 0 [Type.Num]) (typeOf n) (sexp n))
 
 lt :: Name -> Value
 lt =

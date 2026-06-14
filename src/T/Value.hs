@@ -36,7 +36,7 @@ data Value
   | Regexp Pcre.Regex
   | Array (Vector Value)
   | Record (HashMap Name Value)
-  | Lam (Ann :+ Value -> Either Error Value)
+  | Lam Type (Ann :+ Value -> Either Error Value)
 
 instance SExp.To Value where
   sexp = \case
@@ -56,7 +56,7 @@ instance SExp.To Value where
       sexp xs
     Record xs ->
       sexp xs
-    Lam _ ->
+    Lam _ _ ->
       SExp.round ["lambda", SExp.square ["_"], "..."]
 
 truthy :: Value -> Bool
@@ -90,20 +90,33 @@ displayWith f =
       Aeson.Array (map ejectAeson xs)
     Record r ->
       Aeson.Object (Aeson.fromHashMapText (HashMap.mapKeys Name.toText (map ejectAeson r)))
-    Lam _f ->
+    Lam _t _f ->
       Aeson.String "<lambda>"
 
 typeOf :: Value -> Type
 typeOf = \case
-  Null -> Type.Null
-  Bool _ -> Type.Bool
-  Int _ -> Type.Int
-  Double _ -> Type.Double
-  String _ -> Type.String
-  Regexp _ -> Type.Regexp
-  Array _ -> Type.Array
-  Record _ -> Type.Record
-  Lam _ -> Type.Fun
+  Null ->
+    Type.Unit
+  Bool _ ->
+    Type.Bool
+  Int _ ->
+    Type.Int
+  Double _ ->
+    Type.Double
+  String _ ->
+    Type.String
+  Regexp _ ->
+    Type.Regexp
+  Array xs ->
+    case toList xs of
+      [] ->
+        Type.Array (Type.tyVar 0)
+      x : _xs ->
+        Type.Array (typeOf x)
+  Record fields ->
+    Type.Record (map typeOf fields)
+  Lam t _ ->
+    t
 
 embedAeson :: Aeson.Value -> Value
 embedAeson = \case

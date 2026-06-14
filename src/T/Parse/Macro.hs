@@ -11,8 +11,7 @@ module T.Parse.Macro
 import Data.List qualified as List
 
 import T.Exp
-  ( Cofree(..)
-  , Exp
+  ( Exp
   , ExpF(..)
   , Ann
   , (:+)(..)

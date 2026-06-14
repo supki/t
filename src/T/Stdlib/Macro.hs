@@ -19,8 +19,7 @@ import Data.List qualified as List
 import Data.Map.Strict qualified as Map
 
 import T.Exp
-  ( Cofree(..)
-  , ExpF(..)
+  ( ExpF(..)
   , appE
   , appE_
   , ifE
@@ -93,8 +92,8 @@ or _ann args =
 
 -- function application macro:
 --
--- {{ x || f }} -> {{ f(x) }}
--- {{ y || f(x) }} -> {{ f(x, y) }}
+-- {{ x | f }} -> {{ f(x) }}
+-- {{ y | f(x) }} -> {{ f(x, y) }}
 legacyApp :: Expansion
 legacyApp _ann = \case
   [expl, annf :< Var name] ->

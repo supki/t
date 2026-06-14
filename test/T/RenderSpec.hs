@@ -24,6 +24,7 @@ import T.Stdlib (def)
 import T.Stdlib qualified as Stdlib
 import T.Stdlib.Op qualified as Op
 import T.SExp (sexp)
+import T.Type (forAll_, fun1, fun2)
 import T.Type qualified as Type
 import T.Value (embedAeson)
 
@@ -64,9 +65,9 @@ spec =
         r_ "{{ [1,2,3][0] }}" `shouldRender` "1"
         r_ "{{ [[1,2],[3]][0][1] }}" `shouldRender` "2"
         r_ "{{ 4[0] }}" `shouldRaise`
-          TypeError (litE_ (Int 4)) Type.Array Type.Int "4"
+          TagMismatch (litE_ (Int 4)) (Type.Array (Type.tyVar 0)) Type.Int "4"
         r_ "{{ [1,2,3][\"foo\"] }}" `shouldRaise`
-          TypeError (litE_ (String "foo")) Type.Int Type.String "\"foo\""
+          TagMismatch (litE_ (String "foo")) Type.Int Type.String "\"foo\""
         r_ "{{ [1,2,3][-1] }}" `shouldRaise` OutOfBounds (int (-1)) (sexp (array [int 1, int 2, int 3])) "-1"
 
     context "keying" $
@@ -75,8 +76,8 @@ spec =
         r_ "{{ {foo: [1,2,3]}.foo[0] }}" `shouldRender` "1"
         r_ "{{ {foo: [1,{bar: 7},3]}.foo[1].bar }}" `shouldRender` "7"
         r_ "{{ 4.foo }}" `shouldRaise`
-          TypeError (litE_ (Int 4)) Type.Record Type.Int "4"
-        r_ "{{ {}.foo }}" `shouldRaise` MissingProperty (record mempty) (sexp (record mempty)) "foo"
+          TagMismatch (litE_ (Int 4)) (Type.Record mempty) Type.Int "4"
+        r_ "{{ {}.foo }}" `shouldRaise` MissingField (record mempty) (sexp (record mempty)) "foo"
 
     context "line blocks" $
       it "examples" $ do
@@ -266,16 +267,20 @@ spec =
         r_ "{{ \"Foo\" =~ /foo/i }}" `shouldRender` "true"
 
       it "not-iterable" $
-        r_ "{% for x in 4 %}{% endfor %}" `shouldRaise` TypeError (litE_ (Int 4)) Type.Iterable Type.Int "4"
+        r_ "{% for x in 4 %}{% endfor %}" `shouldRaise`
+          TagMismatch (litE_ (Int 4)) (Type.Var 0 [Type.Iterable]) Type.Int "4"
 
       it "not-renderable" $
-        r_ "{{ [] }}" `shouldRaise` TypeError (array []) Type.Renderable Type.Array (sexp (array []))
+        r_ "{{ [] }}" `shouldRaise`
+          TagMismatch (array []) (Type.Var 0 [Type.Render]) (Type.Array (Type.tyVar 0)) (sexp (array []))
 
       it "not-a-function" $
-        rWith [aesonQQ|{f: "foo"}|] "{{ f(4) }}" `shouldRaise` TypeError (varE "f") Type.Fun Type.String "\"foo\""
+        rWith [aesonQQ|{f: "foo"}|] "{{ f(4) }}" `shouldRaise`
+          TagMismatch (varE "f") (Type.tyVar 0 `Type.fun1` Type.tyVar 1) Type.String "\"foo\""
 
       it "type errors" $
-        r_ "{{ bool01(\"foo\") }}" `shouldRaise` TypeError (varE "bool01") Type.Bool Type.String "\"foo\""
+        r_ "{{ bool01(\"foo\") }}" `shouldRaise`
+          TagMismatch (varE "bool01") Type.Bool Type.String "\"foo\""
 
       it "defined?" $
         rWith [aesonQQ|{foo: {}}|] "{{ defined?(foo.bar.baz) }}" `shouldRender` "false"
@@ -406,13 +411,19 @@ rWith json tmplStr = do
 
 opExt :: [Stdlib.Op]
 opExt =
-  [ Stdlib.Op "<+>" (flip embed0 (\str0 str1 -> str0 <> "+" <> str1 :: Text)) Stdlib.Infixr 6
+  [ Stdlib.Op "<+>"
+      (forAll_ ((Type.String, Type.String) `fun2` Type.String))
+      (embed0 (\str0 str1 -> str0 <> "+" <> str1 :: Text)) Stdlib.Infixr 6
   ]
 
 funExt :: [Stdlib.Fun]
 funExt =
-  [ Stdlib.Fun "bool01" (flip embed0 (bool @Int 0 1))
-  , Stdlib.Fun "const" (flip embed0 (const @Bool @Text))
+  [ Stdlib.Fun "bool01"
+      (forAll_ (Type.Bool `fun1` Type.Int))
+      (embed0 (bool @Int 0 1))
+  , Stdlib.Fun "const"
+      (forAll_ (Type.Bool `fun1` Type.String))
+      (embed0 (const @Bool @Text))
   ]
 
 macroExt :: [Stdlib.Macro]

@@ -29,6 +29,10 @@ instance Warn T.ParseError where
   warn (T.ParseError err) =
     ppWarn err
 
+instance Warn T.TypeError where
+  warn =
+    ppWarn . fromString . show
+
 die :: Warn t => t -> IO ()
 die err = do
   warn err
